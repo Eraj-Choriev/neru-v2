@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tj">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>NerU — Истгоҳҳои барқии Душанбе | EV Charging Stations</title>
+  <meta name="description" content="Ёфтани наздиктарин истгоҳи зарядкунии мошинҳои барқӣ дар Душанбе. Find the nearest EV charging station in Dushanbe, Tajikistan.">
+  <meta name="theme-color" content="#05070d">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="NerU — EV Charging Stations Dushanbe">
+  <meta property="og:description" content="Find & navigate to the nearest electric vehicle charging station in Dushanbe">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts: preconnect + display font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ===== Header ===== -->
+    <header class="header" role="banner">
+      <div class="header-left">
+        <a href="#" class="logo" aria-label="NerU — Home">
+          <span class="logo-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="logo-block">
+            <span class="logo-text">NerU</span>
+            <span class="logo-tagline" data-i18n="appTagline">Истгоҳҳои барқии Душанбе</span>
+          </span>
+        </a>
+
+        <div class="header-stats" role="status" aria-live="polite">
+          <div class="stat-cell">
+            <span class="stat-num" id="stat-total">—</span>
+            <span class="stat-label" data-i18n="totalStations">Истгоҳҳо</span>
+          </div>
+          <span class="stat-sep" aria-hidden="true"></span>
+          <div class="stat-cell">
+            <span class="stat-num stat-accent" id="stat-free">—</span>
+            <span class="stat-label" data-i18n="availableNow">Озод</span>
+          </div>
+          <span class="stat-sep" aria-hidden="true"></span>
+          <div class="stat-cell stat-time">
+            <span class="stat-live-dot" aria-hidden="true"></span>
+            <span id="last-update">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="segmented" id="filter-seg" role="tablist" aria-label="Filter">
+          <span class="seg-indicator" aria-hidden="true"></span>
+          <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
+          <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
+          <button class="seg-btn filter-btn" data-filter="120w" role="tab">120W</button>
+          <button class="seg-btn filter-btn" data-filter="60w" role="tab">60W</button>
+        </div>
+
+        <div class="segmented segmented-compact" id="lang-seg" role="tablist" aria-label="Language">
+          <span class="seg-indicator" aria-hidden="true"></span>
+          <button class="seg-btn lang-btn is-active" data-lang="tj" role="tab">TJ</button>
+          <button class="seg-btn lang-btn" data-lang="ru" role="tab">RU</button>
+          <button class="seg-btn lang-btn" data-lang="en" role="tab">EN</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===== Map ===== -->
+    <div id="map"></div>
+
+    <!-- Decorative scanline overlay (pointer-events: none) -->
+    <div class="map-vignette" aria-hidden="true"></div>
+
+    <!-- ===== Location Button ===== -->
+    <button class="loc-btn" id="loc-btn" aria-label="My location">
+      <span class="loc-btn-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" stroke-width="1.5" opacity="0.4"/>
+        </svg>
+      </span>
+      <span class="loc-btn-ring" aria-hidden="true"></span>
+    </button>
+
+    <!-- ===== FAB — Find Nearest ===== -->
+    <button class="fab" id="fab-find" aria-label="Find nearest station">
+      <span class="fab-bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+      </span>
+      <span class="fab-text-full" data-i18n="findNearest">Наздиктаринро ёб</span>
+      <span class="fab-text-short" data-i18n="findNearestShort">Ёфтан</span>
+      <span class="fab-arrow" aria-hidden="true">→</span>
+    </button>
+
+    <!-- ===== Sidebar Overlay ===== -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar" id="sidebar" aria-label="Results">
+      <div class="sidebar-header">
+        <div class="sidebar-title-block">
+          <span class="sidebar-eyebrow" data-i18n="recommended">Тавсияшуда</span>
+          <h2 class="sidebar-title" id="sidebar-title" data-i18n="stations">Истгоҳҳо</h2>
+        </div>
+        <button class="sidebar-close" id="sidebar-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sidebar-body" id="sidebar-results">
+        <!-- Rendered by JS -->
+      </div>
+    </aside>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite">
+      <div class="loader-wrap">
+        <div class="loader-orb">
+          <div class="orb-ring orb-ring-1"></div>
+          <div class="orb-ring orb-ring-2"></div>
+          <div class="orb-ring orb-ring-3"></div>
+          <div class="orb-core">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </div>
+          <div class="orb-particle orb-p1"></div>
+          <div class="orb-particle orb-p2"></div>
+          <div class="orb-particle orb-p3"></div>
+          <div class="orb-particle orb-p4"></div>
+        </div>
+        <div class="loader-track">
+          <div class="loader-fill"></div>
+          <div class="loader-shimmer"></div>
+        </div>
+        <p class="loading-text" data-i18n="loading">Боркунӣ...</p>
+      </div>
+    </div>
+
+    <!-- ===== Toast ===== -->
+    <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+
+  <!-- App Modules (order matters) -->
+  <script src="js/i18n.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/geolocation.js"></script>
+  <script src="js/finder.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

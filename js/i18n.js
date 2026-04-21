@@ -1,0 +1,224 @@
+// ============================================
+// NerU v2 — Internationalization (TJ/RU/EN)
+// ============================================
+
+const translations = {
+  tj: {
+    appName: 'NerU',
+    appTagline: 'Истгоҳҳои барқии Душанбе',
+    findNearest: 'Наздиктаринро ёб',
+    findNearestShort: 'Ёфтан',
+    stations: 'Истгоҳҳо',
+    freeConnectors: 'Пайвасткунакҳои озод',
+    allStations: 'Ҳамаи истгоҳҳо',
+    nearest: 'Наздиктарин',
+    recommended: 'Тавсияшуда',
+    distance: 'Масофа',
+    power: 'Қувват',
+    tariff: 'Тариф',
+    schedule: 'Вақти кор',
+    connector: 'Пайвасткунак',
+    available: 'Озод',
+    charging: 'Заряд мешавад',
+    occupied: 'Банд',
+    chargeLevel: 'Сатҳи заряд',
+    navigateTo: 'Нишон додан дар харита',
+    getDirections: 'Масир',
+    closePanel: 'Пӯшидан',
+    loading: 'Боркунӣ...',
+    error: 'Хатогӣ',
+    errorLoading: 'Хатогии боркунии маълумот',
+    retry: 'Аз нав кӯшиш кунед',
+    locationDenied: 'Рухсати ҷойгиршавӣ рад шуд',
+    locationUnavailable: 'Ҷойгиршавӣ дастнорас',
+    locationFound: 'Ҷойгиршавӣ ёфт шуд',
+    locating: 'Ҷустуҷӯи мавқеъ...',
+    myLocation: 'Мавқеи ман',
+    noFreeStations: 'Истгоҳи озод нест',
+    noStations: 'Истгоҳе нест',
+    bestChoice: 'Беҳтарин интихоб',
+    freeNow: 'Ҳозир озод',
+    soonFree: 'Ба наздикӣ озод мешавад',
+    busy: 'Банд',
+    somoniPerKwh: 'сом./кВт',
+    meters: 'м',
+    km: 'км',
+    minSuffix: 'дақ',
+    hrSuffix: 'соат',
+    stationDetails: 'Маълумоти истгоҳ',
+    filterAll: 'Ҳама',
+    filterAvailable: 'Озод',
+    filter120w: '120W',
+    filter60w: '60W',
+    totalStations: 'Истгоҳҳо',
+    availableNow: 'Озод',
+    lastUpdate: 'Навсозии охирин',
+    searchPlaceholder: 'Ҷустуҷӯи истгоҳ...',
+    walking: 'Пиёда',
+    openNow: 'Кушода',
+    closedUntil: 'Пӯшида то',
+    open247: '24/7',
+    freeIn: 'Озод мешавад тақрибан',
+    etaSoon: 'Ба наздикӣ озод',
+    allBusy: 'Ҳамаи пайвасткунакҳо банд',
+  },
+  ru: {
+    appName: 'NerU',
+    appTagline: 'Электрозарядные станции Душанбе',
+    findNearest: 'Найти ближайшую',
+    findNearestShort: 'Найти',
+    stations: 'Станции',
+    freeConnectors: 'Свободные коннекторы',
+    allStations: 'Все станции',
+    nearest: 'Ближайшие',
+    recommended: 'Рекомендуемые',
+    distance: 'Расстояние',
+    power: 'Мощность',
+    tariff: 'Тариф',
+    schedule: 'Режим работы',
+    connector: 'Коннектор',
+    available: 'Свободен',
+    charging: 'Заряжается',
+    occupied: 'Занят',
+    chargeLevel: 'Уровень заряда',
+    navigateTo: 'Показать на карте',
+    getDirections: 'Маршрут',
+    closePanel: 'Закрыть',
+    loading: 'Загрузка...',
+    error: 'Ошибка',
+    errorLoading: 'Ошибка загрузки данных',
+    retry: 'Повторить попытку',
+    locationDenied: 'Доступ к геолокации запрещён',
+    locationUnavailable: 'Геолокация недоступна',
+    locationFound: 'Местоположение найдено',
+    locating: 'Определение местоположения...',
+    myLocation: 'Моя локация',
+    noFreeStations: 'Нет свободных станций',
+    noStations: 'Нет станций',
+    bestChoice: 'Лучший выбор',
+    freeNow: 'Сейчас свободна',
+    soonFree: 'Скоро освободится',
+    busy: 'Занята',
+    somoniPerKwh: 'сом./кВт',
+    meters: 'м',
+    km: 'км',
+    minSuffix: 'мин',
+    hrSuffix: 'ч',
+    stationDetails: 'Информация о станции',
+    filterAll: 'Все',
+    filterAvailable: 'Свободные',
+    filter120w: '120W',
+    filter60w: '60W',
+    totalStations: 'Станции',
+    availableNow: 'Свободно',
+    lastUpdate: 'Обновлено',
+    searchPlaceholder: 'Поиск станции...',
+    walking: 'Пешком',
+    openNow: 'Открыто',
+    closedUntil: 'Закрыто до',
+    open247: '24/7',
+    freeIn: 'Освободится примерно через',
+    etaSoon: 'Скоро освободится',
+    allBusy: 'Все коннекторы заняты',
+  },
+  en: {
+    appName: 'NerU',
+    appTagline: 'Dushanbe EV Charging Stations',
+    findNearest: 'Find Nearest',
+    findNearestShort: 'Find',
+    stations: 'Stations',
+    freeConnectors: 'Free Connectors',
+    allStations: 'All Stations',
+    nearest: 'Nearest',
+    recommended: 'Recommended',
+    distance: 'Distance',
+    power: 'Power',
+    tariff: 'Tariff',
+    schedule: 'Work Hours',
+    connector: 'Connector',
+    available: 'Available',
+    charging: 'Charging',
+    occupied: 'Occupied',
+    chargeLevel: 'Charge Level',
+    navigateTo: 'Show on Map',
+    getDirections: 'Directions',
+    closePanel: 'Close',
+    loading: 'Loading...',
+    error: 'Error',
+    errorLoading: 'Failed to load data',
+    retry: 'Retry',
+    locationDenied: 'Location access denied',
+    locationUnavailable: 'Location unavailable',
+    locationFound: 'Location found',
+    locating: 'Locating...',
+    myLocation: 'My Location',
+    noFreeStations: 'No free stations',
+    noStations: 'No stations',
+    bestChoice: 'Best Choice',
+    freeNow: 'Available now',
+    soonFree: 'Soon available',
+    busy: 'Busy',
+    somoniPerKwh: 'TJS/kWh',
+    meters: 'm',
+    km: 'km',
+    minSuffix: 'min',
+    hrSuffix: 'hr',
+    stationDetails: 'Station Details',
+    filterAll: 'All',
+    filterAvailable: 'Available',
+    filter120w: '120W',
+    filter60w: '60W',
+    totalStations: 'Stations',
+    availableNow: 'Free',
+    lastUpdate: 'Last Updated',
+    searchPlaceholder: 'Search station...',
+    walking: 'Walk',
+    openNow: 'Open',
+    closedUntil: 'Closed until',
+    open247: '24/7',
+    freeIn: 'Free in about',
+    etaSoon: 'Freeing up soon',
+    allBusy: 'All connectors occupied',
+  }
+};
+
+class I18n {
+  constructor() {
+    this.currentLang = localStorage.getItem('neru_lang') || 'tj';
+  }
+
+  t(key) {
+    return translations[this.currentLang]?.[key] || translations.en[key] || key;
+  }
+
+  setLang(lang) {
+    if (translations[lang]) {
+      this.currentLang = lang;
+      localStorage.setItem('neru_lang', lang);
+      document.documentElement.setAttribute('lang', lang);
+      this.updateDOM();
+      window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
+    }
+  }
+
+  getLang() {
+    return this.currentLang;
+  }
+
+  updateDOM() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      el.textContent = this.t(key);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      el.placeholder = this.t(key);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      el.title = this.t(key);
+    });
+  }
+}
+
+const i18n = new I18n();
