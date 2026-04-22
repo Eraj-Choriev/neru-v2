@@ -104,6 +104,30 @@ class UI {
     this.langSeg = document.getElementById('lang-seg');
     this.filterBtns = this.filterSeg?.querySelectorAll('.filter-btn') || [];
     this.langBtns = this.langSeg?.querySelectorAll('.lang-btn') || [];
+
+    this.themeToggle = document.getElementById('theme-toggle');
+    this.statsBusy = document.getElementById('stat-busy');
+  }
+
+  getTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  }
+
+  setTheme(theme) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('neru-theme', next); } catch (_) {}
+
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', next === 'light' ? '#ffffff' : '#05070d');
+    }
+
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
+  }
+
+  toggleTheme() {
+    this.setTheme(this.getTheme() === 'light' ? 'dark' : 'light');
   }
 
   bindEvents() {
@@ -149,10 +173,23 @@ class UI {
         e.preventDefault();
         app.showOnMap(id);
       }
+      if (action === 'route' && id) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
+      }
+    });
+
+    document.getElementById('route-clear')?.addEventListener('click', () => {
+      stationRouter.clear();
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.sidebarOpen) this.closeSidebar();
+    });
+
+    this.themeToggle?.addEventListener('click', (e) => {
+      this.rippleFromEvent(e, this.themeToggle);
+      this.toggleTheme();
     });
   }
 
@@ -167,7 +204,7 @@ class UI {
     const active = segEl.querySelector('.seg-btn.is-active');
     if (!indicator || !active) return;
     const { offsetLeft, offsetWidth } = active;
-    indicator.style.transform = `translate3d(${offsetLeft - 4}px, 0, 0)`;
+    indicator.style.transform = `translate3d(${offsetLeft}px, 0, 0)`;
     indicator.style.width = `${offsetWidth}px`;
   }
 
@@ -294,9 +331,12 @@ class UI {
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
         return `
-          <div class="conn-row">
+          <div class="conn-row conn-row--free">
             <span class="conn-label">#${esc(c.id)}</span>
-            <span class="conn-badge badge-free">✓ ${esc(i18n.t('available'))}</span>
+            <span class="conn-badge badge-free">
+              <span class="badge-free-dot" aria-hidden="true"></span>
+              ${esc(i18n.t('available'))}
+            </span>
           </div>`;
       }
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
@@ -379,13 +419,16 @@ class UI {
 
         <div class="conn-list">${connRows}</div>
 
-        <div class="card-actions">
+        <div class="card-actions card-actions-3">
           <button class="btn btn-ghost" data-action="show-map" data-station-id="${esc(station.id)}">
             ${esc(i18n.t('navigateTo'))}
           </button>
-          <a class="btn btn-primary" href="${esc(directionsUrl)}" target="_blank" rel="noopener">
-            ${esc(i18n.t('getDirections'))}
+          <button class="btn btn-primary" data-action="route" data-station-id="${esc(station.id)}">
+            ${esc(i18n.t('routeLabel'))}
             <span class="btn-arrow" aria-hidden="true">→</span>
+          </button>
+          <a class="btn btn-ghost btn-icon-only" href="${esc(directionsUrl)}" target="_blank" rel="noopener" title="${esc(i18n.t('openGoogleMaps'))}">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
       </article>
@@ -395,6 +438,7 @@ class UI {
   updateStats(stats) {
     if (this.statsTotal) this.statsTotal.textContent = stats.total;
     if (this.statsFree) this.statsFree.textContent = stats.freeConnectors;
+    if (this.statsBusy) this.statsBusy.textContent = stats.totalConnectors - stats.freeConnectors;
   }
 
   updateLastRefresh(date) {
@@ -414,6 +458,40 @@ class UI {
     this.toastTimeout = setTimeout(() => {
       this.toastEl.classList.remove('toast-visible');
     }, duration);
+  }
+
+  showRoutePanel(station, { distance, duration }) {
+    const panel = document.getElementById('route-panel');
+    if (!panel) return;
+
+    const destEl = document.getElementById('route-dest');
+    const distEl = document.getElementById('route-distance');
+    const durEl  = document.getElementById('route-duration');
+
+    if (destEl) destEl.textContent = station.name;
+
+    if (distEl) {
+      const f = GeoLocation.formatDistance(distance / 1000);
+      distEl.textContent = `${f.value} ${i18n.t(f.unit)}`;
+    }
+
+    if (durEl) {
+      const mins = Math.round(duration / 60);
+      if (mins < 60) {
+        durEl.textContent = `${mins} ${i18n.t('minSuffix')}`;
+      } else {
+        const h = Math.floor(mins / 60), m = mins % 60;
+        durEl.textContent = m
+          ? `${h}${i18n.t('hrSuffix')} ${m}${i18n.t('minSuffix')}`
+          : `${h} ${i18n.t('hrSuffix')}`;
+      }
+    }
+
+    panel.classList.add('is-active');
+  }
+
+  hideRoutePanel() {
+    document.getElementById('route-panel')?.classList.remove('is-active');
   }
 
   applyFilter(stations) {

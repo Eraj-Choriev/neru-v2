@@ -10,23 +10,36 @@ class StationMap {
     this.userMarker = null;
     this.routeLine = null;
     this.highlightCircle = null;
+    this.tileLayer = null;
+  }
+
+  _buildTileLayer(theme) {
+    const url = theme === 'light'
+      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    return L.tileLayer(url, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+    });
+  }
+
+  setTheme(theme) {
+    if (!this.map) return;
+    const next = theme === 'light' ? 'light' : 'dark';
+    if (this.tileLayer) this.map.removeLayer(this.tileLayer);
+    this.tileLayer = this._buildTileLayer(next);
+    this.tileLayer.addTo(this.map);
   }
 
   init(containerId = 'map') {
-    // CartoDB Dark Matter — dark themed tiles
-    const darkTiles = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19
-      }
-    );
+    const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    this.tileLayer = this._buildTileLayer(currentTheme);
 
     this.map = L.map(containerId, {
       center: [38.5598, 68.7738],
       zoom: 13,
-      layers: [darkTiles],
+      layers: [this.tileLayer],
       zoomControl: false,
     });
 
@@ -61,6 +74,15 @@ class StationMap {
     });
 
     this.map.addLayer(this.markerLayer);
+
+    // Delegate "Route" button clicks inside Leaflet popups
+    this.map.getContainer().addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="route"]');
+      if (btn) {
+        const id = btn.getAttribute('data-station-id');
+        if (id) window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
+      }
+    });
 
     return this.map;
   }
@@ -154,21 +176,26 @@ class StationMap {
     }
 
     // Distance (if user location known)
+    const PIN_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    const CLOCK_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
+
     let distChip = '';
     if (typeof geoLocation !== 'undefined' && geoLocation.userLat != null && geoLocation.userLng != null) {
       const km = GeoLocation.distanceBetween(
         geoLocation.userLat, geoLocation.userLng, station.lat, station.lng
       );
       const d = GeoLocation.formatDistance(km);
+      const walkMin = Math.round(km * 12);
+      const walkSuffix = walkMin > 0 ? ` · ${walkMin} ${escHtml(i18n.t('minSuffix'))}` : '';
       distChip = `
         <div class="chip">
-          <span class="chip-label">${escHtml(i18n.t('distance'))}</span>
-          <span class="chip-value">${escHtml(d.value)}<span class="unit">${escHtml(i18n.t(d.unit))}</span></span>
+          <span class="chip-icon">${PIN_SVG}</span>
+          <span class="chip-value">${escHtml(d.value)}<span class="unit">${escHtml(i18n.t(d.unit))}</span>${walkSuffix}</span>
         </div>`;
     } else {
       distChip = `
         <div class="chip">
-          <span class="chip-label">${escHtml(i18n.t('schedule'))}</span>
+          <span class="chip-icon">${CLOCK_SVG}</span>
           <span class="chip-value">${escHtml(station.schedule || '—')}</span>
         </div>`;
     }
@@ -204,9 +231,12 @@ class StationMap {
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
         return `
-          <div class="conn-row">
+          <div class="conn-row conn-row--free">
             <span class="conn-label">#${escHtml(c.id)}</span>
-            <span class="conn-badge badge-free">✓ ${escHtml(i18n.t('available'))}</span>
+            <span class="conn-badge badge-free">
+              <span class="badge-free-dot" aria-hidden="true"></span>
+              ${escHtml(i18n.t('available'))}
+            </span>
           </div>`;
       }
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
@@ -254,13 +284,13 @@ class StationMap {
         </div>
 
         <div class="chip-row">
-          <div class="chip">
-            <span class="chip-label">${escHtml(i18n.t('power'))}</span>
+          <div class="chip chip--power">
+            <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
             <span class="chip-value">${escHtml(station.capacity || '—')}</span>
           </div>
-          <div class="chip">
-            <span class="chip-label">${escHtml(i18n.t('tariff'))}</span>
-            <span class="chip-value">${escHtml(station.tariff)}<span class="unit">${escHtml(i18n.t('somoniPerKwh'))}</span></span>
+          <div class="chip chip--tariff">
+            <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h3a2 2 0 0 1 0 4h-3v4"/><path d="M9.5 12.5h3.5"/></svg></span>
+            <span class="chip-value">${escHtml(station.tariff)}<span class="unit"> ${escHtml(i18n.t('somoniPerKwh'))}</span></span>
           </div>
           ${distChip}
         </div>
@@ -269,10 +299,16 @@ class StationMap {
 
         <div class="conn-list">${connRows}</div>
 
-        <a href="${directionsUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%">
-          ${escHtml(i18n.t('getDirections'))}
-          <span class="btn-arrow" aria-hidden="true">→</span>
-        </a>
+        <div class="popup-actions">
+          <button class="btn btn-primary" data-action="route" data-station-id="${station.id}">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 12 5 10 9 14 15 8 19 12"/><path d="M3 18h18"/></svg>
+            ${escHtml(i18n.t('routeLabel'))}
+            <span class="btn-arrow" aria-hidden="true">→</span>
+          </button>
+          <a href="${directionsUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-icon-only" title="${escHtml(i18n.t('openGoogleMaps'))}">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
       </div>
     `;
   }
@@ -350,6 +386,37 @@ class StationMap {
       this.map.removeLayer(this.highlightCircle);
       this.highlightCircle = null;
     }
+  }
+
+  drawOSRMRoute(coords, station) {
+    this.clearHighlight();
+
+    this.routeLine = L.polyline(coords, {
+      color: '#7bffbe',
+      weight: 4,
+      opacity: 0.88,
+      dashArray: '12, 8',
+      lineCap: 'round',
+      lineJoin: 'round',
+      className: 'route-line',
+    }).addTo(this.map);
+
+    const marker = this.markers.find(m => m.stationId === station.id);
+    if (marker) marker.setIcon(this.createBestIcon());
+
+    this.highlightCircle = L.circleMarker([station.lat, station.lng], {
+      radius: 22,
+      color: '#7bffbe',
+      fillColor: '#7bffbe',
+      fillOpacity: 0.1,
+      weight: 1.5,
+    }).addTo(this.map);
+
+    const bounds = L.latLngBounds(coords);
+    this.map.fitBounds(bounds, {
+      paddingTopLeft: [24, 90],
+      paddingBottomRight: [24, 140],
+    });
   }
 
   flyTo(lat, lng, zoom = 16) {

@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>NerU — Истгоҳҳои барқии Душанбе | EV Charging Stations</title>
+  <title>EV Charging Stations</title>
   <meta name="description" content="Ёфтани наздиктарин истгоҳи зарядкунии мошинҳои барқӣ дар Душанбе. Find the nearest EV charging station in Dushanbe, Tajikistan.">
   <meta name="theme-color" content="#05070d">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="NerU — EV Charging Stations Dushanbe">
+  <meta property="og:title" content="NŪR — EV Charging Stations Dushanbe">
   <meta property="og:description" content="Find & navigate to the nearest electric vehicle charging station in Dushanbe">
   <meta property="og:type" content="website">
 
@@ -26,7 +26,22 @@
   <link rel="stylesheet" href="css/style.css">
 
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="icon" href="logo.png">
+  
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('neru-theme');
+      var theme = saved === 'light' || saved === 'dark'
+        ? saved
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
+
 </head>
 <body>
   <div class="app-container">
@@ -34,34 +49,9 @@
     <!-- ===== Header ===== -->
     <header class="header" role="banner">
       <div class="header-left">
-        <a href="#" class="logo" aria-label="NerU — Home">
-          <span class="logo-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/>
-            </svg>
-          </span>
-          <span class="logo-block">
-            <span class="logo-text">NerU</span>
-            <span class="logo-tagline" data-i18n="appTagline">Истгоҳҳои барқии Душанбе</span>
-          </span>
+        <a href="#" class="logo" aria-label="NŪR — Home">
+          <img src="logo.png" alt="NŪR" class="logo-img">
         </a>
-
-        <div class="header-stats" role="status" aria-live="polite">
-          <div class="stat-cell">
-            <span class="stat-num" id="stat-total">—</span>
-            <span class="stat-label" data-i18n="totalStations">Истгоҳҳо</span>
-          </div>
-          <span class="stat-sep" aria-hidden="true"></span>
-          <div class="stat-cell">
-            <span class="stat-num stat-accent" id="stat-free">—</span>
-            <span class="stat-label" data-i18n="availableNow">Озод</span>
-          </div>
-          <span class="stat-sep" aria-hidden="true"></span>
-          <div class="stat-cell stat-time">
-            <span class="stat-live-dot" aria-hidden="true"></span>
-            <span id="last-update">—</span>
-          </div>
-        </div>
       </div>
 
       <div class="header-right">
@@ -70,7 +60,6 @@
           <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
           <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
           <button class="seg-btn filter-btn" data-filter="120w" role="tab">120W</button>
-          <button class="seg-btn filter-btn" data-filter="60w" role="tab">60W</button>
         </div>
 
         <div class="segmented segmented-compact" id="lang-seg" role="tablist" aria-label="Language">
@@ -79,8 +68,56 @@
           <button class="seg-btn lang-btn" data-lang="ru" role="tab">RU</button>
           <button class="seg-btn lang-btn" data-lang="en" role="tab">EN</button>
         </div>
+
+        <div class="icon-group">
+          <button class="notif-toggle" id="notif-toggle" aria-label="Toggle notifications" title="Enable notifications">
+            <span class="notif-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+            </span>
+          </button>
+
+          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+            <span class="theme-icon theme-icon-moon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </span>
+            <span class="theme-icon theme-icon-sun" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+              </svg>
+            </span>
+          </button>
+        </div>
       </div>
     </header>
+
+    <!-- ===== Stats HUD — floats over map below header ===== -->
+    <div class="map-stats" role="status" aria-live="polite">
+      <div class="stat-cell">
+        <span class="stat-num" id="stat-total">—</span>
+        <span class="stat-label" data-i18n="totalStations">Истгоҳҳо</span>
+      </div>
+      <span class="stat-sep" aria-hidden="true"></span>
+      <div class="stat-cell">
+        <span class="stat-num stat-accent" id="stat-free">—</span>
+        <span class="stat-label" data-i18n="availableNow">Озод</span>
+      </div>
+      <span class="stat-sep" aria-hidden="true"></span>
+      <div class="stat-cell">
+        <span class="stat-num stat-busy" id="stat-busy">—</span>
+        <span class="stat-label" data-i18n="occupiedNow">Банд</span>
+      </div>
+      <span class="stat-sep" aria-hidden="true"></span>
+      <div class="stat-cell stat-time">
+        <span class="stat-live-dot" aria-hidden="true"></span>
+        <span id="last-update">—</span>
+      </div>
+    </div>
 
     <!-- ===== Map ===== -->
     <div id="map"></div>
@@ -158,6 +195,34 @@
       </div>
     </div>
 
+    <!-- ===== Route Panel ===== -->
+    <div class="route-panel" id="route-panel" role="status" aria-live="polite">
+      <div class="route-panel-track">
+        <div class="route-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 12 5 10 9 14 15 8 19 12"/>
+            <path d="M3 18h18"/>
+          </svg>
+        </div>
+        <div class="route-info">
+          <span class="route-dest" id="route-dest"></span>
+          <div class="route-meta">
+            <span class="route-distance" id="route-distance">—</span>
+            <span class="route-sep" aria-hidden="true">·</span>
+            <span class="route-duration" id="route-duration">—</span>
+          </div>
+        </div>
+      </div>
+      <button class="route-clear" id="route-clear" aria-label="Clear route">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ===== In-app notification stack ===== -->
+    <div id="neru-notif-stack" aria-live="assertive" aria-atomic="false"></div>
+
     <!-- ===== Toast ===== -->
     <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
@@ -174,6 +239,8 @@
   <script src="js/finder.js"></script>
   <script src="js/map.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/router.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

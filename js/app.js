@@ -18,6 +18,11 @@ class App {
       // Initialize map
       stationMap.init('map');
 
+      // Initialize notifications early so enabled state is known before seeding
+      if (typeof stationNotifications !== 'undefined') {
+        stationNotifications.init();
+      }
+
       // Load stations
       await this.loadStations();
 
@@ -29,6 +34,12 @@ class App {
           stationMap.flyTo(pos.lat, pos.lng, 14);
           document.getElementById('loc-btn')?.classList.add('is-located');
         }
+      }
+
+      // Seed notification states now that location and stations are both available
+      if (typeof stationNotifications !== 'undefined' && geoLocation.isLocated && !stationNotifications.seeded) {
+        const stations = stationAPI.getStations();
+        stationNotifications.seedStates(stations, geoLocation.userLat, geoLocation.userLng);
       }
 
       ui.hideLoading();
@@ -60,6 +71,16 @@ class App {
       const stats = stationAPI.getStats();
       ui.updateStats(stats);
       ui.updateLastRefresh(stationAPI.lastFetch);
+
+      // Handle push notifications
+      if (typeof stationNotifications !== 'undefined' && geoLocation.isLocated) {
+        const pos = geoLocation.getPosition();
+        if (!stationNotifications.seeded) {
+          stationNotifications.seedStates(stations, pos.lat, pos.lng);
+        } else {
+          stationNotifications.checkStations(stations, pos.lat, pos.lng);
+        }
+      }
     }
   }
 
@@ -81,6 +102,21 @@ class App {
       ui.showToast(i18n.t('errorLoading'), 'error');
       ui.hideLoading();
     });
+
+    // Theme changed — swap Leaflet tile layer (dark <-> light)
+    window.addEventListener('themechange', (e) => {
+      stationMap.setTheme(e.detail?.theme);
+    });
+
+    // In-app route request (from popup or sidebar card)
+    window.addEventListener('routeRequest', (e) => this.handleRouteRequest(e.detail));
+  }
+
+  async handleRouteRequest({ stationId }) {
+    const station = stationAPI.getStationById(stationId);
+    if (!station) return;
+    if (ui.sidebarOpen) ui.closeSidebar();
+    await stationRouter.routeTo(station);
   }
 
   async handleFindNearest() {
@@ -136,6 +172,11 @@ class App {
       btn.classList.remove('is-locating');
       btn.classList.add('is-located');
       ui.showToast(i18n.t('locationFound'), 'success', 2500);
+
+      // Immediately show free stations within radius
+      if (typeof stationNotifications !== 'undefined') {
+        stationNotifications.showNearbyNow();
+      }
     } catch (err) {
       btn.classList.remove('is-locating');
       const msg = err?.code === 1

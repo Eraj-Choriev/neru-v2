@@ -1,10 +1,10 @@
 // ============================================
-// NerU v2 — Internationalization (TJ/RU/EN)
+// NŪR — Internationalization (TJ/RU/EN)
 // ============================================
 
 const translations = {
   tj: {
-    appName: 'NerU',
+    appName: 'NŪR',
     appTagline: 'Истгоҳҳои барқии Душанбе',
     findNearest: 'Наздиктаринро ёб',
     findNearestShort: 'Ёфтан',
@@ -61,9 +61,21 @@ const translations = {
     freeIn: 'Озод мешавад тақрибан',
     etaSoon: 'Ба наздикӣ озод',
     allBusy: 'Ҳамаи пайвасткунакҳо банд',
+    occupiedNow: 'Банд',
+    notifNotSupported: 'Браузери шумо огоҳиномаҳоро дастгирӣ намекунад',
+    notifDisabled: 'Огоҳиномаҳо хомӯш карда шуданд',
+    notifDenied: 'Барои фиристодани огоҳиномаҳо иҷозат диҳед',
+    notifEnabled: 'Огоҳиномаҳо фаъол карда шуданд',
+    notifDisableTitle: 'Хомӯш кардани огоҳиномаҳо',
+    notifEnableTitle: 'Фаъол кардани огоҳиномаҳо',
+    notifTitle: 'Истгоҳ озод шуд!',
+    routeBuilding: 'Маршрут созём...',
+    routeError: 'Маршрут сохта нашуд',
+    routeLabel: 'Маршрут',
+    openGoogleMaps: 'Google Maps-ро кушед',
   },
   ru: {
-    appName: 'NerU',
+    appName: 'NŪR',
     appTagline: 'Электрозарядные станции Душанбе',
     findNearest: 'Найти ближайшую',
     findNearestShort: 'Найти',
@@ -120,9 +132,21 @@ const translations = {
     freeIn: 'Освободится примерно через',
     etaSoon: 'Скоро освободится',
     allBusy: 'Все коннекторы заняты',
+    occupiedNow: 'Занято',
+    notifNotSupported: 'Ваш браузер не поддерживает уведомления',
+    notifDisabled: 'Уведомления отключены',
+    notifDenied: 'Пожалуйста, разрешите отправку уведомлений',
+    notifEnabled: 'Уведомления включены',
+    notifDisableTitle: 'Отключить уведомления',
+    notifEnableTitle: 'Включить уведомления',
+    notifTitle: 'Станция освободилась!',
+    routeBuilding: 'Строим маршрут...',
+    routeError: 'Не удалось построить маршрут',
+    routeLabel: 'Маршрут',
+    openGoogleMaps: 'Открыть в Google Maps',
   },
   en: {
-    appName: 'NerU',
+    appName: 'NŪR',
     appTagline: 'Dushanbe EV Charging Stations',
     findNearest: 'Find Nearest',
     findNearestShort: 'Find',
@@ -179,6 +203,18 @@ const translations = {
     freeIn: 'Free in about',
     etaSoon: 'Freeing up soon',
     allBusy: 'All connectors occupied',
+    occupiedNow: 'Busy',
+    notifNotSupported: 'Your browser does not support notifications',
+    notifDisabled: 'Notifications disabled',
+    notifDenied: 'Please allow notification permissions',
+    notifEnabled: 'Notifications enabled',
+    notifDisableTitle: 'Disable notifications',
+    notifEnableTitle: 'Enable notifications',
+    notifTitle: 'Station is now available!',
+    routeBuilding: 'Building route...',
+    routeError: 'Could not build route',
+    routeLabel: 'Route',
+    openGoogleMaps: 'Open in Google Maps',
   }
 };
 

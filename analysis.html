@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NŪR — Feature Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080a0e;
+    --surface: #0d1018;
+    --surface-2: #131720;
+    --surface-3: #1a2030;
+    --border: rgba(255,255,255,0.06);
+    --border-accent: rgba(123,255,190,0.2);
+    --mint: #7bffbe;
+    --mint-dim: rgba(123,255,190,0.12);
+    --amber: #f5c842;
+    --amber-dim: rgba(245,200,66,0.1);
+    --rose: #ff6b6b;
+    --rose-dim: rgba(255,107,107,0.1);
+    --blue: #64b5f6;
+    --blue-dim: rgba(100,181,246,0.1);
+    --violet: #b39ddb;
+    --violet-dim: rgba(179,157,219,0.1);
+    --text: #e8ecf2;
+    --text-dim: #6b7585;
+    --text-mid: #9aa3b0;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'Manrope', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --r: 12px;
+    --r-sm: 8px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ─── Noise texture overlay ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* ─── Layout ─── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 40px; position: relative; z-index: 1; }
+  @media(max-width:768px) { .container { padding: 0 20px; } }
+
+  /* ─── Header ─── */
+  .header {
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(123,255,190,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .header-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--mint);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--mint-dim);
+    border: 1px solid var(--border-accent);
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 32px;
+  }
+
+  .header-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--mint);
+    border-radius: 50%;
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .header h1 em {
+    font-style: italic;
+    color: var(--mint);
+  }
+
+  .header-sub {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 400;
+    font-style: italic;
+    color: var(--text-dim);
+    line-height: 1;
+    margin-bottom: 32px;
+  }
+
+  .header-desc {
+    max-width: 560px;
+    color: var(--text-mid);
+    font-size: 15px;
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .meta-value {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .meta-value.accent { color: var(--mint); }
+
+  /* ─── Section ─── */
+  .section {
+    padding: 80px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+
+  .section-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 400;
+    line-height: 1.1;
+    flex: 1;
+  }
+
+  /* ─── Verdict Banner ─── */
+  .verdict {
+    background: var(--surface-2);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r);
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: linear-gradient(135deg, rgba(123,255,190,0.03), transparent 60%),
+                var(--surface-2);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 64px;
+  }
+
+  .verdict::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--mint), transparent);
+  }
+
+  @media(max-width:768px) { .verdict { grid-template-columns: 1fr; } }
+
+  .verdict-item {
+    padding: 24px;
+    border-right: 1px solid var(--border);
+  }
+
+  .verdict-item:last-child { border-right: none; }
+
+  .verdict-score {
+    font-family: var(--font-display);
+    font-size: 72px;
+    line-height: 1;
+    color: var(--mint);
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+  }
+
+  .verdict-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-bottom: 8px;
+  }
+
+  .verdict-desc {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+
+  /* ─── Priority Matrix ─── */
+  .matrix {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin-bottom: 64px;
+  }
+
+  @media(max-width:768px) { .matrix { grid-template-columns: 1fr; } }
+
+  .matrix-cell {
+    background: var(--surface);
+    padding: 32px;
+    position: relative;
+  }
+
+  .matrix-cell-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-mint { background: var(--mint); }
+  .dot-amber { background: var(--amber); }
+  .dot-blue { background: var(--blue); }
+  .dot-rose { background: var(--rose); }
+  .dot-violet { background: var(--violet); }
+
+  .matrix-items { display: flex; flex-direction: column; gap: 12px; }
+
+  .matrix-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+
+  .matrix-tag:hover { border-color: rgba(255,255,255,0.15); }
+
+  .matrix-tag-icon {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* ─── Feature Cards Grid ─── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2px;
+    background: var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    padding: 32px;
+    position: relative;
+    transition: background 0.2s;
+  }
+
+  .feature-card:hover { background: var(--surface-2); }
+
+  .feature-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .icon-mint { background: var(--mint-dim); }
+  .icon-amber { background: var(--amber-dim); }
+  .icon-blue { background: var(--blue-dim); }
+  .icon-rose { background: var(--rose-dim); }
+  .icon-violet { background: var(--violet-dim); }
+
+  .feature-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .badge-critical { background: var(--rose-dim); color: var(--rose); border: 1px solid rgba(255,107,107,0.25); }
+  .badge-high { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,200,66,0.25); }
+  .badge-medium { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(100,181,246,0.25); }
+  .badge-nice { background: var(--violet-dim); color: var(--violet); border: 1px solid rgba(179,157,219,0.25); }
+
+  .feature-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .feature-desc {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.65;
+    margin-bottom: 20px;
+  }
+
+  .feature-why {
+    background: var(--surface-3);
+    border-left: 2px solid var(--border-accent);
+    padding: 12px 16px;
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    margin-bottom: 20px;
+  }
+
+  .feature-why-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--mint);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .feature-why-text {
+    font-size: 12px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+
+  .feature-impl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+  }
+
+  .impl-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 4px;
+  }
+
+  .feature-effort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .effort-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+  }
+
+  .effort-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .effort-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .effort-dot.filled { background: var(--mint); }
+
+  /* ─── UX Flow Diagram ─── */
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .flow-diagram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(123,255,190,0.04), transparent 60%);
+    pointer-events: none;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .flow-step {
+    flex-shrink: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 16px 20px;
+    min-width: 140px;
+    text-align: center;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .flow-step:hover {
+    border-color: var(--border-accent);
+    background: var(--surface-3);
+  }
+
+  .flow-step.new {
+    border-color: var(--border-accent);
+    background: var(--mint-dim);
+  }
+
+  .flow-step-label {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .flow-step-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  .flow-step.new .flow-step-label { color: var(--mint); }
+
+  .flow-arrow {
+    flex-shrink: 0;
+    color: var(--text-dim);
+    font-size: 18px;
+    padding: 0 8px;
+  }
+
+  .flow-new-badge {
+    position: absolute;
+    top: -8px; right: -8px;
+    background: var(--mint);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ─── Impact Bar Chart ─── */
+  .impact-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .impact-row {
+    display: grid;
+    grid-template-columns: 220px 1fr 60px;
+    align-items: center;
+    gap: 20px;
+  }
+
+  @media(max-width:600px) {
+    .impact-row { grid-template-columns: 1fr; }
+  }
+
+  .impact-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .impact-bar-wrap {
+    background: var(--surface-2);
+    height: 6px;
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .impact-bar {
+    height: 100%;
+    border-radius: 100px;
+    background: var(--mint);
+    transition: width 1s ease;
+  }
+
+  .impact-bar.amber { background: var(--amber); }
+  .impact-bar.blue { background: var(--blue); }
+  .impact-bar.violet { background: var(--violet); }
+
+  .impact-pct {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  /* ─── Roadmap ─── */
+  .roadmap {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+
+  @media(max-width:768px) { .roadmap { grid-template-columns: 1fr; } }
+
+  .roadmap-phase {
+    background: var(--surface);
+    padding: 32px;
+  }
+
+  .phase-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .phase-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .phase-timeline {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  .phase-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .phase-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.4;
+  }
+
+  .phase-item::before {
+    content: '→';
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    flex-shrink: 0;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .phase-item strong { color: var(--text); font-weight: 600; }
+
+  /* ─── PWA Section ─── */
+  .pwa-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+
+  @media(max-width:768px) { .pwa-block { grid-template-columns: 1fr; } }
+
+  .pwa-visual {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pwa-visual::before {
+    content: '';
+    position: absolute;
+    bottom: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(123,255,190,0.06), transparent 70%);
+  }
+
+  .pwa-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--surface-3);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+  }
+
+  .pwa-stat-name { font-size: 13px; color: var(--text-mid); }
+  .pwa-stat-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .val-green { color: var(--mint); }
+  .val-amber { color: var(--amber); }
+  .val-red { color: var(--rose); }
+
+  /* ─── Bottom CTA ─── */
+  .cta {
+    padding: 100px 0;
+    text-align: center;
+    position: relative;
+  }
+
+  .cta::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(123,255,190,0.04), transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .cta-title em { font-style: italic; color: var(--mint); }
+
+  .cta-desc {
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 480px;
+    margin: 0 auto 48px;
+    line-height: 1.7;
+  }
+
+  .cta-stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .cta-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cta-stat-num {
+    font-family: var(--font-display);
+    font-size: 48px;
+    line-height: 1;
+    color: var(--mint);
+    letter-spacing: -0.02em;
+  }
+
+  .cta-stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ─── Sticky nav ─── */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8,10,14,0.92);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .nav-brand {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    list-style: none;
+    flex-wrap: wrap;
+  }
+
+  .nav-links a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .nav-links a:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+
+  /* ─── Quote ─── */
+  .insight-block {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 40px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: start;
+    margin: 48px 0;
+  }
+
+  @media(max-width:600px) { .insight-block { grid-template-columns: 1fr; } }
+
+  .insight-icon {
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  .insight-quote {
+    font-family: var(--font-display);
+    font-size: clamp(18px, 2.5vw, 24px);
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .insight-source {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── Divider ─── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 40px 0;
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <span class="nav-brand">NŪR — Analysis</span>
+      <ul class="nav-links">
+        <li><a href="#verdict">Вердикт</a></li>
+        <li><a href="#critical">Критичные</a></li>
+        <li><a href="#high">Высокий</a></li>
+        <li><a href="#medium">Средний</a></li>
+        <li><a href="#ux">UX Flow</a></li>
+        <li><a href="#roadmap">Роадмап</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ──────────────── HEADER ──────────────── -->
+<header class="header">
+  <div class="container">
+    <div class="header-tag">Feature Analysis Report · 2026</div>
+    <h1>NŪR</h1>
+    <div class="header-sub">Что добавить дальше?</div>
+    <p class="header-desc">
+      Глубокий анализ проекта с точки зрения пользователя. Определены функции с наибольшим влиянием на UX, удержание и ценность продукта. Приоритизировано по критичности.
+    </p>
+    <div class="header-meta">
+      <div class="meta-item">
+        <span class="meta-label">Текущих фич</span>
+        <span class="meta-value accent">10</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Предложено новых</span>
+        <span class="meta-value">14</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Критичных</span>
+        <span class="meta-value" style="color:var(--rose)">4</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Высокий приоритет</span>
+        <span class="meta-value" style="color:var(--amber)">5</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Целевой рынок</span>
+        <span class="meta-value" style="font-size:14px">Душанбе, TJ</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ──────────────── VERDICT ──────────────── -->
+<section class="section" id="verdict">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">Быстрый вердикт</h2>
+    </div>
+
+    <div class="verdict">
+      <div class="verdict-item">
+        <div class="verdict-score">8.4</div>
+        <div class="verdict-label">Текущее качество</div>
+        <div class="verdict-desc">Отличная база: карта, реалтайм, i18n, фильтры — всё работает. Дизайн на уровне.</div>
+      </div>
+      <div class="verdict-item">
+        <div class="verdict-score" style="color:var(--amber)">⚠</div>
+        <div class="verdict-label">Критичный пробел</div>
+        <div class="verdict-desc">Нет сохранения избранных станций, нет уведомлений, приложение нельзя установить (не PWA).</div>
+      </div>
+      <div class="verdict-item">
+        <div class="verdict-score" style="color:var(--mint); font-size:56px;">9.7+</div>
+        <div class="verdict-label">Потенциал после улучшений</div>
+        <div class="verdict-desc">С добавлением PWA, избранного и калькулятора стоимости — продукт выходит на топ-уровень.</div>
+      </div>
+    </div>
+
+    <!-- Impact Chart -->
+    <div class="impact-chart">
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-mint"></span> PWA + Offline</div>
+        <div class="impact-bar-wrap"><div class="impact-bar" style="width:95%"></div></div>
+        <div class="impact-pct">95%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-rose"></span> Избранные станции</div>
+        <div class="impact-bar-wrap"><div class="impact-bar" style="width:91%"></div></div>
+        <div class="impact-pct">91%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-rose"></span> Push-уведомления</div>
+        <div class="impact-bar-wrap"><div class="impact-bar" style="width:88%"></div></div>
+        <div class="impact-pct">88%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-amber"></span> Калькулятор стоимости</div>
+        <div class="impact-bar-wrap"><div class="impact-bar amber" style="width:84%"></div></div>
+        <div class="impact-pct">84%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-amber"></span> История поездок</div>
+        <div class="impact-bar-wrap"><div class="impact-bar amber" style="width:79%"></div></div>
+        <div class="impact-pct">79%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-blue"></span> Onboarding тур</div>
+        <div class="impact-bar-wrap"><div class="impact-bar blue" style="width:72%"></div></div>
+        <div class="impact-pct">72%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-violet"></span> Шаринг станций</div>
+        <div class="impact-bar-wrap"><div class="impact-bar violet" style="width:68%"></div></div>
+        <div class="impact-pct">68%</div>
+      </div>
+      <div class="impact-row">
+        <div class="impact-name"><span class="dot dot-violet"></span> Тёмная/светлая тема</div>
+        <div class="impact-bar-wrap"><div class="impact-bar violet" style="width:55%"></div></div>
+        <div class="impact-pct">55%</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ──────────────── CRITICAL ──────────────── -->
+<section class="section" id="critical">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">Критичные фичи <span style="color:var(--rose)">— нужно сейчас</span></h2>
+    </div>
+
+    <div class="insight-block">
+      <div class="insight-icon">🔋</div>
+      <div>
+        <div class="insight-quote">"Я приехал на станцию — она занята. Я хочу узнать когда освободится, не обновляя страницу каждую минуту."</div>
+        <div class="insight-source">— типичный пользователь EV приложения</div>
+      </div>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- PWA -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-rose">📱</div>
+          <span class="feature-badge badge-critical">Критично</span>
+        </div>
+        <div class="feature-title">PWA — установка на телефон</div>
+        <div class="feature-desc">
+          Пользователи с EV используют приложение стоя у станции. Открывать браузер → набирать URL каждый раз — огромный friction. PWA решает это за одно нажатие.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Retention падает на 40% если нет иконки на экране. Пользователи EV заходят часто и срочно — иконка на рабочем столе критична.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">manifest.json</span>
+          <span class="impl-tag">service-worker.js</span>
+          <span class="impl-tag">Cache API</span>
+          <span class="impl-tag">BeforeInstallPrompt</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">2–3 часа</span>
+        </div>
+      </div>
+
+      <!-- Избранные -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-rose">⭐</div>
+          <span class="feature-badge badge-critical">Критично</span>
+        </div>
+        <div class="feature-title">Избранные станции</div>
+        <div class="feature-desc">
+          Большинство пользователей заряжаются у дома, офиса или торгового центра. Им нужен мгновенный доступ к "своим" 2–3 станциям без поиска каждый раз.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Повторный сценарий использования — самый частый. Без избранного каждый визит начинается с поиска. Это раздражает.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">localStorage</span>
+          <span class="impl-tag">heart icon UI</span>
+          <span class="impl-tag">quick access bar</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">3–4 часа</span>
+        </div>
+      </div>
+
+      <!-- Push Notifications -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-rose">🔔</div>
+          <span class="feature-badge badge-critical">Критично</span>
+        </div>
+        <div class="feature-title">Push-уведомления о статусе</div>
+        <div class="feature-desc">
+          Если любимая станция занята — пользователь хочет получить уведомление когда она освободится. Сейчас нужно вручную обновлять страницу.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Это разница между "приложение работает для меня" и "я работаю для приложения". Автоматизирует самый болезненный момент ожидания.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">Notification API</span>
+          <span class="impl-tag">Service Worker</span>
+          <span class="impl-tag">polling в фоне</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--amber);font-family:var(--font-mono)">4–6 часов</span>
+        </div>
+      </div>
+
+      <!-- Cost Calculator -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-rose">💰</div>
+          <span class="feature-badge badge-critical">Критично</span>
+        </div>
+        <div class="feature-title">Калькулятор стоимости зарядки</div>
+        <div class="feature-desc">
+          Пользователь видит тариф, но не понимает сколько это будет стоить для его конкретного авто с текущим % батареи до нужного уровня.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Цена — ключевой фактор выбора станции. Сейчас данные есть, но их нужно считать в уме. Добавить поле "мой авто / % батареи → стоимость".</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">input: battery %</span>
+          <span class="impl-tag">input: target %</span>
+          <span class="impl-tag">kWh formula</span>
+          <span class="impl-tag">TariffValue API</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">3–5 часов</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── HIGH ──────────────── -->
+<section class="section" id="high">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">Высокий приоритет <span style="color:var(--amber)">— следующий спринт</span></h2>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- История -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-amber">📋</div>
+          <span class="feature-badge badge-high">Высокий</span>
+        </div>
+        <div class="feature-title">История поездок</div>
+        <div class="feature-desc">
+          Журнал: когда, куда, сколько заряжал, сколько потратил. Пользователь может отслеживать расходы на зарядку за месяц.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Владельцы EV считают затраты на зарядку vs бензин. Это данные, которые они хотят видеть. Добавляет ценность каждого сеанса зарядки.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">localStorage history</span>
+          <span class="impl-tag">chart.js / SVG</span>
+          <span class="impl-tag">monthly stats</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--amber);font-family:var(--font-mono)">5–8 часов</span>
+        </div>
+      </div>
+
+      <!-- Onboarding -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-amber">👋</div>
+          <span class="feature-badge badge-high">Высокий</span>
+        </div>
+        <div class="feature-title">Onboarding-тур для новых пользователей</div>
+        <div class="feature-desc">
+          Первый запуск: краткое знакомство с интерфейсом. Подсвечивает кнопки, объясняет значения цветов станций, показывает как найти ближайшую.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Цветовое кодирование станций не очевидно с первого взгляда. Новый пользователь должен понять приложение за 30 секунд, иначе уйдёт.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">spotlight overlay</span>
+          <span class="impl-tag">step tooltips</span>
+          <span class="impl-tag">localStorage seen</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">3–4 часа</span>
+        </div>
+      </div>
+
+      <!-- Sharing -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-amber">🔗</div>
+          <span class="feature-badge badge-high">Высокий</span>
+        </div>
+        <div class="feature-title">Поделиться станцией</div>
+        <div class="feature-desc">
+          Скопировать ссылку на станцию или отправить другу. URL типа <code style="font-family:var(--font-mono);font-size:11px;color:var(--mint)">neru.app/?station=42</code> открывает карту с нужной станцией.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Органический рост — пользователи делятся станциями в Telegram/WhatsApp. Каждый шер — это бесплатный маркетинг и новый пользователь.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">URL params</span>
+          <span class="impl-tag">navigator.share()</span>
+          <span class="impl-tag">clipboard API</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">1–2 часа</span>
+        </div>
+      </div>
+
+      <!-- Radius search -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-amber">📍</div>
+          <span class="feature-badge badge-high">Высокий</span>
+        </div>
+        <div class="feature-title">Поиск по адресу / радиусу</div>
+        <div class="feature-desc">
+          Ввести адрес и найти станции рядом с ним — например "найти у работы", не у текущего местоположения. Планирование маршрута заранее.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">Пользователь часто планирует зарядку заранее — перед поездкой на работу. Геолокация сейчас ограничивает "где я стою сейчас".</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">Nominatim / OSM</span>
+          <span class="impl-tag">geocoding API</span>
+          <span class="impl-tag">radius slider</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--amber);font-family:var(--font-mono)">4–6 часов</span>
+        </div>
+      </div>
+
+      <!-- Estimated wait -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-amber">⏱</div>
+          <span class="feature-badge badge-high">Высокий</span>
+        </div>
+        <div class="feature-title">Расчётное время ожидания</div>
+        <div class="feature-desc">
+          Если станция занята — показать приблизительное время до освобождения на основе среднего времени зарядки и текущего charge_level коннектора.
+        </div>
+        <div class="feature-why">
+          <div class="feature-why-label">Почему важно</div>
+          <div class="feature-why-text">charging_level уже есть в API. Если коннектор на 80% — значит скоро завершит. Простая эвристика снимает главную тревогу пользователя у занятой станции.</div>
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">charging_level API</span>
+          <span class="impl-tag">avg charge rate</span>
+          <span class="impl-tag">ETA display</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">2–3 часа</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── MEDIUM ──────────────── -->
+<section class="section" id="medium">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">Средний приоритет <span style="color:var(--blue)">— улучшения UX</span></h2>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- Battery widget -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-blue">🚗</div>
+          <span class="feature-badge badge-medium">Средний</span>
+        </div>
+        <div class="feature-title">Мой автомобиль — профиль батареи</div>
+        <div class="feature-desc">
+          Пользователь вводит модель EV и ёмкость батареи один раз. Все расчёты (стоимость, время) автоматически адаптируются под его авто.
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">localStorage profile</span>
+          <span class="impl-tag">EV models list</span>
+          <span class="impl-tag">kWh input</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">2–4 часа</span>
+        </div>
+      </div>
+
+      <!-- Offline mode -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-blue">📡</div>
+          <span class="feature-badge badge-medium">Средний</span>
+        </div>
+        <div class="feature-title">Офлайн-режим (кешированные данные)</div>
+        <div class="feature-desc">
+          При отсутствии сети показывать последние известные данные о станциях с временным штампом. Лучше устаревшие данные, чем пустой экран.
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">Service Worker</span>
+          <span class="impl-tag">Cache API</span>
+          <span class="impl-tag">stale-while-revalidate</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--amber);font-family:var(--font-mono)">4–6 часов</span>
+        </div>
+      </div>
+
+      <!-- Light mode -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-blue">☀️</div>
+          <span class="feature-badge badge-medium">Средний</span>
+        </div>
+        <div class="feature-title">Светлая тема (на улице)</div>
+        <div class="feature-desc">
+          Тёмная тема плохо читается на ярком солнце у зарядной станции. Светлый режим или auto-detect по prefers-color-scheme значительно улучшает читаемость на улице.
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">CSS variables</span>
+          <span class="impl-tag">prefers-color-scheme</span>
+          <span class="impl-tag">toggle button</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--amber);font-family:var(--font-mono)">6–8 часов</span>
+        </div>
+      </div>
+
+      <!-- Accessibility -->
+      <div class="feature-card">
+        <div class="feature-card-top">
+          <div class="feature-icon icon-blue">♿</div>
+          <span class="feature-badge badge-medium">Средний</span>
+        </div>
+        <div class="feature-title">Accessibility улучшения</div>
+        <div class="feature-desc">
+          Tab-навигация, screen reader объявления при обновлении данных, улучшенный контраст текста, фокус-индикаторы на всех кнопках.
+        </div>
+        <div class="feature-impl">
+          <span class="impl-tag">aria-live regions</span>
+          <span class="impl-tag">focus management</span>
+          <span class="impl-tag">WCAG AA contrast</span>
+        </div>
+        <div class="feature-effort">
+          <span class="effort-label">Усилия:</span>
+          <div class="effort-dots">
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot filled"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+            <div class="effort-dot"></div>
+          </div>
+          <span style="font-size:11px;color:var(--mint);font-family:var(--font-mono)">3–5 часов</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── UX FLOW ──────────────── -->
+<section class="section" id="ux">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">Улучшенный UX Flow</h2>
+    </div>
+
+    <div class="flow-diagram">
+      <p style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:28px;">Сценарий: пользователь хочет зарядить авто</p>
+
+      <!-- Row 1: Current flow -->
+      <div style="margin-bottom:6px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">Текущий флоу</div>
+        <div class="flow-row">
+          <div class="flow-step">
+            <div class="flow-step-label">Открыть браузер</div>
+            <div class="flow-step-sub">friction</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-label">Набрать URL</div>
+            <div class="flow-step-sub">friction</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-label">Дождаться загрузки</div>
+            <div class="flow-step-sub">~2 сек</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-label">Найти станцию</div>
+            <div class="flow-step-sub">фильтр/поиск</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-label">Навигация</div>
+            <div class="flow-step-sub">Google Maps</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Row 2: Improved flow -->
+      <div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--mint);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">После улучшений</div>
+        <div class="flow-row">
+          <div class="flow-step new" style="position:relative">
+            <div class="flow-new-badge">PWA</div>
+            <div class="flow-step-label">Нажать иконку</div>
+            <div class="flow-step-sub">1 тап</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step new" style="position:relative">
+            <div class="flow-new-badge">NEW</div>
+            <div class="flow-step-label">Офлайн-данные</div>
+            <div class="flow-step-sub">мгновенно</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step new" style="position:relative">
+            <div class="flow-new-badge">NEW</div>
+            <div class="flow-step-label">Избранные станции</div>
+            <div class="flow-step-sub">1 тап</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step new" style="position:relative">
+            <div class="flow-new-badge">NEW</div>
+            <div class="flow-step-label">Стоимость + ETA</div>
+            <div class="flow-step-sub">сразу видно</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-label">Навигация</div>
+            <div class="flow-step-sub">Google Maps</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);display:flex;gap:32px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Время до навигации (сейчас)</div>
+          <div style="font-family:var(--font-display);font-size:36px;color:var(--rose)">~45 сек</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--mint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Время до навигации (после)</div>
+          <div style="font-family:var(--font-display);font-size:36px;color:var(--mint)">~8 сек</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Снижение friction</div>
+          <div style="font-family:var(--font-display);font-size:36px;color:var(--amber)">82%</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ──────────────── PWA ──────────────── -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2 class="section-title">PWA — технические детали</h2>
+    </div>
+
+    <div class="pwa-block">
+      <div>
+        <p style="color:var(--text-mid);line-height:1.7;margin-bottom:24px;">
+          PWA — наиболее высокоприоритетное улучшение с минимальными усилиями. Три файла полностью трансформируют пользовательский опыт.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:flex-start;gap:16px;padding:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--mint);flex-shrink:0;margin-top:2px;">01</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">manifest.json</div>
+              <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">Название, иконки, цвета, display: standalone. Позволяет установить на экран.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:16px;padding:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--mint);flex-shrink:0;margin-top:2px;">02</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">service-worker.js</div>
+              <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">Cache-first для CSS/JS, network-first для API. Работает офлайн с кешем.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:16px;padding:16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--mint);flex-shrink:0;margin-top:2px;">03</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Install prompt UI</div>
+              <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">Баннер "Установить приложение" при первом визите — конверсия в установку.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pwa-visual">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--mint);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;">Lighthouse PWA Score (цель)</div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">Performance</span>
+          <span class="pwa-stat-val val-green">95+</span>
+        </div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">Accessibility</span>
+          <span class="pwa-stat-val val-amber">82 → 95</span>
+        </div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">PWA Installable</span>
+          <span class="pwa-stat-val val-red">✗ → ✓</span>
+        </div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">Offline Support</span>
+          <span class="pwa-stat-val val-red">✗ → ✓</span>
+        </div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">Push Notifications</span>
+          <span class="pwa-stat-val val-red">✗ → ✓</span>
+        </div>
+        <div class="pwa-stat">
+          <span class="pwa-stat-name">App-like experience</span>
+          <span class="pwa-stat-val val-red">✗ → ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── ROADMAP ──────────────── -->
+<section class="section" id="roadmap">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2 class="section-title">Предложенный роадмап</h2>
+    </div>
+
+    <div class="roadmap">
+      <div class="roadmap-phase">
+        <div class="phase-label"><span class="dot dot-rose"></span><span style="color:var(--rose)">Sprint 1</span></div>
+        <div class="phase-title">Основа</div>
+        <div class="phase-timeline">Неделя 1–2 · ~15–20 часов</div>
+        <div class="phase-items">
+          <div class="phase-item"><strong>PWA manifest + Service Worker</strong> — установка, офлайн</div>
+          <div class="phase-item"><strong>Избранные станции</strong> — localStorage + сердечко на карточках</div>
+          <div class="phase-item"><strong>Поделиться станцией</strong> — URL params + clipboard</div>
+          <div class="phase-item"><strong>Install prompt</strong> — баннер установки</div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="phase-label"><span class="dot dot-amber"></span><span style="color:var(--amber)">Sprint 2</span></div>
+        <div class="phase-title">Умность</div>
+        <div class="phase-timeline">Неделя 3–4 · ~20–25 часов</div>
+        <div class="phase-items">
+          <div class="phase-item"><strong>Калькулятор стоимости</strong> — input battery % → цена</div>
+          <div class="phase-item"><strong>ETA ожидания</strong> — из charging_level API</div>
+          <div class="phase-item"><strong>Push-уведомления</strong> — при освобождении избранной</div>
+          <div class="phase-item"><strong>Onboarding тур</strong> — первый запуск</div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="phase-label"><span class="dot dot-blue"></span><span style="color:var(--blue)">Sprint 3</span></div>
+        <div class="phase-title">Полировка</div>
+        <div class="phase-timeline">Неделя 5–6 · ~20–25 часов</div>
+        <div class="phase-items">
+          <div class="phase-item"><strong>Профиль авто</strong> — модель + ёмкость батареи</div>
+          <div class="phase-item"><strong>История зарядок</strong> — лог + статистика расходов</div>
+          <div class="phase-item"><strong>Поиск по адресу</strong> — geocoding через OSM</div>
+          <div class="phase-item"><strong>Светлая тема</strong> — для использования на улице</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── CTA ──────────────── -->
+<div class="cta">
+  <div class="container">
+    <div class="cta-title">Начни с <em>PWA</em><br>+ Избранного</div>
+    <p class="cta-desc">Два изменения, которые принесут максимальный результат за минимальное время. Всё остальное — итеративно.</p>
+    <div class="cta-stats">
+      <div class="cta-stat">
+        <span class="cta-stat-num">5–7</span>
+        <span class="cta-stat-label">часов на Sprint 1</span>
+      </div>
+      <div class="cta-stat">
+        <span class="cta-stat-num">82%</span>
+        <span class="cta-stat-label">снижение friction</span>
+      </div>
+      <div class="cta-stat">
+        <span class="cta-stat-num">3×</span>
+        <span class="cta-stat-label">больше возвратов</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
