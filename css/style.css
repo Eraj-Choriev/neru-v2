@@ -78,6 +78,9 @@
 
   --sidebar-w: 440px;
   --header-h: 68px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-total-h: calc(var(--header-h) + var(--safe-top));
 }
 
 /* ---------- Reset ---------- */
@@ -123,7 +126,7 @@ body {
   height: 100%;
   z-index: 1;
   /* push the top of map below header */
-  padding-top: var(--header-h);
+  padding-top: var(--header-total-h);
   box-sizing: border-box;
 }
 
@@ -145,11 +148,13 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1000;
-  height: var(--header-h);
+  height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
 
   /* Glass morphism */
   background: rgba(10, 13, 22, 0.45);
@@ -231,7 +236,7 @@ body {
 /* ---- Stats HUD (floating pill over map) ---- */
 .map-stats {
   position: fixed;
-  top: calc(var(--header-h) + 14px);
+  top: calc(var(--header-total-h) + 14px);
   left: 20px;
   z-index: 500;
   display: flex;
@@ -508,8 +513,8 @@ body {
    ============================================================ */
 .loc-btn {
   position: fixed;
-  bottom: 26px;
-  left: 20px;
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  left: max(20px, env(safe-area-inset-left));
   z-index: 900;
   width: 46px;
   height: 46px;
@@ -629,7 +634,7 @@ body {
    ============================================================ */
 .fab {
   position: fixed;
-  bottom: 26px;
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 900;
@@ -2089,7 +2094,7 @@ body.sidebar-open { overflow: hidden; }
 /* Container — stacks cards top-right */
 #neru-notif-stack {
   position: fixed;
-  top: calc(var(--header-h) + 12px);
+  top: calc(var(--header-total-h) + 12px);
   right: 16px;
   z-index: 4000;
   display: flex;
@@ -2441,7 +2446,7 @@ body.sidebar-open { overflow: hidden; }
     right: 8px;
     left: auto;
     width: min(290px, calc(100vw - 16px));
-    top: calc(var(--header-h) + 6px);
+    top: calc(var(--header-total-h) + 6px);
   }
   .neru-nc-body {
     padding: 10px 12px 6px 14px;
@@ -3895,7 +3900,7 @@ body.sidebar-open { overflow: hidden; }
    ============================================================ */
 .install-btn {
   position: fixed;
-  top: calc(var(--header-h) + 14px);
+  top: calc(var(--header-total-h) + 14px);
   right: 20px;
   z-index: 800;
   display: inline-flex;
@@ -3956,7 +3961,7 @@ body.sidebar-open { overflow: hidden; }
 @media (max-width: 768px) {
   .install-btn {
     right: 12px;
-    top: calc(var(--header-h) + 10px);
+    top: calc(var(--header-total-h) + 10px);
     padding: 8px 12px 8px 10px;
     font-size: 11.5px;
     gap: 6px;

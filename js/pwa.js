@@ -30,8 +30,14 @@
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
   const isAndroid = /Android/i.test(ua);
-  const isFirefox = /Firefox/i.test(ua);
+  const isFirefox = /Firefox/i.test(ua) || /FxiOS/i.test(ua);
   const isSamsung = /SamsungBrowser/i.test(ua);
+  // iOS has WebKit-wrapped third-party browsers that CANNOT install PWAs —
+  // only real Safari can. Detect them so we tell the user to switch.
+  const iOSChrome  = isIOS && /CriOS/i.test(ua);
+  const iOSFirefox = isIOS && /FxiOS/i.test(ua);
+  const iOSEdge    = isIOS && /EdgiOS/i.test(ua);
+  const iOSOther   = isIOS && (iOSChrome || iOSFirefox || iOSEdge);
 
   // Chromium: beforeinstallprompt gives us a programmatic installer
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -92,6 +98,20 @@
   }
 
   function buildInstructions() {
+    // iOS Chrome / Firefox / Edge — cannot install PWA, must switch to Safari
+    if (iOSOther) {
+      const name = iOSChrome ? 'Chrome' : iOSFirefox ? 'Firefox' : 'Edge';
+      return {
+        title: `${name} на iPhone не умеет устанавливать приложения`,
+        steps: [
+          'Откройте <strong>Safari</strong> на iPhone',
+          'Перейдите на этот сайт снова',
+          'Нажмите <strong>Поделиться</strong> <span aria-hidden="true">⎋</span> → <strong>«На экран «Домой»»</strong>',
+        ],
+        note: 'Это ограничение Apple: на iOS только Safari может установить веб-приложение на главный экран',
+      };
+    }
+
     // iOS Safari
     if (isIOS) {
       return {
