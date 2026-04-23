@@ -82,8 +82,9 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-button { font: inherit; color: inherit; cursor: pointer; }
-a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+a { color: inherit; text-decoration: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 ul, ol { list-style: none; }
 img, svg { display: block; }
 
@@ -1445,6 +1446,8 @@ body {
   padding: 18px 18px 28px;
   scrollbar-width: thin;
   scrollbar-color: var(--ink-600) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .sidebar-body::-webkit-scrollbar { width: 5px; }
@@ -2533,6 +2536,17 @@ body.sidebar-open { overflow: hidden; }
   text-align: center;
 }
 
+.mobile-drawer-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 18px 0;
+}
+
+/* Safe-area padding for iPhone home indicator */
+.mobile-drawer {
+  padding-bottom: max(40px, env(safe-area-inset-bottom, 40px));
+}
+
 @media (max-width: 768px) {
   .burger-btn { display: flex; }
   .mobile-drawer { display: block; }
@@ -2893,12 +2907,27 @@ body.sidebar-open { overflow: hidden; }
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
-  :root { --header-h: 58px; --sidebar-w: 100vw; }
-  .header { padding: 0 14px; }
-  .logo-img { height: 34px; }
-  .map-stats { left: 14px; }
+  :root { --header-h: 56px; --sidebar-w: 100vw; }
+  .header { padding: 0 12px; gap: 0; z-index: 1300; }
+  /* Logo: fix width so it doesn't overflow header */
+  .logo-img { height: 28px; width: auto; max-width: 100px; }
+  .map-stats { left: 12px; }
+  /* Hide desktop filter and lang selector from header — both live in the drawer */
   .header-center { display: none; }
   .segmented:not(.segmented-compact) { display: none; }
+  /* Hide lang seg from header on mobile — accessible via drawer */
+  #lang-seg { display: none; }
+  /* Tighten header-right gap */
+  .header-right { gap: 6px; }
+  /* Compact cosmic toggle on mobile */
+  .cosmic-toggle { width: 50px; height: 28px; }
+  .cosmic-toggle .slider { border-radius: 14px; }
+  .cosmic-toggle .toggle-orb { height: 22px; width: 22px; top: 3px; left: 3px; }
+  .cosmic-toggle .toggle:checked + .slider .toggle-orb { left: calc(100% - 25px); }
+  /* Notif toggle smaller */
+  .notif-toggle { width: 32px; height: 32px; }
+  /* Burger same as before */
+  .burger-btn { width: 36px; height: 36px; }
   .sidebar {
     top: auto; bottom: 0;
     height: 86dvh;

@@ -120,6 +120,8 @@ class UI {
     this.mobileOverlay = document.getElementById('mobile-overlay');
     this.mobileSeg = document.getElementById('mobile-filter-seg');
     this.mobileFilterBtns = this.mobileSeg?.querySelectorAll('.filter-btn') || [];
+    this.mobileLangSeg = document.getElementById('mobile-lang-seg');
+    this.mobileLangBtns = this.mobileLangSeg?.querySelectorAll('.lang-btn') || [];
     this.mdTotal = document.getElementById('md-total');
     this.mdFree = document.getElementById('md-free');
     this.mdBusy = document.getElementById('md-busy');
@@ -222,6 +224,20 @@ class UI {
       });
     });
 
+    // Mobile lang switcher
+    this.mobileLangBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const lang = btn.getAttribute('data-lang');
+        this.rippleFromEvent(e, btn);
+        i18n.setLang(lang);
+        this.setActive(this.mobileLangBtns, btn);
+        this.moveIndicator(this.mobileLangSeg);
+        // Sync desktop lang buttons (even though hidden on mobile)
+        const desk = [...this.langBtns].find(b => b.getAttribute('data-lang') === lang);
+        if (desk) { this.setActive(this.langBtns, desk); this.moveIndicator(this.langSeg); }
+      });
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (this.sidebarOpen) this.closeSidebar();
@@ -261,6 +277,15 @@ class UI {
     if (found) {
       this.setActive(this.langBtns, found);
       this.moveIndicator(this.langSeg);
+    }
+    // Sync mobile lang seg
+    let mFound = null;
+    this.mobileLangBtns.forEach((btn) => {
+      if (btn.getAttribute('data-lang') === lang) mFound = btn;
+    });
+    if (mFound) {
+      this.setActive(this.mobileLangBtns, mFound);
+      this.moveIndicator(this.mobileLangSeg);
     }
   }
 
