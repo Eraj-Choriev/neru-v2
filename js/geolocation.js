@@ -10,8 +10,12 @@ class GeoLocation {
   constructor() {
     this.userLat = null;
     this.userLng = null;
+    this.userAccuracy = null;   // metres
+    this.userHeading = null;    // degrees (0=N, clockwise) — null when unknown
+    this.userSpeed = null;      // m/s — null when unknown
     this.isLocated = false;
     this.watchId = null;
+    this._watchers = new Set(); // callbacks invoked on every position update
   }
   async getUserLocation({ force = false, maxAgeMs = 30000, highAccuracy = false } = {}) {
     const now = Date.now();
@@ -50,9 +54,63 @@ class GeoLocation {
     return {
       lat: this.userLat || DEFAULT_LAT,
       lng: this.userLng || DEFAULT_LNG,
-      isLocated: this.isLocated
+      isLocated: this.isLocated,
+      accuracy: this.userAccuracy,
+      heading: this.userHeading,
     };
   }
+
+  /**
+   * Continuous position updates via watchPosition.
+   * Each update fires every subscribed callback with full position details.
+   */
+  startWatching(callback) {
+    if (typeof callback === 'function') this._watchers.add(callback);
+
+    if (this.watchId !== null || !('geolocation' in navigator)) return true;
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        this.userLat = pos.coords.latitude;
+        this.userLng = pos.coords.longitude;
+        this.userAccuracy = pos.coords.accuracy;
+        this.userHeading = Number.isFinite(pos.coords.heading) ? pos.coords.heading : this.userHeading;
+        this.userSpeed = Number.isFinite(pos.coords.speed) ? pos.coords.speed : null;
+        this.isLocated = true;
+        this._lastLocatedAt = Date.now();
+
+        const snapshot = {
+          lat: this.userLat,
+          lng: this.userLng,
+          accuracy: this.userAccuracy,
+          heading: this.userHeading,
+          speed: this.userSpeed,
+          timestamp: pos.timestamp,
+        };
+        this._watchers.forEach((cb) => { try { cb(snapshot); } catch (_) {} });
+      },
+      (err) => {
+        // 1 = PERMISSION_DENIED — stop watching
+        if (err?.code === 1) this.stopWatching();
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 2000,
+        timeout: 20000,
+      }
+    );
+    return true;
+  }
+
+  stopWatching() {
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+    this._watchers.clear();
+  }
+
+  isWatching() { return this.watchId !== null; }
 
   /**
    * Haversine formula — distance between two points on Earth

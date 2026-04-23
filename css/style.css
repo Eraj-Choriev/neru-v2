@@ -342,19 +342,11 @@ body {
 
 .notif-toggle:active { transform: scale(0.94); }
 
-/* Status dot — lives on the top-right of the bell */
-.notif-toggle::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--coral-500);
-  border: 2px solid var(--ink-900);
-  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.35);
-  transition: background var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+/* Off-state: red tint on entire button (no separate dot) */
+.notif-toggle:not(.is-active) {
+  color: var(--coral-400);
+  border-color: rgba(255, 138, 138, 0.35);
+  background: rgba(255, 107, 107, 0.06);
 }
 
 /* Diagonal slash over the bell when OFF — uses pseudo on inner icon */
@@ -379,7 +371,7 @@ body {
   box-shadow: 0 0 0 2px var(--ink-900);
 }
 
-/* ON state: volt colour, green dot, no slash */
+/* ON state: volt green icon + glow, slash removed */
 .notif-toggle.is-active {
   color: var(--volt-500);
   border-color: var(--volt-500);
@@ -387,20 +379,9 @@ body {
   box-shadow: 0 0 14px -4px var(--volt-glow);
 }
 
-.notif-toggle.is-active::after {
-  background: var(--volt-500);
-  box-shadow: 0 0 0 1px rgba(123, 255, 190, 0.5), 0 0 8px rgba(123, 255, 190, 0.6);
-  animation: notifDotPulse 2.2s var(--ease-out) infinite;
-}
-
 .notif-toggle.is-active .notif-icon::before {
   opacity: 0;
   transform: translate(-50%, -50%) rotate(-45deg) scale(0.4);
-}
-
-@keyframes notifDotPulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.2); }
 }
 
 /* Light theme adjustments */
@@ -414,8 +395,10 @@ body {
   border-color: rgba(13, 18, 32, 0.2);
   color: #0d1220;
 }
-:root[data-theme="light"] .notif-toggle::after {
-  border-color: #ffffff;
+:root[data-theme="light"] .notif-toggle:not(.is-active) {
+  background: rgba(255, 107, 107, 0.06);
+  border-color: rgba(255, 107, 107, 0.3);
+  color: #d24b4b;
 }
 :root[data-theme="light"] .notif-toggle .notif-icon::before {
   box-shadow: 0 0 0 2px #ffffff;
@@ -590,6 +573,18 @@ body {
   color: var(--volt-500);
   background: rgba(123, 255, 190, 0.08);
 }
+
+/* Following state — map pans with user like Google/Apple Maps */
+.loc-btn.is-following {
+  background: linear-gradient(145deg, var(--volt-400), var(--volt-700));
+  border-color: var(--volt-500);
+  color: var(--ink-900);
+  box-shadow:
+    0 0 0 1px var(--volt-500),
+    0 8px 22px -6px var(--volt-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.loc-btn.is-following .loc-btn-icon { filter: drop-shadow(0 1px 0 rgba(255,255,255,0.4)); }
 
 .loc-btn.is-located .loc-btn-ring {
   border-color: var(--volt-500);
@@ -806,35 +801,83 @@ body {
   100% { transform: scale(2.4); opacity: 0; }
 }
 
-/* User marker */
-.user-marker { background: none; border: none; }
+/* User marker — Apple/Google Maps style live blue dot */
+.user-marker {
+  background: none;
+  border: none;
+  will-change: transform;
+}
+.user-marker > * { pointer-events: none; }
 
 .user-marker-dot {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 14px; height: 14px;
+  width: 16px; height: 16px;
   background: var(--cyan-500);
-  border: 3px solid var(--ink-900);
+  background: linear-gradient(145deg, #7de1ff, #2b9ad5);
+  border: 3px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--cyan-400), 0 0 14px rgba(74, 208, 255, 0.7);
-  z-index: 2;
+  box-shadow:
+    0 0 0 1px rgba(74, 208, 255, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 14px rgba(74, 208, 255, 0.55);
+  z-index: 3;
 }
 
 .user-marker-ring {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 40px; height: 40px;
+  width: 38px; height: 38px;
   border-radius: 50%;
-  background: rgba(74, 208, 255, 0.12);
-  border: 2px solid rgba(74, 208, 255, 0.35);
+  background: rgba(74, 208, 255, 0.14);
+  border: 2px solid rgba(74, 208, 255, 0.42);
   animation: userRing 2.4s var(--ease-out) infinite;
+  z-index: 1;
+}
+
+/* Soft accuracy halo directly under dot (always visible) */
+.user-marker-accuracy {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74, 208, 255, 0.35) 0%, rgba(74, 208, 255, 0) 70%);
+  z-index: 0;
+}
+
+/* Heading cone — visible only when heading is known */
+.user-marker-cone {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 60px; height: 60px;
+  transform-origin: center;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms;
+  pointer-events: none;
+  background: conic-gradient(
+    from -30deg,
+    rgba(74, 208, 255, 0) 0deg,
+    rgba(74, 208, 255, 0.55) 30deg,
+    rgba(74, 208, 255, 0) 60deg,
+    rgba(74, 208, 255, 0) 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 0%, transparent 18%, #000 20%, #000 100%);
+          mask: radial-gradient(circle, transparent 0%, transparent 18%, #000 20%, #000 100%);
+  filter: blur(0.5px);
 }
 
 @keyframes userRing {
-  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+  0%   { transform: translate(-50%, -50%) scale(0.45); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
+}
+
+/* Accuracy circle on map (Leaflet SVG) */
+.user-accuracy-circle {
+  transition: stroke-opacity 400ms, fill-opacity 400ms;
 }
 
 /* Cluster */

@@ -29,10 +29,16 @@ class App {
       // Get user location (non-blocking — works even if denied)
       const pos = await geoLocation.getUserLocation().catch(() => null);
       if (pos) {
-        stationMap.setUserLocation(pos.lat, pos.lng);
+        stationMap.setUserLocation(pos.lat, pos.lng, {
+          accuracy: geoLocation.userAccuracy,
+          heading: geoLocation.userHeading,
+          animate: false,
+        });
         if (geoLocation.isLocated) {
           stationMap.flyTo(pos.lat, pos.lng, 14);
           document.getElementById('loc-btn')?.classList.add('is-located');
+          // Start continuous live tracking (marker follows device)
+          this.startLiveTracking();
         }
       }
 
@@ -161,17 +167,40 @@ class App {
     const btn = document.getElementById('loc-btn');
     if (!btn || btn.classList.contains('is-locating')) return;
 
+    // If already tracking and located, a second tap toggles follow-mode on/off
+    if (btn.classList.contains('is-located') && stationMap.map) {
+      if (stationMap.isFollowingUser()) {
+        stationMap.setFollowUser(false);
+        btn.classList.remove('is-following');
+      } else {
+        stationMap.setFollowUser(true);
+        btn.classList.add('is-following');
+        const pos = geoLocation.getPosition();
+        if (pos.isLocated) stationMap.map.flyTo([pos.lat, pos.lng], Math.max(16, stationMap.map.getZoom()), { duration: 0.8 });
+      }
+      return;
+    }
+
     btn.classList.remove('is-located');
     btn.classList.add('is-locating');
     ui.showToast(i18n.t('locating'), 'info', 8000);
 
     try {
       const pos = await geoLocation.getUserLocation({ force: true, maxAgeMs: 0, highAccuracy: true });
-      stationMap.setUserLocation(pos.lat, pos.lng);
+      stationMap.setUserLocation(pos.lat, pos.lng, {
+        accuracy: geoLocation.userAccuracy,
+        heading: geoLocation.userHeading,
+        animate: false,
+      });
       stationMap.map.flyTo([pos.lat, pos.lng], 16, { duration: 1.0 });
       btn.classList.remove('is-locating');
       btn.classList.add('is-located');
+      btn.classList.add('is-following');
+      stationMap.setFollowUser(true);
       ui.showToast(i18n.t('locationFound'), 'success', 2500);
+
+      // Begin continuous tracking
+      this.startLiveTracking();
 
       // Immediately show free stations within radius
       if (typeof stationNotifications !== 'undefined') {
@@ -184,6 +213,43 @@ class App {
         : i18n.t('locationUnavailable');
       ui.showToast(msg, 'error', 4000);
     }
+  }
+
+  /**
+   * Live tracking — user marker smoothly follows device as it moves.
+   * Auto-re-routes active route and keeps sidebar distances fresh.
+   */
+  startLiveTracking() {
+    if (this._liveTrackingStarted) return;
+    this._liveTrackingStarted = true;
+    this._lastReroute = 0;
+    this._lastSidebarRefresh = 0;
+
+    geoLocation.startWatching((snap) => {
+      stationMap.setUserLocation(snap.lat, snap.lng, {
+        accuracy: snap.accuracy,
+        heading: snap.heading,
+        animate: true,
+      });
+
+      const now = Date.now();
+
+      // Re-route every 12s while following a route (avoid hammering OSRM)
+      if (stationRouter?.activeRoute && now - this._lastReroute > 12000) {
+        this._lastReroute = now;
+        stationRouter.refreshFromCurrent();
+      }
+
+      // If sidebar open with results, refresh distances every 5s
+      if (ui.sidebarOpen && now - this._lastSidebarRefresh > 5000) {
+        this._lastSidebarRefresh = now;
+        const stations = stationAPI.getStations() || [];
+        if (stations.length) {
+          const results = stationFinder.findNearestStations(stations, snap.lat, snap.lng, 5);
+          if (results?.length) ui.renderResults(results);
+        }
+      }
+    });
   }
 
   handleFilterChanged() {

@@ -15,7 +15,8 @@ class StationRouter {
       return;
     }
 
-    ui.showToast(i18n.t('routeBuilding'), 'info', 6000);
+    const wasActive = !!this.activeRoute;
+    ui.showToast(i18n.t('routeBuilding'), 'info', 2500);
 
     try {
       const data = await this._fetch(pos.lat, pos.lng, station.lat, station.lng);
@@ -32,8 +33,30 @@ class StationRouter {
 
       stationMap.drawOSRMRoute(coords, station);
       ui.showRoutePanel(station, { distance: route.distance, duration: route.duration });
+      ui.showToast(i18n.t(wasActive ? 'routeUpdated' : 'routeReady'), 'success', 2500);
     } catch (e) {
       ui.showToast(i18n.t('routeError'), 'error', 4000);
+    }
+  }
+
+  /**
+   * Re-route from current user location (used by live tracking)
+   */
+  async refreshFromCurrent() {
+    if (!this.activeRoute) return;
+    const pos = geoLocation.getPosition();
+    if (!pos.isLocated) return;
+    try {
+      const data = await this._fetch(pos.lat, pos.lng, this.activeRoute.station.lat, this.activeRoute.station.lng);
+      const route = data.routes[0];
+      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      this.activeRoute.coords = coords;
+      this.activeRoute.distance = route.distance;
+      this.activeRoute.duration = route.duration;
+      stationMap.drawOSRMRoute(coords, this.activeRoute.station);
+      ui.showRoutePanel(this.activeRoute.station, { distance: route.distance, duration: route.duration });
+    } catch (_) {
+      /* silent — keep last route on transient errors */
     }
   }
 
@@ -55,9 +78,11 @@ class StationRouter {
   }
 
   clear() {
+    const had = !!this.activeRoute;
     this.activeRoute = null;
     stationMap.clearHighlight();
     ui.hideRoutePanel();
+    if (had) ui.showToast(i18n.t('routeCleared'), 'info', 1800);
   }
 }
 

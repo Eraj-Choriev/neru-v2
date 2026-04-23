@@ -8,9 +8,11 @@ class StationMap {
     this.markers = [];
     this.markerLayer = null;
     this.userMarker = null;
+    this.userAccuracyCircle = null;
     this.routeLine = null;
     this.highlightCircle = null;
     this.tileLayer = null;
+    this._followUser = false; // auto-pan map to follow user when true
   }
 
   _buildTileLayer(theme) {
@@ -74,6 +76,14 @@ class StationMap {
     });
 
     this.map.addLayer(this.markerLayer);
+
+    // User-initiated drag disables follow-mode (like Google Maps)
+    this.map.on('dragstart', () => {
+      if (this._followUser) {
+        this._followUser = false;
+        document.getElementById('loc-btn')?.classList.remove('is-following');
+      }
+    });
 
     // Delegate "Route" button clicks inside Leaflet popups
     this.map.getContainer().addEventListener('click', (e) => {
@@ -338,21 +348,75 @@ class StationMap {
     `;
   }
 
-  setUserLocation(lat, lng) {
-    if (this.userMarker) {
-      this.map.removeLayer(this.userMarker);
+  setUserLocation(lat, lng, opts = {}) {
+    const { accuracy = null, heading = null, animate = true } = opts;
+
+    // Create marker on first call
+    if (!this.userMarker) {
+      const userIcon = L.divIcon({
+        className: 'user-marker',
+        html: `
+          <div class="user-marker-accuracy"></div>
+          <div class="user-marker-cone" style="opacity:0"></div>
+          <div class="user-marker-ring"></div>
+          <div class="user-marker-dot"></div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+
+      this.userMarker = L.marker([lat, lng], {
+        icon: userIcon,
+        zIndexOffset: 1000,
+        interactive: false,
+        keyboard: false,
+      }).addTo(this.map);
+    } else {
+      // Smoothly animate to new location (CSS transition does the work)
+      const el = this.userMarker.getElement();
+      if (el && animate) {
+        el.style.transition = 'transform 900ms cubic-bezier(0.22, 1, 0.36, 1)';
+      }
+      this.userMarker.setLatLng([lat, lng]);
     }
 
-    const userIcon = L.divIcon({
-      className: 'user-marker',
-      html: `<div class="user-marker-dot"></div><div class="user-marker-ring"></div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
+    // Accuracy circle (semi-transparent ring showing GPS precision)
+    if (accuracy != null && Number.isFinite(accuracy) && accuracy > 0) {
+      if (!this.userAccuracyCircle) {
+        this.userAccuracyCircle = L.circle([lat, lng], {
+          radius: accuracy,
+          className: 'user-accuracy-circle',
+          color: '#7bffbe',
+          weight: 1,
+          fillColor: '#7bffbe',
+          fillOpacity: 0.08,
+          interactive: false,
+        }).addTo(this.map);
+      } else {
+        this.userAccuracyCircle.setLatLng([lat, lng]);
+        this.userAccuracyCircle.setRadius(accuracy);
+      }
+    }
 
-    this.userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
-      .addTo(this.map);
+    // Heading cone
+    const coneEl = this.userMarker.getElement()?.querySelector('.user-marker-cone');
+    if (coneEl) {
+      if (heading != null && Number.isFinite(heading)) {
+        coneEl.style.opacity = '1';
+        coneEl.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
+      } else {
+        coneEl.style.opacity = '0';
+      }
+    }
+
+    // Follow mode — pan map to keep user centred
+    if (this._followUser && this.map) {
+      this.map.panTo([lat, lng], { animate: true, duration: 0.9, easeLinearity: 0.4 });
+    }
   }
+
+  setFollowUser(on) { this._followUser = !!on; }
+  isFollowingUser() { return this._followUser; }
 
   highlightStation(station, userLat, userLng) {
     // Remove previous highlights
