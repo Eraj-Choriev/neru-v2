@@ -189,23 +189,19 @@
     <!-- ===== Loading Overlay ===== -->
     <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite">
       <div class="loader-wrap">
-        <div class="loader-orb">
-          <div class="orb-ring orb-ring-1"></div>
-          <div class="orb-ring orb-ring-2"></div>
-          <div class="orb-ring orb-ring-3"></div>
-          <div class="orb-core">
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
+        <div class="nur-loader" aria-hidden="true">
+          <div style="--i: 1; --inset: 44%" class="nur-box">
+            <div class="nur-loader-logo">
+              <img src="logo.png" alt="" />
+            </div>
           </div>
-          <div class="orb-particle orb-p1"></div>
-          <div class="orb-particle orb-p2"></div>
-          <div class="orb-particle orb-p3"></div>
-          <div class="orb-particle orb-p4"></div>
-        </div>
-        <div class="loader-track">
-          <div class="loader-fill"></div>
-          <div class="loader-shimmer"></div>
+          <div style="--i: 2; --inset: 40%" class="nur-box"></div>
+          <div style="--i: 3; --inset: 36%" class="nur-box"></div>
+          <div style="--i: 4; --inset: 32%" class="nur-box"></div>
+          <div style="--i: 5; --inset: 28%" class="nur-box"></div>
+          <div style="--i: 6; --inset: 24%" class="nur-box"></div>
+          <div style="--i: 7; --inset: 20%" class="nur-box"></div>
+          <div style="--i: 8; --inset: 16%" class="nur-box"></div>
         </div>
         <p class="loading-text" data-i18n="loading">Боркунӣ...</p>
       </div>

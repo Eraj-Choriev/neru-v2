@@ -1870,7 +1870,7 @@ body.sidebar-open { overflow: hidden; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
+  gap: 36px;
   animation: loaderWrapIn 600ms var(--ease-spring) both;
 }
 
@@ -1879,157 +1879,114 @@ body.sidebar-open { overflow: hidden; }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ---- Orb ---- */
-.loader-orb {
+/* ============================================================
+   NŪR RIPPLE LOADER
+   Adapted from Uiverse (marcelodolza) — recoloured to volt palette
+   ============================================================ */
+.nur-loader {
+  --size: clamp(240px, 42vmin, 360px);
+  --duration: 2.5s;
+  --ripple-bg: linear-gradient(
+    0deg,
+    rgba(14, 213, 143, 0.22) 0%,
+    rgba(123, 255, 190, 0.18) 100%
+  );
+  --ripple-shadow-outer: rgba(0, 0, 0, 0.4);
+  --ripple-shadow-inner: rgba(156, 255, 207, 0.55);
+  width: var(--size);
+  height: var(--size);
+  aspect-ratio: 1;
   position: relative;
-  width: 96px;
-  height: 96px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  pointer-events: none;
 }
 
-/* Concentric rings */
-.orb-ring {
+.nur-box {
   position: absolute;
+  inset: var(--inset);
+  background: var(--ripple-bg);
   border-radius: 50%;
-  border: 1.5px solid transparent;
-}
-
-.orb-ring-1 {
-  inset: 0;
-  border-color: rgba(123, 255, 190, 0.5) transparent rgba(123, 255, 190, 0.15) transparent;
-  animation: orbSpin1 1.4s linear infinite;
-  box-shadow: 0 0 14px rgba(123, 255, 190, 0.12);
-}
-
-.orb-ring-2 {
-  inset: 10px;
-  border-color: transparent rgba(74, 208, 255, 0.55) transparent rgba(74, 208, 255, 0.2);
-  animation: orbSpin2 2.1s linear infinite reverse;
-}
-
-.orb-ring-3 {
-  inset: 20px;
-  border-color: rgba(123, 255, 190, 0.3) transparent rgba(123, 255, 190, 0.1) transparent;
-  animation: orbSpin1 3.2s linear infinite;
-}
-
-@keyframes orbSpin1 { to { transform: rotate(360deg); } }
-@keyframes orbSpin2 { to { transform: rotate(-360deg); } }
-
-/* Core glow box */
-.orb-core {
-  position: relative;
-  z-index: 2;
-  width: 48px;
-  height: 48px;
-  border-radius: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(140deg, var(--volt-400) 0%, var(--volt-700) 100%);
-  color: var(--ink-900);
   box-shadow:
-    0 0 0 1px rgba(123, 255, 190, 0.35),
-    0 0 28px rgba(123, 255, 190, 0.45),
-    0 0 60px rgba(123, 255, 190, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  animation: corePulse 2s var(--ease-io) infinite;
+    var(--ripple-shadow-outer) 0 10px 10px 0,
+    inset var(--ripple-shadow-inner) 0 5px 10px -7px;
+  animation: nurRipple var(--duration) infinite ease-in-out;
+  animation-delay: calc(var(--i) * 0.15s);
+  z-index: calc(var(--i) * -1);
+  pointer-events: all;
+  transition: filter 0.3s ease;
 }
 
-.orb-core svg {
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
-}
+.nur-box:last-child { filter: blur(30px); }
+.nur-box:not(:last-child):hover { filter: brightness(1.6) blur(4px); }
 
-@keyframes corePulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px rgba(123, 255, 190, 0.35),
-      0 0 28px rgba(123, 255, 190, 0.45),
-      0 0 60px rgba(123, 255, 190, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.45);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(123, 255, 190, 0.5),
-      0 0 38px rgba(123, 255, 190, 0.65),
-      0 0 80px rgba(123, 255, 190, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.45);
-    transform: scale(1.06);
-  }
-}
-
-/* Orbiting particles */
-.orb-particle {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--volt-500);
-  box-shadow: 0 0 8px var(--volt-glow);
-  top: 50%; left: 50%;
-  margin: -2.5px 0 0 -2.5px;
-  transform-origin: 0 0;
-}
-
-.orb-p1 { animation: orbit1 1.4s linear infinite; background: var(--volt-400); }
-.orb-p2 { animation: orbit1 1.4s linear infinite -0.35s; background: var(--cyan-400); box-shadow: 0 0 8px rgba(74, 208, 255, 0.7); }
-.orb-p3 { animation: orbit2 2.1s linear infinite; background: var(--volt-500); width: 4px; height: 4px; margin: -2px 0 0 -2px; }
-.orb-p4 { animation: orbit2 2.1s linear infinite -1.05s; background: var(--cyan-500); width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; box-shadow: 0 0 6px rgba(74, 208, 255, 0.6); }
-
-@keyframes orbit1 {
-  0%   { transform: rotate(0deg)   translateX(48px) scale(1); opacity: 1; }
-  50%  { opacity: 0.6; }
-  100% { transform: rotate(360deg) translateX(48px) scale(1); opacity: 1; }
-}
-
-@keyframes orbit2 {
-  0%   { transform: rotate(0deg)   translateX(34px); opacity: 0.8; }
-  100% { transform: rotate(-360deg) translateX(34px); opacity: 0.8; }
-}
-
-/* ---- Track bar ---- */
-.loader-track {
-  position: relative;
-  width: 140px;
-  height: 3px;
-  background: var(--ink-700);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-}
-
-.loader-fill {
-  position: absolute;
-  top: 0; left: 0; bottom: 0;
-  width: 40%;
-  background: linear-gradient(90deg, var(--volt-700), var(--volt-400), var(--cyan-400));
-  border-radius: inherit;
-  animation: barSlide 1.8s var(--ease-io) infinite;
-  box-shadow: 0 0 10px var(--volt-glow);
-}
-
-.loader-shimmer {
+.nur-loader-logo {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 100%);
-  animation: shimmerPass 1.8s var(--ease-io) infinite;
+  display: grid;
+  place-content: center;
+  padding: 22%;
+  animation: nurLogoFloat var(--duration) infinite ease-in-out;
 }
 
-@keyframes barSlide {
-  0%   { left: -45%; width: 40%; }
-  60%  { left: 110%; width: 50%; }
-  100% { left: 110%; width: 40%; }
+.nur-loader-logo img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 18px rgba(123, 255, 190, 0.55));
+  animation: nurLogoGlow var(--duration) infinite ease-in-out;
 }
 
-@keyframes shimmerPass {
-  0%   { transform: translateX(-200%); }
-  60%  { transform: translateX(300%); }
-  100% { transform: translateX(300%); }
+@keyframes nurRipple {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      var(--ripple-shadow-outer) 0 10px 10px 0,
+      inset var(--ripple-shadow-inner) 0 5px 10px -7px;
+  }
+  65% {
+    transform: scale(1.4);
+    box-shadow: rgba(0, 0, 0, 0) 0 0 0 0;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow:
+      var(--ripple-shadow-outer) 0 10px 10px 0,
+      inset var(--ripple-shadow-inner) 0 5px 10px -7px;
+  }
+}
+
+@keyframes nurLogoGlow {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(123, 255, 190, 0.4)); opacity: 0.88; }
+  50%      { filter: drop-shadow(0 0 30px rgba(123, 255, 190, 0.9)); opacity: 1; }
+}
+
+@keyframes nurLogoFloat {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+
+/* Light theme: softer tints on bright background */
+:root[data-theme="light"] .nur-loader {
+  --ripple-bg: linear-gradient(
+    0deg,
+    rgba(14, 183, 128, 0.14) 0%,
+    rgba(14, 183, 128, 0.22) 100%
+  );
+  --ripple-shadow-outer: rgba(14, 183, 128, 0.18);
+  --ripple-shadow-inner: rgba(255, 255, 255, 0.8);
+}
+
+:root[data-theme="light"] .nur-loader-logo img {
+  mix-blend-mode: normal;
+  filter: drop-shadow(0 0 14px rgba(14, 183, 128, 0.45)) brightness(0.92);
+}
+
+/* Reduced motion: fade the ripples, keep breathing logo gentle */
+@media (prefers-reduced-motion: reduce) {
+  .nur-box { animation: none; opacity: 0.35; }
+  .nur-loader-logo { animation: none; }
+  .nur-loader-logo img { animation: none; filter: drop-shadow(0 0 14px rgba(123, 255, 190, 0.45)); }
 }
 
 /* ---- Text ---- */
