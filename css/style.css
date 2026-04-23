@@ -1578,35 +1578,11 @@ body.sidebar-open { overflow: hidden; }
   background:
     linear-gradient(180deg, rgba(123, 255, 190, 0.05), rgba(74, 208, 255, 0.03) 60%, var(--ink-900) 100%),
     var(--ink-900);
-  box-shadow: var(--sh-volt);
+  box-shadow: 0 0 0 1px var(--line-volt);
 }
 
-.card-best::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg,
-    transparent 0%, var(--volt-500) 30%, var(--cyan-400) 70%, transparent 100%);
-  filter: drop-shadow(0 0 6px var(--volt-glow));
-  animation: bestEdge 3.6s linear infinite;
-}
-
-@keyframes bestEdge {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.card-best::after {
-  content: '';
-  position: absolute;
-  top: -60%; right: -20%;
-  width: 280px; height: 280px;
-  background: radial-gradient(circle, var(--volt-glow) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
-}
+.card-best::before,
+.card-best::after { content: none; display: none; }
 
 .card > * { position: relative; z-index: 1; }
 
