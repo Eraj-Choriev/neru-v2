@@ -142,8 +142,6 @@ class StationAPI {
 
 const stationAPI = new StationAPI();
 
-// ── Charging ETA helper (shared by map.js and ui.js) ──────────────────────────
-// Assumes 50 kWh battery charging to 90%; powerKw is the station capacity in kW.
 const ETA_BATTERY_KWH = 50;
 const ETA_TARGET_PCT  = 90;
 
@@ -154,5 +152,6 @@ function chargingEta(chargeLevel, powerKw) {
   const minutes = Math.round((remainPct / 100) * ETA_BATTERY_KWH / powerKw * 60);
   if (minutes < 1)  return { val: '<1', type: 'minSuffix' };
   if (minutes < 60) return { val: String(minutes), type: 'minSuffix' };
+  
   return { val: (minutes / 60).toFixed(1), type: 'hrSuffix' };
 }

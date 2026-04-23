@@ -1,0 +1,27 @@
+{
+  "name": "NŪR — EV Charging Stations Dushanbe",
+  "short_name": "NŪR",
+  "description": "Find the nearest EV charging station in Dushanbe, Tajikistan",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#05070d",
+  "background_color": "#05070d",
+  "lang": "tj",
+  "categories": ["navigation", "utilities", "transportation"],
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
