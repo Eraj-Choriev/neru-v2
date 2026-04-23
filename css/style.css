@@ -2433,11 +2433,15 @@ body.sidebar-open { overflow: hidden; }
   -webkit-backdrop-filter: blur(3px);
   z-index: 1400;
   opacity: 0;
-  transition: opacity 280ms var(--ease-out);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 280ms var(--ease-out), visibility 280ms;
 }
 
 .mobile-overlay.is-open {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .mobile-drawer {
@@ -2454,12 +2458,14 @@ body.sidebar-open { overflow: hidden; }
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   padding: 0 20px 40px;
   transform: translateY(100%);
+  pointer-events: none;
   transition: transform 360ms var(--ease-spring);
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(123, 255, 190, 0.06);
 }
 
 .mobile-drawer.is-open {
   transform: translateY(0);
+  pointer-events: auto;
 }
 
 .mobile-drawer-handle {
@@ -2907,10 +2913,10 @@ body.sidebar-open { overflow: hidden; }
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
-  :root { --header-h: 56px; --sidebar-w: 100vw; }
-  .header { padding: 0 12px; gap: 0; z-index: 1300; }
-  /* Logo: fix width so it doesn't overflow header */
-  .logo-img { height: 28px; width: auto; max-width: 100px; }
+  :root { --header-h: 64px; --sidebar-w: 100vw; }
+  .header { padding: 0 14px; gap: 0; z-index: 1300; }
+  /* Logo: proper size, width auto so it doesn't overflow */
+  .logo-img { height: 42px; width: auto; max-width: 130px; }
   .map-stats { left: 12px; }
   /* Hide desktop filter and lang selector from header — both live in the drawer */
   .header-center { display: none; }
