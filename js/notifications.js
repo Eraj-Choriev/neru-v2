@@ -18,8 +18,8 @@ class StationNotifications {
   _log(level, ...args) {
     const prefix = '[NerU:Notif]';
     if (level === 'error') console.error(prefix, ...args);
-    else if (level === 'warn')  console.warn(prefix, ...args);
-    else                        console.log(prefix, ...args);
+    else if (level === 'warn') console.warn(prefix, ...args);
+    // info logs suppressed in production
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────

@@ -122,11 +122,11 @@ class App {
   async handleFindNearest() {
     ui.showLoading();
     try {
-      const locPromise = geoLocation.getUserLocation({ force: false, maxAgeMs: 30000 }).catch(() => null);
-      const fetchPromise = stationAPI.fetchStations().catch(() => null);
-      await Promise.all([locPromise, fetchPromise]);
+      const [loc] = await Promise.all([
+        geoLocation.getUserLocation({ force: false, maxAgeMs: 30000 }).catch(() => null),
+        stationAPI.fetchStations().catch(() => null),
+      ]);
 
-      const loc = await locPromise;
       const pos = loc ? { lat: loc.lat, lng: loc.lng } : geoLocation.getPosition();
       stationMap.setUserLocation(pos.lat, pos.lng);
 
@@ -166,7 +166,7 @@ class App {
     ui.showToast(i18n.t('locating'), 'info', 8000);
 
     try {
-      const pos = await geoLocation.getUserLocation({ force: true, maxAgeMs: 0 });
+      const pos = await geoLocation.getUserLocation({ force: true, maxAgeMs: 0, highAccuracy: true });
       stationMap.setUserLocation(pos.lat, pos.lng);
       stationMap.map.flyTo([pos.lat, pos.lng], 16, { duration: 1.0 });
       btn.classList.remove('is-locating');
@@ -186,19 +186,14 @@ class App {
     }
   }
 
-  async handleFilterChanged() {
+  handleFilterChanged() {
     const stations = stationAPI.getStations();
-    const filtered = ui.applyFilter(stations);
-    stationMap.renderStations(filtered);
+    stationMap.renderStations(ui.applyFilter(stations));
   }
 
-  async handleLangChange() {
-    // Re-render stations with new language in popups
+  handleLangChange() {
     const stations = stationAPI.getStations();
-    const filtered = ui.applyFilter(stations);
-    stationMap.renderStations(filtered);
-    
-    // Re-render sidebar if open
+    stationMap.renderStations(ui.applyFilter(stations));
     if (ui.sidebarOpen && stationFinder.getResults().length > 0) {
       ui.renderResults(stationFinder.getResults());
     }
@@ -211,8 +206,12 @@ class App {
 
   startAutoRefresh() {
     this.refreshInterval = setInterval(async () => {
-      await this.loadStations();
+      if (!document.hidden) await this.loadStations();
     }, this.REFRESH_MS);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.initialized) this.loadStations();
+    });
   }
 
   stopAutoRefresh() {

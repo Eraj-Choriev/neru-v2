@@ -54,13 +54,23 @@
         </a>
       </div>
 
-      <div class="header-right">
+      <div class="header-center">
         <div class="segmented" id="filter-seg" role="tablist" aria-label="Filter">
           <span class="seg-indicator" aria-hidden="true"></span>
           <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
           <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
           <button class="seg-btn filter-btn" data-filter="120w" role="tab">120W</button>
         </div>
+      </div>
+
+      <div class="header-right">
+        <button class="burger-btn" id="burger-btn" aria-label="Open menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
 
         <div class="segmented segmented-compact" id="lang-seg" role="tablist" aria-label="Language">
           <span class="seg-indicator" aria-hidden="true"></span>
@@ -69,30 +79,36 @@
           <button class="seg-btn lang-btn" data-lang="en" role="tab">EN</button>
         </div>
 
-        <div class="icon-group">
-          <button class="notif-toggle" id="notif-toggle" aria-label="Toggle notifications" title="Enable notifications">
-            <span class="notif-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-            </span>
-          </button>
+        <button class="notif-toggle" id="notif-toggle" aria-label="Toggle notifications" title="Enable notifications">
+          <span class="notif-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+          </span>
+        </button>
 
-          <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
-            <span class="theme-icon theme-icon-moon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            </span>
-            <span class="theme-icon theme-icon-sun" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="4"/>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-              </svg>
-            </span>
-          </button>
-        </div>
+        <label class="cosmic-toggle" title="Toggle theme" aria-label="Toggle theme">
+          <input class="toggle" type="checkbox" id="theme-toggle">
+          <div class="slider">
+            <div class="cosmos"></div>
+            <div class="energy-line"></div>
+            <div class="energy-line"></div>
+            <div class="energy-line"></div>
+            <div class="toggle-orb">
+              <div class="inner-orb"></div>
+              <div class="ring"></div>
+            </div>
+            <div class="particles">
+              <div style="--angle: 30deg" class="particle"></div>
+              <div style="--angle: 60deg" class="particle"></div>
+              <div style="--angle: 90deg" class="particle"></div>
+              <div style="--angle: 120deg" class="particle"></div>
+              <div style="--angle: 150deg" class="particle"></div>
+              <div style="--angle: 180deg" class="particle"></div>
+            </div>
+          </div>
+        </label>
       </div>
     </header>
 
@@ -222,6 +238,39 @@
 
     <!-- ===== In-app notification stack ===== -->
     <div id="neru-notif-stack" aria-live="assertive" aria-atomic="false"></div>
+
+    <!-- ===== Mobile Drawer Overlay ===== -->
+    <div class="mobile-overlay" id="mobile-overlay" aria-hidden="true"></div>
+
+    <!-- ===== Mobile Drawer (filter + stats) ===== -->
+    <div class="mobile-drawer" id="mobile-drawer" role="dialog" aria-label="Menu" aria-modal="true">
+      <div class="mobile-drawer-handle" aria-hidden="true"></div>
+
+      <div class="mobile-drawer-stats" role="status" aria-live="polite">
+        <div class="mdstat-cell">
+          <span class="mdstat-num" id="md-total">—</span>
+          <span class="mdstat-lbl" data-i18n="totalStations">Истгоҳҳо</span>
+        </div>
+        <span class="mdstat-sep" aria-hidden="true"></span>
+        <div class="mdstat-cell">
+          <span class="mdstat-num mdstat-accent" id="md-free">—</span>
+          <span class="mdstat-lbl" data-i18n="availableNow">Озод</span>
+        </div>
+        <span class="mdstat-sep" aria-hidden="true"></span>
+        <div class="mdstat-cell">
+          <span class="mdstat-num mdstat-busy" id="md-busy">—</span>
+          <span class="mdstat-lbl" data-i18n="occupiedNow">Банд</span>
+        </div>
+      </div>
+
+      <p class="mobile-drawer-label" data-i18n="filterAll">Фильтр</p>
+      <div class="segmented mobile-seg" id="mobile-filter-seg" role="tablist">
+        <span class="seg-indicator" aria-hidden="true"></span>
+        <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
+        <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
+        <button class="seg-btn filter-btn" data-filter="120w" role="tab">120W</button>
+      </div>
+    </div>
 
     <!-- ===== Toast ===== -->
     <div class="toast" id="toast" role="alert" aria-live="assertive"></div>

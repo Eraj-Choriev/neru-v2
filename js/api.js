@@ -61,21 +61,19 @@ class StationAPI {
   }
 
   async _tryFetch(proxy) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
       const url = proxy ? proxy + encodeURIComponent(API_URL) : API_URL;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
       clearTimeout(timeout);
-      
       if (!response.ok) return null;
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (e) {
+      clearTimeout(timeout);
       console.warn(`Proxy "${proxy || 'direct'}" failed:`, e.message);
       return null;
     }

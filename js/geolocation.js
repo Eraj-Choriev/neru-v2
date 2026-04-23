@@ -13,18 +13,12 @@ class GeoLocation {
     this.isLocated = false;
     this.watchId = null;
   }
-  async getUserLocation({ force = false, maxAgeMs = 30000 } = {}) {
+  async getUserLocation({ force = false, maxAgeMs = 30000, highAccuracy = false } = {}) {
     const now = Date.now();
-    // вернуть кэш если он свежий и не запрошен force
     if (!force && this.isLocated && this._lastLocatedAt && (now - this._lastLocatedAt) < maxAgeMs) {
-      return {
-        lat: this.userLat,
-        lng: this.userLng,
-        isLocated: this.isLocated
-      };
+      return { lat: this.userLat, lng: this.userLng, isLocated: this.isLocated };
     }
 
-    // Запросить геолокацию у браузера и сохранить время при успехе.
     return new Promise((resolve, reject) => {
       if (!('geolocation' in navigator)) {
         this.isLocated = false;
@@ -36,23 +30,18 @@ class GeoLocation {
         this.userLng = pos.coords.longitude;
         this.isLocated = true;
         this._lastLocatedAt = Date.now();
-        resolve({
-          lat: this.userLat,
-          lng: this.userLng,
-          isLocated: this.isLocated
-        });
+        resolve({ lat: this.userLat, lng: this.userLng, isLocated: this.isLocated });
       };
 
       const onError = (err) => {
-        // не устанавливаем фолбэк тут — пусть вызывающий код решает, использовать ли сохранённую позицию
         this.isLocated = false;
         reject(err);
       };
 
       navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: highAccuracy,
+        timeout: highAccuracy ? 10000 : 5000,
+        maximumAge: highAccuracy ? 0 : 60000,
       });
     });
   }

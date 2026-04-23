@@ -56,17 +56,17 @@ class StationFinder {
     if (!stations || stations.length === 0) return [];
 
     this.results = stations
-      .map(station => ({
-        ...station,
-        distance: GeoLocation.distanceBetween(userLat, userLng, station.lat, station.lng),
-      }))
+      .map(station => {
+        const distance = GeoLocation.distanceBetween(userLat, userLng, station.lat, station.lng);
+        return {
+          ...station,
+          distance,
+          distanceFormatted: GeoLocation.formatDistance(distance),
+          statusTag: station.hasAvailable ? 'freeNow' : (station.maxChargeLevel >= 80 ? 'soonFree' : 'busy'),
+        };
+      })
       .sort((a, b) => a.distance - b.distance)
-      .slice(0, limit)
-      .map(s => ({
-        ...s,
-        distanceFormatted: GeoLocation.formatDistance(s.distance),
-        statusTag: s.hasAvailable ? 'freeNow' : (s.maxChargeLevel >= 80 ? 'soonFree' : 'busy'),
-      }));
+      .slice(0, limit);
 
     return this.results;
   }

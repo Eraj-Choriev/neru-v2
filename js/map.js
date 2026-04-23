@@ -157,50 +157,77 @@ class StationMap {
     });
   }
 
-  buildPopup(station) {
-    const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
+  _esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+    );
+  }
 
-    // Schedule parsing for "Open now" chip
+  buildPopup(station) {
+    const escHtml = (v) => this._esc(v);
+
+    // Schedule parsing
     const sch = (typeof parseSchedule === 'function') ? parseSchedule(station.schedule) : null;
-    let scheduleChip = '';
+    let scheduleTime = '';
+    let scheduleIsOpen = null;
+    let scheduleIs24 = false;
     if (sch) {
-      if (sch.is24) {
-        scheduleChip = `<span class="open-now">24/7</span>`;
-      } else {
-        scheduleChip = `<span class="open-now">${sch.open}–${sch.close}</span>`;
-      }
+      scheduleIsOpen = sch.isOpen;
+      scheduleIs24 = sch.is24;
+      scheduleTime = sch.is24 ? '24/7' : `${sch.open}–${sch.close}`;
     } else if (station.schedule) {
-      scheduleChip = `<span class="open-now">${escHtml(station.schedule)}</span>`;
+      scheduleTime = station.schedule;
     }
 
-    // Distance (if user location known)
-    const PIN_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    // Schedule row — shown once, with open/closed indicator
     const CLOCK_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
+    let scheduleRow = '';
+    if (scheduleTime) {
+      let openBadge = '';
+      if (scheduleIs24) {
+        openBadge = `<span class="open-now">${escHtml(i18n.t('open247'))}</span>`;
+      } else if (scheduleIsOpen !== null) {
+        openBadge = scheduleIsOpen
+          ? `<span class="open-now">${escHtml(i18n.t('openNow'))}</span>`
+          : `<span class="open-closed">${escHtml(i18n.t('closedUntil'))}</span>`;
+      }
+      scheduleRow = `
+        <div class="popup-schedule-row">
+          <span class="popup-schedule-icon">${CLOCK_SVG}</span>
+          ${scheduleIs24 ? '' : `<span class="popup-schedule-time">${escHtml(scheduleTime)}</span>`}
+          ${openBadge}
+        </div>`;
+    }
 
+    // Distance chip — only when user location is known; no schedule fallback
+    const PIN_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
     let distChip = '';
     if (typeof geoLocation !== 'undefined' && geoLocation.userLat != null && geoLocation.userLng != null) {
-      const km = GeoLocation.distanceBetween(
-        geoLocation.userLat, geoLocation.userLng, station.lat, station.lng
-      );
+      const km = GeoLocation.distanceBetween(geoLocation.userLat, geoLocation.userLng, station.lat, station.lng);
       const d = GeoLocation.formatDistance(km);
       const walkMin = Math.round(km * 12);
-      const walkSuffix = walkMin > 0 ? ` · ${walkMin} ${escHtml(i18n.t('minSuffix'))}` : '';
+      const walkSuffix = walkMin > 0 ? ` · ${walkMin}${escHtml(i18n.t('minSuffix'))}` : '';
       distChip = `
-        <div class="chip">
+        <div class="chip chip--dist">
           <span class="chip-icon">${PIN_SVG}</span>
           <span class="chip-value">${escHtml(d.value)}<span class="unit">${escHtml(i18n.t(d.unit))}</span>${walkSuffix}</span>
         </div>`;
-    } else {
-      distChip = `
-        <div class="chip">
-          <span class="chip-icon">${CLOCK_SVG}</span>
-          <span class="chip-value">${escHtml(station.schedule || '—')}</span>
-        </div>`;
     }
 
-    // Wait banner: shown when station is fully occupied
+    // Status indicator
+    const free = station.freeConnectors;
+    const total = station.totalConnectors;
+    const dotCls = free === total ? 'status-all-free' : free > 0 ? 'status-partial' : 'status-busy';
+    const dotLabel = free === total
+      ? escHtml(i18n.t('freeNow'))
+      : free > 0
+        ? `${free}/${total} · ${escHtml(i18n.t('soonFree'))}`
+        : escHtml(i18n.t('busy'));
+
+    // Address only if different from station name
+    const showAddress = station.address && station.address.trim() !== station.name.trim();
+
+    // Wait banner
     let waitBannerHtml = '';
     if (!station.hasAvailable) {
       let minMinutes = Infinity;
@@ -268,20 +295,18 @@ class StationMap {
     return `
       <div class="popup-content">
         <div class="popup-head">
-          <span class="popup-bolt" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
-          </span>
-          <div>
+          <img src="logo.png" alt="NŪR" class="popup-logo-sm" aria-hidden="true">
+          <div class="popup-head-text">
+            <div class="popup-status-row">
+              <span class="popup-dot ${dotCls}" aria-hidden="true"></span>
+              <span class="popup-dot-label">${dotLabel}</span>
+            </div>
             <h3 class="popup-title">${escHtml(station.name)}</h3>
-            <p class="popup-sub">
-              ${station.address ? `<span>${escHtml(station.address)}</span>` : ''}
-              ${station.address && scheduleChip ? '<span class="dot-sep">·</span>' : ''}
-              ${scheduleChip}
-            </p>
+            ${showAddress ? `<p class="popup-address">${escHtml(station.address)}</p>` : ''}
           </div>
         </div>
+
+        <div class="popup-divider"></div>
 
         <div class="chip-row">
           <div class="chip chip--power">
@@ -295,8 +320,8 @@ class StationMap {
           ${distChip}
         </div>
 
+        ${scheduleRow}
         ${waitBannerHtml}
-
         <div class="conn-list">${connRows}</div>
 
         <div class="popup-actions">
@@ -337,10 +362,8 @@ class StationMap {
     const bestMarker = this.markers.find(m => m.stationId === station.id);
     if (bestMarker) {
       bestMarker.setIcon(this.createBestIcon());
-      setTimeout(() => {
-        bestMarker.openPopup();
-        this._panForPopup(bestMarker);
-      }, 80);
+      bestMarker.openPopup();
+      this._panForPopup(bestMarker);
     }
 
     // Draw route line
@@ -425,13 +448,12 @@ class StationMap {
 
   openStationPopup(stationId) {
     const marker = this.markers.find(m => m.stationId === stationId);
-    if (marker) {
-      this.map.flyTo(marker.getLatLng(), 16, { duration: 0.8 });
-      setTimeout(() => {
-        marker.openPopup();
-        this._panForPopup(marker);
-      }, 850);
-    }
+    if (!marker) return;
+    this.map.flyTo(marker.getLatLng(), 16, { duration: 0.8 });
+    this.map.once('moveend', () => {
+      marker.openPopup();
+      this._panForPopup(marker);
+    });
   }
 
   _panForPopup(marker) {

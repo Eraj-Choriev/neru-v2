@@ -68,22 +68,28 @@ class UI {
   init() {
     this.cacheElements();
     this.bindEvents();
+    if (this.themeToggle) {
+      this.themeToggle.checked = (this.getTheme() === 'light');
+    }
     i18n.updateDOM();
     // Position the segmented indicators once fonts/layout settle
     requestAnimationFrame(() => {
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
+      this.moveIndicator(this.mobileSeg);
     });
     // And on resize
     window.addEventListener('resize', () => {
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
+      this.moveIndicator(this.mobileSeg);
     });
     // Language change re-flows widths — re-measure after DOM updates
     window.addEventListener('langchange', () => {
       requestAnimationFrame(() => {
         this.moveIndicator(this.filterSeg);
         this.moveIndicator(this.langSeg);
+        this.moveIndicator(this.mobileSeg);
       });
     });
   }
@@ -107,6 +113,16 @@ class UI {
 
     this.themeToggle = document.getElementById('theme-toggle');
     this.statsBusy = document.getElementById('stat-busy');
+
+    // Mobile drawer
+    this.burgerBtn = document.getElementById('burger-btn');
+    this.mobileDrawer = document.getElementById('mobile-drawer');
+    this.mobileOverlay = document.getElementById('mobile-overlay');
+    this.mobileSeg = document.getElementById('mobile-filter-seg');
+    this.mobileFilterBtns = this.mobileSeg?.querySelectorAll('.filter-btn') || [];
+    this.mdTotal = document.getElementById('md-total');
+    this.mdFree = document.getElementById('md-free');
+    this.mdBusy = document.getElementById('md-busy');
   }
 
   getTheme() {
@@ -117,6 +133,8 @@ class UI {
     const next = theme === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('neru-theme', next); } catch (_) {}
+
+    if (this.themeToggle) this.themeToggle.checked = (next === 'light');
 
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
@@ -157,6 +175,9 @@ class UI {
         this.rippleFromEvent(e, btn);
         this.setActive(this.filterBtns, btn);
         this.moveIndicator(this.filterSeg);
+        // Sync mobile filter
+        const mob = [...this.mobileFilterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
+        if (mob) { this.setActive(this.mobileFilterBtns, mob); this.moveIndicator(this.mobileSeg); }
         window.dispatchEvent(new CustomEvent('filterChanged', {
           detail: { filter: this.currentFilter },
         }));
@@ -183,12 +204,36 @@ class UI {
       stationRouter.clear();
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.sidebarOpen) this.closeSidebar();
+    // Burger + mobile drawer
+    this.burgerBtn?.addEventListener('click', () => this.toggleMobileDrawer());
+    this.mobileOverlay?.addEventListener('click', () => this.closeMobileDrawer());
+
+    this.mobileFilterBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        this.currentFilter = btn.getAttribute('data-filter');
+        this.rippleFromEvent(e, btn);
+        this.setActive(this.mobileFilterBtns, btn);
+        this.moveIndicator(this.mobileSeg);
+        // Sync desktop filter
+        const desk = [...this.filterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
+        if (desk) { this.setActive(this.filterBtns, desk); this.moveIndicator(this.filterSeg); }
+        window.dispatchEvent(new CustomEvent('filterChanged', { detail: { filter: this.currentFilter } }));
+        setTimeout(() => this.closeMobileDrawer(), 200);
+      });
     });
 
-    this.themeToggle?.addEventListener('click', (e) => {
-      this.rippleFromEvent(e, this.themeToggle);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this.sidebarOpen) this.closeSidebar();
+        else this.closeMobileDrawer();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) this.closeMobileDrawer();
+    });
+
+    this.themeToggle?.addEventListener('change', () => {
       this.toggleTheme();
     });
   }
@@ -389,7 +434,10 @@ class UI {
             <span class="rank-num">${rank}</span>
             <span class="rank-label">${isBest ? esc(i18n.t('bestChoice')) : esc(i18n.t('recommended'))}</span>
           </div>
-          ${powerChip}
+          <div class="card-top-right">
+            <img src="logo.png" alt="NŪR" class="card-logo" aria-hidden="true">
+            ${powerChip}
+          </div>
         </div>
 
         <h3 class="card-title">${esc(station.name)}</h3>
@@ -435,10 +483,42 @@ class UI {
     `;
   }
 
+  toggleMobileDrawer() {
+    if (this.mobileDrawer?.classList.contains('is-open')) {
+      this.closeMobileDrawer();
+    } else {
+      this.openMobileDrawer();
+    }
+  }
+
+  openMobileDrawer() {
+    this.mobileDrawer?.classList.add('is-open');
+    this.mobileOverlay?.classList.add('is-open');
+    this.burgerBtn?.setAttribute('aria-expanded', 'true');
+    this.burgerBtn?.classList.add('is-open');
+    // Sync active filter state
+    const active = [...this.mobileFilterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
+    if (active) {
+      this.setActive(this.mobileFilterBtns, active);
+      requestAnimationFrame(() => this.moveIndicator(this.mobileSeg));
+    }
+  }
+
+  closeMobileDrawer() {
+    this.mobileDrawer?.classList.remove('is-open');
+    this.mobileOverlay?.classList.remove('is-open');
+    this.burgerBtn?.setAttribute('aria-expanded', 'false');
+    this.burgerBtn?.classList.remove('is-open');
+  }
+
   updateStats(stats) {
     if (this.statsTotal) this.statsTotal.textContent = stats.total;
     if (this.statsFree) this.statsFree.textContent = stats.freeConnectors;
     if (this.statsBusy) this.statsBusy.textContent = stats.totalConnectors - stats.freeConnectors;
+    // Mirror in mobile drawer
+    if (this.mdTotal) this.mdTotal.textContent = stats.total;
+    if (this.mdFree)  this.mdFree.textContent  = stats.freeConnectors;
+    if (this.mdBusy)  this.mdBusy.textContent  = stats.totalConnectors - stats.freeConnectors;
   }
 
   updateLastRefresh(date) {
