@@ -312,15 +312,15 @@ body {
 }
 
 /* ---- Icon group (notif + theme) ---- */
-/* ---- Notif toggle ---- */
+/* ---- Notif toggle: clear on/off states via coloured dot + bell state ---- */
 .notif-toggle {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
   color: var(--text-2);
   cursor: pointer;
@@ -329,22 +329,102 @@ body {
     background var(--t-base) var(--ease-out),
     border-color var(--t-base) var(--ease-out),
     color var(--t-base) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
     transform var(--t-fast) var(--ease-spring);
 }
 
 .notif-toggle:hover {
   background: var(--ink-700);
-  border-color: var(--line-volt);
-  color: var(--volt-500);
+  border-color: var(--line-strong);
+  color: var(--text-1);
   transform: translateY(-1px);
 }
 
 .notif-toggle:active { transform: scale(0.94); }
 
+/* Status dot — lives on the top-right of the bell */
+.notif-toggle::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coral-500);
+  border: 2px solid var(--ink-900);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.35);
+  transition: background var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+}
+
+/* Diagonal slash over the bell when OFF — uses pseudo on inner icon */
+.notif-toggle .notif-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.notif-toggle .notif-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  opacity: 1;
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+  box-shadow: 0 0 0 2px var(--ink-900);
+}
+
+/* ON state: volt colour, green dot, no slash */
 .notif-toggle.is-active {
   color: var(--volt-500);
   border-color: var(--volt-500);
-  background: rgba(123, 255, 190, 0.08);
+  background: rgba(123, 255, 190, 0.1);
+  box-shadow: 0 0 14px -4px var(--volt-glow);
+}
+
+.notif-toggle.is-active::after {
+  background: var(--volt-500);
+  box-shadow: 0 0 0 1px rgba(123, 255, 190, 0.5), 0 0 8px rgba(123, 255, 190, 0.6);
+  animation: notifDotPulse 2.2s var(--ease-out) infinite;
+}
+
+.notif-toggle.is-active .notif-icon::before {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-45deg) scale(0.4);
+}
+
+@keyframes notifDotPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.2); }
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .notif-toggle {
+  background: rgba(13, 18, 32, 0.04);
+  border-color: rgba(13, 18, 32, 0.12);
+  color: #5e6578;
+}
+:root[data-theme="light"] .notif-toggle:hover {
+  background: rgba(13, 18, 32, 0.08);
+  border-color: rgba(13, 18, 32, 0.2);
+  color: #0d1220;
+}
+:root[data-theme="light"] .notif-toggle::after {
+  border-color: #ffffff;
+}
+:root[data-theme="light"] .notif-toggle .notif-icon::before {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+:root[data-theme="light"] .notif-toggle.is-active {
+  background: rgba(14, 183, 128, 0.12);
+  border-color: var(--volt-600);
+  color: var(--volt-700);
+  box-shadow: 0 4px 14px -4px rgba(14, 183, 128, 0.45);
 }
 
 /* ============================================================
@@ -2130,23 +2210,34 @@ body.sidebar-open { overflow: hidden; }
   padding: 16px 14px 14px 18px;
 }
 
-/* Bolt icon bubble */
-.neru-nc-icon {
+/* Bolt icon bubble (legacy — hidden) */
+.neru-nc-icon { display: none; }
+
+/* Brand logo — replaces generic icon */
+.neru-nc-logo {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--r-sm);
-  background: linear-gradient(145deg, rgba(123, 255, 190, 0.15), rgba(123, 255, 190, 0.06));
-  border: 1px solid var(--line-volt);
+  width: 58px;
+  height: 58px;
   display: grid;
   place-items: center;
-  color: var(--volt-400);
+  filter: drop-shadow(0 0 10px var(--volt-glow));
   animation: nc-pulse 2.4s ease-in-out infinite;
+}
+.neru-nc-logo img {
+  width: 100%;
+  height: auto;
+  max-height: 58px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+}
+:root[data-theme="light"] .neru-nc-logo img {
+  mix-blend-mode: normal;
+  filter: brightness(0.9) saturate(1.1);
 }
 
 @keyframes nc-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--volt-glow); }
-  50%       { box-shadow: 0 0 0 6px transparent; }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--volt-glow)); }
+  50%       { transform: scale(1.04); filter: drop-shadow(0 0 18px var(--volt-glow)); }
 }
 
 /* Text area */
@@ -2382,6 +2473,8 @@ body.sidebar-open { overflow: hidden; }
   }
   .neru-nc-icon { width: 30px; height: 30px; }
   .neru-nc-icon svg { width: 14px; height: 14px; }
+  .neru-nc-logo { width: 46px; height: 46px; }
+  .neru-nc-logo img { max-height: 46px; }
   .neru-nc-eyebrow { font-size: 9px; letter-spacing: 0.06em; }
   .neru-nc-title { font-size: 12.5px; margin-bottom: 3px; }
   .neru-nc-meta { gap: 5px; }
@@ -2945,7 +3038,7 @@ body.sidebar-open { overflow: hidden; }
   .map-stats { left: 12px; }
   /* Hide desktop filter and lang selector from header — both live in the drawer */
   .header-center { display: none; }
-  .segmented:not(.segmented-compact) { display: none; }
+  .header .segmented:not(.segmented-compact) { display: none; }
   /* Hide lang seg from header on mobile — accessible via drawer */
   #lang-seg { display: none; }
   /* Tighten header-right gap */

@@ -313,10 +313,8 @@ class StationNotifications {
     card.innerHTML = `
       <div class="neru-nc-bar"></div>
       <div class="neru-nc-body">
-        <div class="neru-nc-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-          </svg>
+        <div class="neru-nc-logo" aria-hidden="true">
+          <img src="logo.png" alt="NŪR" />
         </div>
         <div class="neru-nc-text">
           <div class="neru-nc-eyebrow">⚡ ${this._esc(i18n.t('notifTitle'))}</div>
