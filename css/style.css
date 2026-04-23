@@ -2534,18 +2534,43 @@ body.sidebar-open { overflow: hidden; }
 
 .mobile-seg {
   width: 100%;
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-strong);
 }
 
 .mobile-seg .seg-btn {
   flex: 1;
   justify-content: center;
   text-align: center;
+  padding: 11px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  min-height: 42px;
+  display: flex;
+  align-items: center;
 }
+
+.mobile-seg .seg-btn.is-active {
+  color: var(--text-1);
+}
+
+.mobile-seg .seg-indicator {
+  background: linear-gradient(180deg, rgba(123, 255, 190, 0.18), rgba(123, 255, 190, 0.06));
+  border-color: var(--line-volt);
+}
+
+:root[data-theme="light"] .mobile-seg {
+  background: rgba(13, 18, 32, 0.04);
+  border-color: rgba(13, 18, 32, 0.1);
+}
+:root[data-theme="light"] .mobile-seg .seg-btn { color: #5e6578; }
+:root[data-theme="light"] .mobile-seg .seg-btn.is-active { color: #0d1220; }
 
 .mobile-drawer-divider {
   height: 1px;
   background: var(--line);
-  margin: 18px 0;
+  margin: 20px 0;
 }
 
 /* Safe-area padding for iPhone home indicator */
@@ -2913,10 +2938,10 @@ body.sidebar-open { overflow: hidden; }
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
-  :root { --header-h: 64px; --sidebar-w: 100vw; }
+  :root { --header-h: 72px; --sidebar-w: 100vw; }
   .header { padding: 0 14px; gap: 0; z-index: 1300; }
-  /* Logo: proper size, width auto so it doesn't overflow */
-  .logo-img { height: 42px; width: auto; max-width: 130px; }
+  /* Logo: bigger and clearly visible */
+  .logo-img { height: 56px; width: auto; max-width: 160px; }
   .map-stats { left: 12px; }
   /* Hide desktop filter and lang selector from header — both live in the drawer */
   .header-center { display: none; }
@@ -2924,16 +2949,12 @@ body.sidebar-open { overflow: hidden; }
   /* Hide lang seg from header on mobile — accessible via drawer */
   #lang-seg { display: none; }
   /* Tighten header-right gap */
-  .header-right { gap: 6px; }
-  /* Compact cosmic toggle on mobile */
-  .cosmic-toggle { width: 50px; height: 28px; }
-  .cosmic-toggle .slider { border-radius: 14px; }
-  .cosmic-toggle .toggle-orb { height: 22px; width: 22px; top: 3px; left: 3px; }
-  .cosmic-toggle .toggle:checked + .slider .toggle-orb { left: calc(100% - 25px); }
-  /* Notif toggle smaller */
-  .notif-toggle { width: 32px; height: 32px; }
-  /* Burger same as before */
-  .burger-btn { width: 36px; height: 36px; }
+  .header-right { gap: 8px; }
+  /* Notif toggle size */
+  .notif-toggle { width: 36px; height: 36px; }
+  /* Burger size */
+  .burger-btn { width: 38px; height: 38px; }
+  /* Keep cosmic-toggle default size — don't break its transform math */
   .sidebar {
     top: auto; bottom: 0;
     height: 86dvh;

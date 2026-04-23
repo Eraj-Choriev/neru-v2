@@ -523,10 +523,16 @@ class UI {
     this.burgerBtn?.classList.add('is-open');
     // Sync active filter state
     const active = [...this.mobileFilterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
-    if (active) {
-      this.setActive(this.mobileFilterBtns, active);
-      requestAnimationFrame(() => this.moveIndicator(this.mobileSeg));
-    }
+    if (active) this.setActive(this.mobileFilterBtns, active);
+    // Sync active lang state
+    const currentLang = i18n?.currentLang || document.documentElement.getAttribute('lang') || 'tj';
+    const activeLang = [...this.mobileLangBtns].find(b => b.getAttribute('data-lang') === currentLang);
+    if (activeLang) this.setActive(this.mobileLangBtns, activeLang);
+    // Recalculate indicators after drawer becomes visible
+    requestAnimationFrame(() => {
+      this.moveIndicator(this.mobileSeg);
+      this.moveIndicator(this.mobileLangSeg);
+    });
   }
 
   closeMobileDrawer() {
