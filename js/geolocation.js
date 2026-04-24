@@ -13,9 +13,13 @@ class GeoLocation {
     this.userAccuracy = null;   // metres
     this.userHeading = null;    // degrees (0=N, clockwise) — null when unknown
     this.userSpeed = null;      // m/s — null when unknown
+    this.compassHeading = null; // degrees from device magnetometer (updates while standing still)
     this.isLocated = false;
     this.watchId = null;
-    this._watchers = new Set(); // callbacks invoked on every position update
+    this._watchers = new Set();         // callbacks for position updates
+    this._headingWatchers = new Set();  // callbacks for heading-only updates (from compass)
+    this._compassStarted = false;
+    this._compassHandler = null;
   }
   async getUserLocation({ force = false, maxAgeMs = 30000, highAccuracy = false } = {}) {
     const now = Date.now();
@@ -74,16 +78,21 @@ class GeoLocation {
         this.userLat = pos.coords.latitude;
         this.userLng = pos.coords.longitude;
         this.userAccuracy = pos.coords.accuracy;
-        this.userHeading = Number.isFinite(pos.coords.heading) ? pos.coords.heading : this.userHeading;
+        // Only fall back to GPS heading if no compass reading is available
+        // (GPS heading requires motion and is NaN when the user is standing still).
+        if (Number.isFinite(pos.coords.heading)) this.userHeading = pos.coords.heading;
         this.userSpeed = Number.isFinite(pos.coords.speed) ? pos.coords.speed : null;
         this.isLocated = true;
         this._lastLocatedAt = Date.now();
+
+        // Prefer the live compass heading over a stale GPS heading
+        const heading = this.compassHeading != null ? this.compassHeading : this.userHeading;
 
         const snapshot = {
           lat: this.userLat,
           lng: this.userLng,
           accuracy: this.userAccuracy,
-          heading: this.userHeading,
+          heading,
           speed: this.userSpeed,
           timestamp: pos.timestamp,
         };
@@ -111,6 +120,81 @@ class GeoLocation {
   }
 
   isWatching() { return this.watchId !== null; }
+
+  /**
+   * Subscribe to compass heading updates (fires on every orientation sensor event).
+   * Updates in real time while the user stands still and rotates.
+   */
+  onHeadingChange(callback) {
+    if (typeof callback === 'function') this._headingWatchers.add(callback);
+  }
+
+  /**
+   * Start listening to device orientation (magnetometer/compass) events.
+   * On iOS Safari requires prior DeviceOrientationEvent.requestPermission() —
+   * call enableCompass() from a user gesture to prompt for access.
+   */
+  async enableCompass() {
+    if (this._compassStarted) return true;
+
+    // iOS 13+ requires explicit permission (must be from a user gesture)
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined'
+          && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') return false;
+      }
+    } catch (_) {
+      // Not iOS 13+ — no permission prompt required
+    }
+
+    const handler = (event) => {
+      let heading = null;
+
+      // iOS exposes a pre-computed, screen-adjusted compass bearing
+      if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)) {
+        heading = event.webkitCompassHeading;
+      } else if (event.absolute === true && typeof event.alpha === 'number' && event.alpha !== null) {
+        // Android/Chrome: alpha is counter-clockwise from magnetic North when device is flat.
+        heading = (360 - event.alpha) % 360;
+      } else {
+        return; // Relative-only orientation data is useless for a compass — ignore.
+      }
+
+      if (!Number.isFinite(heading)) return;
+
+      // Account for screen orientation (landscape rotates the device frame)
+      const screenAngle = (screen.orientation && typeof screen.orientation.angle === 'number')
+        ? screen.orientation.angle
+        : (typeof window.orientation === 'number' ? window.orientation : 0);
+      heading = (heading + screenAngle + 360) % 360;
+
+      this.compassHeading = heading;
+      this.userHeading = heading;
+
+      this._headingWatchers.forEach((cb) => { try { cb(heading); } catch (_) {} });
+    };
+
+    this._compassHandler = handler;
+    this._compassStarted = true;
+
+    // Prefer the absolute variant (stable on Android/Chrome/Firefox)
+    if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', handler, { passive: true });
+    }
+    // iOS and fallback path
+    window.addEventListener('deviceorientation', handler, { passive: true });
+
+    return true;
+  }
+
+  stopCompass() {
+    if (!this._compassStarted || !this._compassHandler) return;
+    try { window.removeEventListener('deviceorientationabsolute', this._compassHandler); } catch (_) {}
+    try { window.removeEventListener('deviceorientation', this._compassHandler); } catch (_) {}
+    this._compassStarted = false;
+    this._compassHandler = null;
+  }
 
   /**
    * Haversine formula — distance between two points on Earth
