@@ -3,10 +3,26 @@
 // ============================================
 
 (function () {
-  // Register service worker (HTTPS or localhost only)
+  // Register service worker (HTTPS or localhost only) + auto-reload on update
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        if (!reg) return;
+        // Proactively check for a new SW when the tab regains focus
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) reg.update().catch(() => {});
+        });
+        // Check again whenever we come back online
+        window.addEventListener('online', () => reg.update().catch(() => {}));
+      }).catch(() => {});
+
+      // When a new SW takes control, reload once so the page runs fresh code
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloading) return;
+        reloading = true;
+        window.location.reload();
+      });
     });
   }
 
