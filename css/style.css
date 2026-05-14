@@ -861,7 +861,9 @@ body {
   transform-origin: center;
   transform: translate(-50%, -50%);
   z-index: 2;
-  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms;
+  /* Short transition so turning feels instant while still smoothing sensor noise */
+  transition: transform 140ms linear, opacity 200ms ease;
+  will-change: transform;
   pointer-events: none;
   background: conic-gradient(
     from -30deg,
@@ -873,6 +875,104 @@ body {
   -webkit-mask: radial-gradient(circle, transparent 0%, transparent 18%, #000 20%, #000 100%);
           mask: radial-gradient(circle, transparent 0%, transparent 18%, #000 20%, #000 100%);
   filter: blur(0.5px);
+}
+
+/* ===== Compass Indicator ===== */
+.compass-indicator {
+  position: absolute;
+  bottom: 78px;
+  left: 16px;
+  width: 48px;
+  height: 48px;
+  z-index: 405;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.7) translateY(6px);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.compass-indicator.is-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.compass-dial {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(16, 22, 34, 0.95) 0%, rgba(8, 12, 20, 0.9) 70%);
+  border: 1px solid rgba(74, 208, 255, 0.35);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    inset 0 0 10px rgba(74, 208, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Shortest-path rotation is handled in JS via accumulated transform */
+  transition: transform 140ms linear;
+  will-change: transform;
+}
+
+.compass-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-family: var(--f-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1;
+  user-select: none;
+}
+.compass-mark--n { transform: translate(-50%, -19px); color: #ff6b6b; text-shadow: 0 0 6px rgba(255, 107, 107, 0.6); }
+.compass-mark--e { transform: translate(13px, -50%); }
+.compass-mark--s { transform: translate(-50%, 11px); }
+.compass-mark--w { transform: translate(-22px, -50%); }
+
+/* Red needle on the dial — rotates with the dial to always point to true north */
+.compass-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  margin-top: -18px;
+  background: linear-gradient(180deg, #ff6b6b 0%, rgba(255, 107, 107, 0.2) 100%);
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.5);
+}
+
+/* Fixed triangle at the top of the widget — shows the user's facing direction */
+.compass-pointer {
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid #7de1ff;
+  filter: drop-shadow(0 0 4px rgba(125, 225, 255, 0.6));
+}
+
+:root[data-theme="light"] .compass-dial {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95) 0%, rgba(240, 245, 252, 0.88) 70%);
+  border-color: rgba(43, 154, 213, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), inset 0 0 10px rgba(43, 154, 213, 0.08);
+}
+:root[data-theme="light"] .compass-mark { color: rgba(10, 20, 35, 0.75); }
+:root[data-theme="light"] .compass-mark--n { color: #e23b3b; text-shadow: 0 0 4px rgba(226, 59, 59, 0.35); }
+
+@media (max-width: 768px) {
+  .compass-indicator { bottom: 70px; left: 14px; width: 44px; height: 44px; }
+  .compass-mark { font-size: 8.5px; }
+  .compass-mark--n { transform: translate(-50%, -17px); }
+  .compass-mark--e { transform: translate(11px, -50%); }
+  .compass-mark--s { transform: translate(-50%, 10px); }
+  .compass-mark--w { transform: translate(-20px, -50%); }
+  .compass-needle { height: 16px; margin-top: -16px; }
 }
 
 @keyframes userRing {

@@ -13,6 +13,8 @@ class StationMap {
     this.highlightCircle = null;
     this.tileLayer = null;
     this._followUser = false; // auto-pan map to follow user when true
+    this._cumHeading = null;  // accumulated rotation (for shortest-path CSS transition)
+    this._lastHeading = null;
   }
 
   _buildTileLayer(theme) {
@@ -398,21 +400,50 @@ class StationMap {
       }
     }
 
-    // Heading cone
-    const coneEl = this.userMarker.getElement()?.querySelector('.user-marker-cone');
-    if (coneEl) {
-      if (heading != null && Number.isFinite(heading)) {
-        coneEl.style.opacity = '1';
-        coneEl.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
-      } else {
-        coneEl.style.opacity = '0';
-      }
-    }
+    // Heading cone (prefer shortest-path rotation)
+    this._applyHeading(heading);
 
     // Follow mode — pan map to keep user centred
     if (this._followUser && this.map) {
       this.map.panTo([lat, lng], { animate: true, duration: 0.9, easeLinearity: 0.4 });
     }
+  }
+
+  /**
+   * Update just the user-marker heading (cone) without touching the position.
+   * Call this from compass (device orientation) events — they fire 60Hz
+   * while the user rotates in place and GPS stays still.
+   */
+  setUserHeading(heading) {
+    this._applyHeading(heading);
+    // Also notify any external compass UI
+    window.dispatchEvent(new CustomEvent('userHeadingChange', { detail: { heading } }));
+  }
+
+  _applyHeading(heading) {
+    const coneEl = this.userMarker?.getElement()?.querySelector('.user-marker-cone');
+    if (!coneEl) return;
+
+    if (heading == null || !Number.isFinite(heading)) {
+      coneEl.style.opacity = '0';
+      return;
+    }
+
+    // Accumulate deltas so CSS transitions always rotate the shortest way
+    // (e.g. 350° → 10° should animate +20°, not -340°).
+    const wrapped = ((heading % 360) + 360) % 360;
+    if (this._cumHeading == null) {
+      this._cumHeading = wrapped;
+    } else {
+      let delta = wrapped - (((this._lastHeading % 360) + 360) % 360);
+      if (delta > 180) delta -= 360;
+      else if (delta < -180) delta += 360;
+      this._cumHeading += delta;
+    }
+    this._lastHeading = wrapped;
+
+    coneEl.style.opacity = '1';
+    coneEl.style.transform = `translate(-50%, -50%) rotate(${this._cumHeading}deg)`;
   }
 
   setFollowUser(on) { this._followUser = !!on; }

@@ -42,6 +42,11 @@ class App {
         }
       }
 
+      // Try to enable the device compass — works immediately on Android/desktop.
+      // iOS requires a user gesture; the My Location button retries enabling it.
+      geoLocation.enableCompass().catch(() => {});
+      this.bindCompass();
+
       // Seed notification states now that location and stations are both available
       if (typeof stationNotifications !== 'undefined' && geoLocation.isLocated && !stationNotifications.seeded) {
         const stations = stationAPI.getStations();
@@ -167,6 +172,9 @@ class App {
     const btn = document.getElementById('loc-btn');
     if (!btn || btn.classList.contains('is-locating')) return;
 
+    // iOS needs compass permission from a user gesture — this is one
+    geoLocation.enableCompass().catch(() => {});
+
     // If already tracking and located, a second tap toggles follow-mode on/off
     if (btn.classList.contains('is-located') && stationMap.map) {
       if (stationMap.isFollowingUser()) {
@@ -213,6 +221,49 @@ class App {
         : i18n.t('locationUnavailable');
       ui.showToast(msg, 'error', 4000);
     }
+  }
+
+  /**
+   * Route compass (magnetometer) updates to the map cone and the on-screen
+   * compass indicator. Fires 60Hz while the user rotates in place — this is
+   * what makes turning west reflect on the map without needing to move.
+   */
+  bindCompass() {
+    if (this._compassBound) return;
+    this._compassBound = true;
+
+    const indicator = document.getElementById('compass-indicator');
+    const dial = document.getElementById('compass-dial');
+
+    // Track accumulated rotation so CSS transitions take the shortest path
+    let cum = null;
+    let last = null;
+
+    geoLocation.onHeadingChange((heading) => {
+      if (!Number.isFinite(heading)) return;
+
+      // Reveal the compass widget the first time we have a real reading
+      if (indicator && !indicator.classList.contains('is-visible')) {
+        indicator.classList.add('is-visible');
+        indicator.setAttribute('aria-hidden', 'false');
+      }
+
+      // Rotate the dial by -heading so "N" always points to true North
+      const wrapped = ((heading % 360) + 360) % 360;
+      if (cum == null) {
+        cum = wrapped;
+      } else {
+        let delta = wrapped - (((last % 360) + 360) % 360);
+        if (delta > 180) delta -= 360;
+        else if (delta < -180) delta += 360;
+        cum += delta;
+      }
+      last = wrapped;
+      if (dial) dial.style.transform = `rotate(${-cum}deg)`;
+
+      // Drive the map user-marker cone in lockstep
+      stationMap.setUserHeading(heading);
+    });
   }
 
   /**
