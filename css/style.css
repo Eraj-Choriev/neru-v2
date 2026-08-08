@@ -4105,11 +4105,14 @@ body.sidebar-open { overflow: hidden; }
 .loc-consent {
   position: fixed;
   inset: 0;
+  height: 100dvh;                /* short in-app browsers (Telegram) size correctly */
   z-index: 2200;                 /* above loading-overlay (2000) */
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+  overflow-y: auto;              /* if the card is taller than a short screen, scroll */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: calc(20px + var(--safe-top)) 18px calc(20px + var(--safe-bottom));
   background:
     radial-gradient(720px 480px at 50% 34%, rgba(123, 255, 190, 0.06), transparent 68%),
     rgba(4, 6, 12, 0.86);
@@ -4124,6 +4127,7 @@ body.sidebar-open { overflow: hidden; }
 .loc-consent-card {
   position: relative;
   width: min(94vw, 396px);
+  margin: auto;                  /* centers when it fits, scrolls to reach ends when tall */
   padding: 30px 26px 22px;
   text-align: center;
   border-radius: var(--r-xl);
@@ -4386,4 +4390,23 @@ body.sidebar-open { overflow: hidden; }
   .loc-radar-sweep { opacity: 0.5; }
   .loc-radar-blip.b1, .loc-radar-blip.b2 { opacity: 0.8; }
   .loc-consent.is-active .loc-consent-card { animation: none; opacity: 1; transform: none; }
+}
+
+/* ---- Short viewports (in-app browsers like Telegram): compact so the
+   buttons always stay reachable without scrolling ---- */
+@media (max-height: 720px) {
+  .loc-radar { --radar: 104px; margin: 2px auto 16px; }
+  .loc-consent-card { padding: 24px 22px 18px; }
+  .loc-consent-title { font-size: clamp(21px, 5.6vw, 25px); margin: 12px 0 8px; }
+  .loc-consent-body { margin-bottom: 18px; }
+  .loc-consent-btn { height: 48px; }
+}
+@media (max-height: 560px) {
+  .loc-radar { --radar: 78px; margin-bottom: 12px; }
+  .loc-consent-tag { font-size: 10px; padding: 4px 10px 4px 8px; }
+  .loc-consent-title { margin: 10px 0 6px; }
+  .loc-consent-body { font-size: 13.5px; line-height: 1.45; margin-bottom: 14px; }
+  .loc-consent-actions { gap: 8px; }
+  .loc-consent-btn { height: 46px; }
+  .loc-consent-note { margin-top: 12px; }
 }

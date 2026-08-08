@@ -1,10 +1,14 @@
 // NŪR — Service Worker
 // Strategy:
-//  - App shell (HTML/CSS/JS/logo): cache-first, updated in background
-//  - Map tiles + API: network-first (always fresh when online)
-//  - Everything else: network-first with cache fallback
+//  - HTML / CSS / JS: network-first with cache fallback. Because these files
+//    are NOT fingerprinted (plain /css/style.css, /js/app.js), a cache-first
+//    strategy could serve a stale stylesheet against fresh HTML — which broke
+//    the layout on returning mobile clients. Network-first keeps the shell in
+//    lockstep online, and still works offline via the cache fallback.
+//  - Images / fonts: cache-first (effectively immutable).
+//  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v2';
+const CACHE = 'nur-shell-v3';
 const SHELL = [
   '/',
   '/index.html',
@@ -56,27 +60,31 @@ self.addEventListener('fetch', (event) => {
 
   if (networkOnly) return;
 
-  // App shell: cache-first
-  if (url.origin === location.origin) {
+  const cacheable = (res) =>
+    res && res.status === 200 && (res.type === 'basic' || res.type === 'cors');
+
+  // Images / fonts are effectively immutable → cache-first
+  if (/\.(png|jpe?g|svg|webp|ico|gif|woff2?)$/i.test(url.pathname)) {
     event.respondWith(
-      caches.match(req).then((cached) => {
-        const fetchPromise = fetch(req).then((res) => {
-          if (res && res.status === 200) {
+      caches.match(req).then((cached) =>
+        cached ||
+        fetch(req).then((res) => {
+          if (cacheable(res)) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }
           return res;
-        }).catch(() => cached);
-        return cached || fetchPromise;
-      })
+        })
+      )
     );
     return;
   }
 
-  // Cross-origin (fonts, leaflet CDN): network, fall back to cache
+  // HTML / CSS / JS (and font CSS): network-first, cache fallback offline.
+  // Guarantees online users always get matching, current shell files.
   event.respondWith(
     fetch(req).then((res) => {
-      if (res && res.status === 200 && res.type === 'basic') {
+      if (cacheable(res)) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
       }
