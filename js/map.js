@@ -300,7 +300,7 @@ class StationMap {
       }
 
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
-      if (c.isCharging || level > 0) {
+      if (c.isCharging || c.isStarting || level > 0) {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
         // Keep this to a short, single-line value — it shares a line with the
@@ -315,7 +315,7 @@ class StationMap {
             <span class="conn-id">#${escHtml(c.id)}</span>
             <div class="conn-body">
               <div class="conn-line">
-                <span class="conn-state conn-state--charging">${escHtml(i18n.t('charging'))}</span>
+                <span class="conn-state conn-state--charging">${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
                 ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
               <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
@@ -351,7 +351,7 @@ class StationMap {
         <div class="chip-row">
           <div class="chip chip--power">
             <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
-            <span class="chip-value">${escHtml(station.capacity || '—')}</span>
+            <span class="chip-value">${station.capacityKw ? escHtml(String(station.capacityKw)) + '<span class="unit"> ' + escHtml(i18n.t('kwUnit')) + '</span>' : '—'}</span>
           </div>
           <div class="chip chip--tariff">
             <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h3a2 2 0 0 1 0 4h-3v4"/><path d="M9.5 12.5h3.5"/></svg></span>

@@ -26,7 +26,7 @@ class StationFinder {
       }
 
       // Capacity bonus
-      const capacityBonus = station.capacityWatts >= 120 ? 1.2 : 1.0;
+      const capacityBonus = station.capacityKw >= 100 ? 1.2 : 1.0;
 
       // Final score (avoid division by zero)
       const distanceFactor = distance > 0.01 ? (1 / distance) : 100;

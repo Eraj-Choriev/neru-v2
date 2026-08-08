@@ -414,7 +414,7 @@ class UI {
       }
 
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
-      if (c.isCharging || level > 0) {
+      if (c.isCharging || c.isStarting || level > 0) {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
         const freeIn = eta
@@ -427,7 +427,7 @@ class UI {
             <span class="conn-id">#${esc(c.id)}</span>
             <div class="conn-body">
               <div class="conn-line">
-                <span class="conn-state conn-state--charging">${esc(i18n.t('charging'))}</span>
+                <span class="conn-state conn-state--charging">${esc(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
                 ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
               <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
@@ -450,7 +450,7 @@ class UI {
     const powerChip = station.capacity
       ? `<span class="power-chip ${isFast ? 'is-fast' : ''}">
            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-           ${esc(station.capacity)}
+           ${esc(String(station.capacityKw))} ${esc(i18n.t('kwUnit'))}
          </span>`
       : '';
 
@@ -625,10 +625,12 @@ class UI {
     switch (this.currentFilter) {
       case 'available':
         return stations.filter((s) => s.hasAvailable);
+      // "Fast" is a class of charger, not one exact rating: the feed also
+      // carries 118/122/123 kW units that belong with the 120s.
       case '120w':
-        return stations.filter((s) => s.capacityWatts >= 120);
+        return stations.filter((s) => s.capacityKw >= 100);
       case '60w':
-        return stations.filter((s) => s.capacityWatts > 0 && s.capacityWatts < 120);
+        return stations.filter((s) => s.capacityKw > 0 && s.capacityKw < 100);
       default:
         return stations;
     }

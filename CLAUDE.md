@@ -21,7 +21,7 @@ There are no build steps, no tests, and no lint configuration.
 All modules are loaded as plain `<script>` tags in `index.html`. **Load order matters** — each module depends on the ones before it. Leaflet + `leaflet.markercluster` load first from CDN, then the local modules (`index.html:297–305`):
 
 ```
-i18n → api → geolocation → finder → map → ui → notifications → router → pwa → app
+i18n → api → geolocation → finder → map → ui → notifications → router → analytics → pwa → app
 ```
 
 Each module exposes a single global singleton:
@@ -36,6 +36,7 @@ Each module exposes a single global singleton:
 | `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar, toast, theme toggle, route panel; also exports `parseSchedule()` and `walkingEta()` |
 | `js/notifications.js` | `stationNotifications` | Web Notifications API; fires on busy→free transitions within radius |
 | `js/router.js` | `stationRouter` | In-app driving routes via OSRM (`router.project-osrm.org`); `routeTo(station)` draws route + panel, `refreshFromCurrent()` live re-routes as the user moves |
+| `js/analytics.js` | `stationAnalytics` | Local-only usage history: folds every poll into `localStorage` (`nur-analytics-v1`), derives trend/hour-of-day/per-station availability, and renders the Analytics modal |
 | `js/pwa.js` | *(IIFE, no singleton)* | Registers `/sw.js`; drives the `#install-btn` install flow with per-browser hints (handles the iOS-Safari-only PWA install caveat) |
 | `js/app.js` | `app` | Boot controller; wires all modules together; 30s station auto-refresh; ~12s live re-route while a route is active |
 
@@ -73,6 +74,9 @@ After normalization, every station has:
 - `freeConnectors`, `totalConnectors`, `hasAvailable`
 - `capacityWatts` (parsed int), `capacity` (display string e.g. `"120kW"`)
 - `tariff`, `tariffUnit`, `schedule`, `zoneName`
+- Connector `status` has **three** values in the feed: `Available`, `Charging`, `Start charging` — hence `isAvailable` / `isCharging` / `isStarting`. Treating `Start charging` as plain "occupied" hides the longest wait.
+- `connector_capacity` is reported as e.g. `"120W"` but the value is **kilowatts**; use `capacityKw` and render it with the `kwUnit` key. `capacityWatts` is a legacy alias holding the same kW number.
+- The "fast" filter uses `capacityKw >= 100`, because the feed also carries 118/122/123 kW units that belong with the 120s.
 
 ## Pages
 

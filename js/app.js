@@ -73,6 +73,12 @@ class App {
       ui.updateStats(stats);
       ui.updateLastRefresh(stationAPI.lastFetch);
 
+      // Fold this poll into the local history, then repaint the panel if open.
+      if (typeof stationAnalytics !== 'undefined') {
+        stationAnalytics.record(stations);
+        stationAnalytics.refresh();
+      }
+
       // Handle push notifications
       if (typeof stationNotifications !== 'undefined' && geoLocation.isLocated) {
         const pos = geoLocation.getPosition();
@@ -111,6 +117,21 @@ class App {
 
     // In-app route request (from popup or sidebar card)
     window.addEventListener('routeRequest', (e) => this.handleRouteRequest(e.detail));
+
+    // Analytics panel
+    document.getElementById('an-trigger')?.addEventListener('click', () => stationAnalytics.open());
+    document.getElementById('md-analytics')?.addEventListener('click', () => {
+      ui.toggleMobileDrawer();
+      stationAnalytics.open();
+    });
+    document.getElementById('an-close')?.addEventListener('click', () => stationAnalytics.close());
+    document.getElementById('an-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'an-modal') stationAnalytics.close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && stationAnalytics.isOpen()) stationAnalytics.close();
+    });
+    window.addEventListener('langchange', () => stationAnalytics.refresh());
 
     // Apply a refresh that was held back while a station card was open
     window.addEventListener('popupClosed', () => {

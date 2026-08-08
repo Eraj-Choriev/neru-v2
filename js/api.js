@@ -80,14 +80,21 @@ class StationAPI {
   }
 
   normalizeStation(raw) {
-    const connectors = (raw.connectors_info || []).map(c => ({
-      id: c.connector_id,
-      status: c.status || 'Unknown',
-      chargeLevel: parseFloat(c.charging_level) || 0,
-      color: c.color || null,
-      isAvailable: c.status?.toLowerCase() === 'available',
-      isCharging: c.status?.toLowerCase() === 'charging',
-    }));
+    // The API reports three states, not two: "Start charging" is a session
+    // that has just begun, which means the longest wait of all — treating it
+    // as plain "occupied" hid that from anyone looking for a free plug.
+    const connectors = (raw.connectors_info || []).map(c => {
+      const status = (c.status || '').trim().toLowerCase();
+      return {
+        id: c.connector_id,
+        status: c.status || 'Unknown',
+        chargeLevel: parseFloat(c.charging_level) || 0,
+        color: c.color || null,
+        isAvailable: status === 'available',
+        isCharging: status === 'charging',
+        isStarting: status === 'start charging',
+      };
+    });
 
     const freeConnectors = connectors.filter(c => c.isAvailable).length;
     const totalConnectors = connectors.length;
@@ -103,8 +110,12 @@ class StationAPI {
       schedule: raw.work_schedule || '',
       tariff: parseFloat(raw.TariffValue) || 0,
       tariffUnit: raw.tarif || '',
+      // The feed writes capacity as "120W", but a 120 W charger would take
+      // weeks — these are kilowatts, and the rest of the app (ETA maths)
+      // already treats the number as kW. Only the label was wrong.
       capacity: raw.connector_capacity || '',
-      capacityWatts: parseInt(raw.connector_capacity) || 0,
+      capacityKw: parseInt(raw.connector_capacity) || 0,
+      capacityWatts: parseInt(raw.connector_capacity) || 0, // legacy alias, same kW value
       city: raw.city || '',
       connectors,
       freeConnectors,
