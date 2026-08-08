@@ -22,6 +22,27 @@
   --glass-strong: rgba(10, 13, 22, 0.82);
   --glass-light: rgba(28, 34, 48, 0.45);
 
+  /* ---- Material system (Apple-style translucency) ----
+     Three tiers, like thin/regular/thick materials. What makes these read as
+     glass rather than a translucent box is the pairing of a saturation boost
+     with a specular top edge and hairline borders — set them together. */
+  --mat-thin:    rgba(255, 255, 255, 0.055);
+  --mat-regular: rgba(17, 22, 33, 0.58);
+  --mat-thick:   rgba(9, 12, 20, 0.68);
+
+  --mat-blur-thin:  blur(20px) saturate(180%);
+  --mat-blur-reg:   blur(34px) saturate(190%);
+  --mat-blur-thick: blur(48px) saturate(200%);
+
+  /* Hairline borders — 0.5px reads as a true hairline on retina */
+  --hair: rgba(255, 255, 255, 0.10);
+  --hair-strong: rgba(255, 255, 255, 0.16);
+
+  /* Specular edges: bright top highlight, soft inner containment */
+  --edge-top: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  --edge-ring: inset 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  --mat-shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.62);
+
   /* Accents */
   --volt-400: #9cffcf;
   --volt-500: #7bffbe;      /* primary mint */
@@ -944,12 +965,12 @@ body {
    POPUP (on-map card)
    ============================================================ */
 .neru-popup .leaflet-popup-content-wrapper {
-  background: var(--glass-strong);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-3);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: 0.5px solid var(--hair-strong);
+  border-radius: 22px;
+  box-shadow: var(--mat-shadow), var(--edge-top), var(--edge-ring);
   color: var(--text-1);
   padding: 0;
   overflow: hidden;
@@ -960,36 +981,60 @@ body {
   font-family: var(--f-body);
   font-size: 13px;
   line-height: 1.5;
-  width: 300px !important;
+  width: 306px !important;
 }
 
 .neru-popup .leaflet-popup-tip {
-  background: var(--glass-strong);
-  border: 1px solid var(--line-strong);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: 0.5px solid var(--hair-strong);
   border-top: none;
   border-left: none;
 }
 
+/* Close control: a glass disc that sits in its own reserved gutter, so a long
+   station name can never run underneath it. */
 .neru-popup .leaflet-popup-close-button {
-  color: var(--text-3);
-  font-size: 18px;
-  top: 10px !important;
+  display: grid !important;
+  place-items: center;
+  top: 12px !important;
   right: 12px !important;
-  width: 22px;
-  height: 22px;
-  line-height: 22px !important;
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  font-size: 0 !important;
+  color: transparent !important;
   border-radius: 50%;
-  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--edge-ring);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
+
+/* Draw our own glyph so it stays optically centred at any font size */
+.neru-popup .leaflet-popup-close-button::before,
+.neru-popup .leaflet-popup-close-button::after {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--text-2);
+  transition: background var(--t-fast) var(--ease-out);
+}
+.neru-popup .leaflet-popup-close-button::before { transform: rotate(45deg); }
+.neru-popup .leaflet-popup-close-button::after  { transform: rotate(-45deg); }
 
 .neru-popup .leaflet-popup-close-button:hover {
-  color: var(--volt-500);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.06);
 }
+.neru-popup .leaflet-popup-close-button:hover::before,
+.neru-popup .leaflet-popup-close-button:hover::after { background: var(--text-1); }
 
 .popup-content {
-  padding: 16px 16px 14px;
-  animation: popupIn 320ms var(--ease-spring);
+  padding: 15px 16px 14px;
+  animation: popupIn 340ms var(--ease-spring);
 }
 
 @keyframes popupIn {
@@ -997,23 +1042,17 @@ body {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* The head reserves a right gutter the width of the close disc. */
 .popup-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.popup-head-text {
-  flex: 1;
-  min-width: 0;
+  padding-right: 34px;
+  margin-bottom: 11px;
 }
 
 .popup-status-row {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 5px;
 }
 
 .popup-dot {
@@ -1040,46 +1079,45 @@ body {
 
 .popup-dot-label {
   font-family: var(--f-mono);
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-3);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.popup-logo-sm {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  mix-blend-mode: screen;
-  flex-shrink: 0;
-  opacity: 1;
-  margin-top: 0;
-}
-
+/* Long district names are the norm here, so the title wraps to three lines
+   rather than truncating the one thing that identifies the station. */
 .popup-title {
   font-family: var(--f-display);
-  font-size: 15.5px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.22;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
   color: var(--text-1);
-  margin-right: 22px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .popup-address {
-  font-size: 11px;
+  font-size: 11.5px;
+  line-height: 1.4;
   color: var(--text-4);
-  margin-top: 2px;
-  white-space: nowrap;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .popup-divider {
   height: 1px;
-  background: var(--line);
-  margin: 0 0 10px;
+  background: var(--hair);
+  margin: 0 0 11px;
 }
 
 .popup-schedule-row {
@@ -1212,170 +1250,157 @@ body {
 .conn-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 10px 0 14px;
+  gap: 6px;
+  margin: 12px 0 14px;
 }
 
-.conn-row {
+/* One connector = one glass row. State is carried by a coloured left rail so
+   the column can be scanned without reading a single word. */
+.conn {
+  position: relative;
   display: grid;
-  grid-template-columns: 26px 1fr 46px;
+  grid-template-columns: 28px 1fr;
   align-items: center;
   gap: 10px;
-}
-
-.conn-label {
-  font-family: var(--f-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-3);
-  letter-spacing: 0.04em;
-}
-
-.conn-track {
-  position: relative;
-  height: 6px;
-  background: var(--ink-800);
-  border: 1px solid var(--line);
-  border-radius: var(--r-pill);
+  padding: 9px 12px 9px 13px;
+  border-radius: 13px;
+  background: var(--mat-thin);
+  box-shadow: var(--edge-ring);
   overflow: hidden;
 }
 
-/* Bar fills the whole track and shows a flowing energy wave */
-.conn-fill {
+.conn::before {
+  content: "";
   position: absolute;
-  top: 0; bottom: 0; left: 0;
-  width: 100%;
-  border-radius: inherit;
-  transform: scaleX(0);
-  transform-origin: left center;
-  background-color: var(--volt-500);
-  background-image: linear-gradient(
-    90deg,
-    var(--volt-700) 0%,
-    var(--volt-400) 35%,
-    #ffffff 50%,
-    var(--volt-400) 65%,
-    var(--volt-700) 100%
-  );
-  background-size: 250% 100%;
-  background-repeat: no-repeat;
-  background-position: 100% 0;
-  box-shadow: 0 0 12px var(--volt-glow);
-  will-change: transform, background-position, filter;
-  animation:
-    barFillIn 900ms 80ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    barFlow 2.2s 900ms linear infinite,
-    barGlow 2.4s 900ms ease-in-out infinite;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--text-4);
 }
+.conn--free::before    { background: var(--volt-500); box-shadow: 0 0 12px var(--volt-glow); }
+.conn--charging::before{ background: var(--amber-400); }
+.conn--busy::before    { background: var(--coral-400); }
 
-@keyframes barFillIn {
-  0%   { transform: scaleX(0); }
-  100% { transform: scaleX(1); }
-}
+.conn--free { background: rgba(123, 255, 190, 0.07); }
 
-@keyframes barFlow {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -150% 0; }
-}
+/* On a charging row the body is three lines tall, so the plug number lines
+   up with the state label rather than floating in the vertical middle. */
+.conn--charging { align-items: start; }
+.conn--charging .conn-id { padding-top: 1px; }
 
-@keyframes barGlow {
-  0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.18); }
-}
-
-/* Tone variants — swap palette, keep the flow */
-.conn-fill.tone-high {
-  background-image: linear-gradient(90deg, #f0a030 0%, var(--amber-400) 35%, #ffffff 50%, var(--amber-400) 65%, #f0a030 100%);
-  box-shadow: 0 0 12px rgba(255, 211, 122, 0.45);
-}
-.conn-fill.tone-mid {
-  background-image: linear-gradient(90deg, #d95b0e 0%, #f97316 35%, #ffe0c4 50%, #f97316 65%, #d95b0e 100%);
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
-}
-.conn-fill.tone-low {
-  background-image: linear-gradient(90deg, #c94444 0%, var(--coral-500) 35%, #ffd5d5 50%, var(--coral-500) 65%, #c94444 100%);
-  box-shadow: 0 0 12px rgba(255, 107, 107, 0.4);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .conn-fill { animation: barFillIn 400ms ease-out forwards; background-position: 50% 0; }
-}
-
-.conn-val {
-  font-family: var(--f-mono);
-  font-size: 11.5px;
-  font-weight: 600;
-  text-align: right;
-  color: var(--text-3);
-  font-feature-settings: 'tnum' on;
-  letter-spacing: -0.01em;
-}
-
-.conn-val.free { color: var(--volt-500); }
-.conn-val.busy { color: var(--amber-400); }
-
-.conn-badge {
-  grid-column: 2 / 4;
-  justify-self: start;
+.conn-id {
   font-family: var(--f-mono);
   font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--r-pill);
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--text-4);
+  letter-spacing: 0.02em;
 }
 
-.badge-free {
+.conn-state {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  font-family: var(--f-body);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
   color: var(--volt-500);
-  background: rgba(123, 255, 190, 0.1);
-  border: 1px solid rgba(123, 255, 190, 0.4);
-  font-size: 11.5px;
-  font-weight: 700;
 }
+.conn-state--charging { color: var(--amber-400); }
+.conn-state--busy     { color: var(--coral-400); }
 
-/* Pulsing live dot inside the free badge */
-.badge-free-dot {
-  display: inline-block;
+/* Live pip on a free connector */
+.conn-pip {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--volt-500);
   flex-shrink: 0;
-  animation: freeDotPulse 2s ease-in-out infinite;
+  animation: connPip 2s var(--ease-io) infinite;
+}
+@keyframes connPip {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.55); }
+  50%      { box-shadow: 0 0 0 5px rgba(123, 255, 190, 0); }
 }
 
-@keyframes freeDotPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.6); transform: scale(1); }
-  50%       { box-shadow: 0 0 0 4px rgba(123, 255, 190, 0);  transform: scale(1.1); }
+.conn-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
-/* Row highlight for free connectors */
-.conn-row--free {
-  background: rgba(123, 255, 190, 0.04);
-  border-radius: var(--r-xs);
-  padding: 2px 4px;
-  margin: 0 -4px;
+/* State on the left, time-to-free on the right — the answer a waiting
+   driver actually needs, given the most emphasis in the row. */
+.conn-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.badge-busy {
-  color: var(--coral-400, #ff6b6b);
-  background: rgba(255, 107, 107, 0.08);
-  border: 1px solid rgba(255, 107, 107, 0.3);
+.conn-line .conn-state { min-width: 0; }
+
+.conn-freein {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+  font-feature-settings: 'tnum' on;
+  white-space: nowrap;
 }
 
-/* Connector-level ETA (spans under the progress bar) */
-.conn-eta {
-  grid-column: 2 / 4;
+/* The meter width is the real charge level, so it always agrees with the
+   number printed beneath it. */
+.conn-meter {
+  position: relative;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.conn-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+  animation: meterIn 640ms var(--ease-out) both;
+}
+
+@keyframes meterIn {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Colour encodes how soon the spot frees up: nearly charged reads as good
+   news for the person waiting. */
+.conn-meter-fill.tone-high {
+  background: linear-gradient(90deg, var(--volt-700), var(--volt-500));
+  box-shadow: 0 0 10px var(--volt-glow);
+}
+.conn-meter-fill.tone-mid {
+  background: linear-gradient(90deg, #f0a030, var(--amber-400));
+  box-shadow: 0 0 10px rgba(255, 211, 122, 0.4);
+}
+.conn-meter-fill.tone-low {
+  background: linear-gradient(90deg, #c94444, var(--coral-500));
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.35);
+}
+
+.conn-sub {
   font-family: var(--f-mono);
   font-size: 10.5px;
   font-weight: 600;
-  color: var(--amber-400);
-  letter-spacing: 0.03em;
-  margin-top: -4px;
-  opacity: 0.85;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+  font-feature-settings: 'tnum' on;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conn-meter-fill { animation-duration: 1ms; }
+  .conn-pip { animation: none; }
 }
 
 /* Station-level wait banner — shown when all connectors are busy */
@@ -2826,31 +2851,17 @@ body.sidebar-open { overflow: hidden; }
 }
 
 /* Connector rows slide in */
-.conn-list .conn-row {
+.conn-list .conn {
   animation: connSlide 380ms var(--ease-spring) both;
 }
-.conn-list .conn-row:nth-child(1) { animation-delay: calc(var(--i, 0) * 60ms + 210ms); }
-.conn-list .conn-row:nth-child(2) { animation-delay: calc(var(--i, 0) * 60ms + 265ms); }
-.conn-list .conn-row:nth-child(3) { animation-delay: calc(var(--i, 0) * 60ms + 320ms); }
-.conn-list .conn-row:nth-child(4) { animation-delay: calc(var(--i, 0) * 60ms + 375ms); }
+.conn-list .conn:nth-child(1) { animation-delay: calc(var(--i, 0) * 60ms + 210ms); }
+.conn-list .conn:nth-child(2) { animation-delay: calc(var(--i, 0) * 60ms + 265ms); }
+.conn-list .conn:nth-child(3) { animation-delay: calc(var(--i, 0) * 60ms + 320ms); }
+.conn-list .conn:nth-child(4) { animation-delay: calc(var(--i, 0) * 60ms + 375ms); }
 
 @keyframes connSlide {
   from { opacity: 0; transform: translateX(-14px); }
   to   { opacity: 1; transform: translateX(0); }
-}
-
-/* Badge pop */
-.conn-badge {
-  animation: badgePop 440ms var(--ease-spring) both;
-}
-.conn-list .conn-row:nth-child(1) .conn-badge { animation-delay: calc(var(--i, 0) * 60ms + 220ms); }
-.conn-list .conn-row:nth-child(2) .conn-badge { animation-delay: calc(var(--i, 0) * 60ms + 275ms); }
-.conn-list .conn-row:nth-child(3) .conn-badge { animation-delay: calc(var(--i, 0) * 60ms + 330ms); }
-
-@keyframes badgePop {
-  0%   { opacity: 0; transform: scale(0.55) translateX(-8px); }
-  65%  { transform: scale(1.06) translateX(0); }
-  100% { opacity: 1; transform: scale(1) translateX(0); }
 }
 
 /* Card actions slide up */
@@ -3262,18 +3273,6 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .chip--power .chip-value { color: var(--volt-700); }
 
 /* ---- Light mode: connector badges ---- */
-:root[data-theme="light"] .badge-free {
-  color: var(--volt-700);
-  background: rgba(14, 213, 143, 0.1);
-  border-color: rgba(14, 213, 143, 0.35);
-}
-:root[data-theme="light"] .badge-free-dot { background: var(--volt-700); }
-:root[data-theme="light"] .conn-row--free { background: rgba(14, 213, 143, 0.05); }
-:root[data-theme="light"] .badge-busy {
-  color: var(--coral-500);
-  background: rgba(217, 56, 56, 0.08);
-  border-color: rgba(217, 56, 56, 0.25);
-}
 
 /* ---- Light mode: popup ---- */
 :root[data-theme="light"] .neru-popup .leaflet-popup-content-wrapper {
@@ -3292,9 +3291,6 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .popup-schedule-time { color: #2a2f40; }
 :root[data-theme="light"] .popup-schedule-icon { color: #8a91a3; }
 :root[data-theme="light"] .popup-divider       { background: rgba(13, 18, 32, 0.1); }
-:root[data-theme="light"] .conn-label  { color: #8a91a3; }
-:root[data-theme="light"] .conn-val    { color: #5e6578; }
-:root[data-theme="light"] .conn-track  { background: #e2e6ef; border-color: rgba(13,18,32,0.1); }
 :root[data-theme="light"] .wait-banner {
   background: rgba(229, 152, 23, 0.08);
   border-color: rgba(229, 152, 23, 0.28);
@@ -4410,3 +4406,185 @@ body.sidebar-open { overflow: hidden; }
   .loc-consent-btn { height: 46px; }
   .loc-consent-note { margin-top: 12px; }
 }
+
+/* ============================================================
+   MATERIAL PASS — Apple-style translucency, applied systematically
+   ------------------------------------------------------------
+   Discipline that keeps this fast: ONE backdrop-filter per surface.
+   Anything nested inside an already-blurred surface (chips, rows,
+   buttons) uses a flat translucent fill instead — re-blurring inside
+   a blurred parent costs GPU time and changes nothing visually.
+   ============================================================ */
+
+/* ---- Layering: a station card outranks the floating install button ---- */
+.leaflet-popup-pane { z-index: 860; }
+
+/* The install prompt yields while a station card or the sidebar is open,
+   so it can never sit on top of the card's close control. */
+.install-btn {
+  transition:
+    transform 220ms var(--ease-spring),
+    opacity 200ms var(--ease-out),
+    visibility 200ms,
+    box-shadow var(--t-base);
+}
+body.has-popup .install-btn,
+body.sidebar-open .install-btn {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.94);
+  pointer-events: none;
+}
+
+/* ---- Focused marker: shows which pin the open card belongs to ---- */
+.marker-focused { z-index: 1200 !important; }
+.marker-focused .marker-inner {
+  transform: rotate(-45deg) scale(1.18);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.55),
+    0 0 0 3px rgba(123, 255, 190, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Header: thick material ---- */
+.header {
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border-bottom: 0.5px solid var(--hair);
+  box-shadow: var(--edge-top), 0 8px 32px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Logo: larger, and the header grows to hold it ---- */
+:root { --header-h: 76px; }
+.logo-img {
+  height: 132px;
+  width: auto;
+  max-width: 190px;
+}
+
+/* ---- Sidebar: regular material instead of a solid panel ---- */
+.sidebar {
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border-left: 0.5px solid var(--hair);
+  box-shadow: -24px 0 60px -24px rgba(0, 0, 0, 0.65), var(--edge-ring);
+}
+
+/* ---- Result cards: glass, no nested blur ---- */
+.card {
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  border-radius: 20px;
+  box-shadow: var(--edge-ring);
+}
+.card:hover {
+  background: rgba(255, 255, 255, 0.085);
+  border-color: var(--hair-strong);
+  box-shadow: var(--edge-ring), 0 14px 34px -16px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Chips: thin fill, flat (they live inside blurred surfaces) ---- */
+.chip {
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  border-radius: var(--r-pill);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.chip:hover { background: rgba(255, 255, 255, 0.10); }
+
+/* ---- Ghost buttons ---- */
+.btn-ghost {
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* ---- Floating controls ---- */
+.loc-btn,
+.leaflet-control-zoom a {
+  background: var(--mat-thick) !important;
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
+  border-color: var(--hair) !important;
+  box-shadow: var(--edge-top), 0 8px 22px -10px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- Route panel, toast, drawer, segmented ---- */
+.route-panel,
+.toast,
+.mobile-drawer {
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: 0.5px solid var(--hair-strong);
+  box-shadow: var(--mat-shadow), var(--edge-top);
+}
+
+.segmented {
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
+  box-shadow: var(--edge-top);
+}
+.seg-indicator { border: 0.5px solid var(--hair-strong); }
+
+/* Segmented is the most-tapped control: promote it once, so the sliding
+   indicator animates on the compositor without repaint. */
+.seg-indicator { will-change: transform, width; }
+
+/* ---- Wait banner + schedule pills, flattened onto their glass parent ---- */
+.wait-banner { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* ============================================================
+   MATERIAL PASS — light theme
+   ============================================================ */
+:root[data-theme="light"] {
+  --mat-thin:    rgba(13, 18, 32, 0.045);
+  --mat-regular: rgba(255, 255, 255, 0.72);
+  --mat-thick:   rgba(255, 255, 255, 0.78);
+  --hair: rgba(13, 18, 32, 0.09);
+  --hair-strong: rgba(13, 18, 32, 0.14);
+  --edge-top: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --edge-ring: inset 0 0 0 0.5px rgba(13, 18, 32, 0.05);
+  --mat-shadow: 0 18px 50px -18px rgba(13, 18, 32, 0.26);
+}
+:root[data-theme="light"] .card:hover { background: rgba(13, 18, 32, 0.06); }
+:root[data-theme="light"] .chip:hover { background: rgba(13, 18, 32, 0.07); }
+:root[data-theme="light"] .btn-ghost:hover { background: rgba(13, 18, 32, 0.08); }
+:root[data-theme="light"] .conn { background: rgba(13, 18, 32, 0.04); }
+:root[data-theme="light"] .conn--free { background: rgba(14, 183, 128, 0.08); }
+:root[data-theme="light"] .conn-meter { background: rgba(13, 18, 32, 0.10); }
+:root[data-theme="light"] .conn-id  { color: #8a91a3; }
+:root[data-theme="light"] .conn-sub { color: #6b7286; }
+:root[data-theme="light"] .conn-freein { color: #0d1220; }
+:root[data-theme="light"] .conn-state { color: var(--volt-700); }
+:root[data-theme="light"] .neru-popup .leaflet-popup-close-button {
+  background: rgba(13, 18, 32, 0.06);
+}
+:root[data-theme="light"] .neru-popup .leaflet-popup-close-button::before,
+:root[data-theme="light"] .neru-popup .leaflet-popup-close-button::after {
+  background: #454c5e;
+}
+
+/* ---- Mobile: fewer heavy blurs, same look ---- */
+@media (max-width: 768px) {
+  :root { --header-h: 66px; }
+  .logo-img { height: 104px; max-width: 150px; }
+  /* Large scrolling surfaces drop to a cheaper blur on phones */
+  .sidebar { backdrop-filter: var(--mat-blur-reg); -webkit-backdrop-filter: var(--mat-blur-reg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-focused .marker-inner { transition: none; }
+}
+
+/* Defensive: the popup no longer carries a logo, but a client running a
+   stale cached script might still emit one. Keep it bounded so a cache
+   mismatch degrades quietly instead of blowing up to natural image size. */
+.popup-logo-sm { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }

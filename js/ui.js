@@ -398,38 +398,49 @@ class UI {
       }
     }
 
+    // Same connector language as the map card, so a station reads identically
+    // wherever the user meets it.
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
         return `
-          <div class="conn-row conn-row--free">
-            <span class="conn-label">#${esc(c.id)}</span>
-            <span class="conn-badge badge-free">
-              <span class="badge-free-dot" aria-hidden="true"></span>
+          <div class="conn conn--free">
+            <span class="conn-id">#${esc(c.id)}</span>
+            <span class="conn-state">
+              <span class="conn-pip" aria-hidden="true"></span>
               ${esc(i18n.t('available'))}
             </span>
           </div>`;
       }
+
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
       if (c.isCharging || level > 0) {
-        const tone = level > 80 ? 'tone-high' : level > 40 ? 'tone-mid' : 'tone-low';
+        const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
-        const etaHtml = eta
-          ? `<span class="conn-eta">~${esc(eta.val)} ${esc(i18n.t(eta.type))}</span>`
+        const freeIn = eta
+          ? (eta.val === '<1'
+              ? esc(i18n.t('etaSoonShort'))
+              : `~${esc(eta.val)} ${esc(i18n.t(eta.type))}`)
           : '';
         return `
-          <div class="conn-row">
-            <span class="conn-label">#${esc(c.id)}</span>
-            <div class="conn-track">
-              <div class="conn-fill ${tone}" style="--target: ${level}%"></div>
+          <div class="conn conn--charging">
+            <span class="conn-id">#${esc(c.id)}</span>
+            <div class="conn-body">
+              <div class="conn-line">
+                <span class="conn-state conn-state--charging">${esc(i18n.t('charging'))}</span>
+                ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
+              </div>
+              <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
+                <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+              </div>
+              <span class="conn-sub">${esc(i18n.t('chargeLabel'))} ${level}%</span>
             </div>
-            <span class="conn-val busy">${level}%</span>
-            ${etaHtml}
           </div>`;
       }
+
       return `
-        <div class="conn-row">
-          <span class="conn-label">#${esc(c.id)}</span>
-          <span class="conn-badge badge-busy">✕ ${esc(i18n.t('occupied'))}</span>
+        <div class="conn conn--busy">
+          <span class="conn-id">#${esc(c.id)}</span>
+          <span class="conn-state conn-state--busy">${esc(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
 
@@ -446,7 +457,11 @@ class UI {
 
     // Sub line: address · schedule
     const subParts = [];
-    if (station.address) subParts.push(`<span>${esc(station.address)}</span>`);
+    // Many stations report the address as their name; printing it twice adds
+    // nothing but noise.
+    if (station.address && station.address.trim() !== station.name.trim()) {
+      subParts.push(`<span>${esc(station.address)}</span>`);
+    }
     if (scheduleHtml) {
       if (subParts.length) subParts.push('<span class="dot-sep">·</span>');
       subParts.push(scheduleHtml);

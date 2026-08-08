@@ -61,8 +61,14 @@ class App {
     const stations = await stationAPI.fetchStations();
     if (stations.length > 0) {
       const filtered = ui.applyFilter(stations);
-      stationMap.renderStations(filtered);
-      
+      // Re-rendering markers destroys an open station card. If someone is
+      // reading one, hold the redraw until they close it.
+      if (document.body.classList.contains('has-popup')) {
+        this._renderPending = true;
+      } else {
+        stationMap.renderStations(filtered);
+      }
+
       const stats = stationAPI.getStats();
       ui.updateStats(stats);
       ui.updateLastRefresh(stationAPI.lastFetch);
@@ -105,6 +111,13 @@ class App {
 
     // In-app route request (from popup or sidebar card)
     window.addEventListener('routeRequest', (e) => this.handleRouteRequest(e.detail));
+
+    // Apply a refresh that was held back while a station card was open
+    window.addEventListener('popupClosed', () => {
+      if (!this._renderPending) return;
+      this._renderPending = false;
+      stationMap.renderStations(ui.applyFilter(stationAPI.getStations() || []));
+    });
   }
 
   async handleRouteRequest({ stationId }) {

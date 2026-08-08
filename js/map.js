@@ -85,6 +85,22 @@ class StationMap {
       }
     });
 
+    // An open station card is the focused task: mark its marker so it is
+    // obvious which station the card belongs to, and get the floating
+    // install button out of the way of the card's close control.
+    this.map.on('popupopen', (e) => {
+      document.body.classList.add('has-popup');
+      const src = e.popup?._source;
+      if (src?.getElement) src.getElement()?.classList.add('marker-focused');
+    });
+
+    this.map.on('popupclose', (e) => {
+      document.body.classList.remove('has-popup');
+      const src = e.popup?._source;
+      if (src?.getElement) src.getElement()?.classList.remove('marker-focused');
+      window.dispatchEvent(new CustomEvent('popupClosed'));
+    });
+
     // Delegate "Route" button clicks inside Leaflet popups
     this.map.getContainer().addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action="route"]');
@@ -141,7 +157,10 @@ class StationMap {
   }
 
   renderStations(stations) {
+    // Wiping the layer destroys any open card. Clear the popup flag here too,
+    // so the install button can never stay hidden after an auto-refresh.
     this.markerLayer.clearLayers();
+    document.body.classList.remove('has-popup');
     this.markers = [];
 
     stations.forEach(station => {
@@ -264,39 +283,53 @@ class StationMap {
       }
     }
 
-    // Connector rows
+    // Connector rows.
+    // Each row answers one question in order: which plug, what state, and —
+    // when it is busy — when it frees up. The meter shows the real charge
+    // level, so its width always matches the number printed beside it.
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
         return `
-          <div class="conn-row conn-row--free">
-            <span class="conn-label">#${escHtml(c.id)}</span>
-            <span class="conn-badge badge-free">
-              <span class="badge-free-dot" aria-hidden="true"></span>
+          <div class="conn conn--free">
+            <span class="conn-id">#${escHtml(c.id)}</span>
+            <span class="conn-state">
+              <span class="conn-pip" aria-hidden="true"></span>
               ${escHtml(i18n.t('available'))}
             </span>
           </div>`;
       }
+
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
       if (c.isCharging || level > 0) {
-        const tone = level > 80 ? 'tone-high' : level > 40 ? 'tone-mid' : 'tone-low';
+        const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
-        const etaHtml = eta
-          ? `<span class="conn-eta">~${escHtml(eta.val)} ${escHtml(i18n.t(eta.type))}</span>`
+        // Keep this to a short, single-line value — it shares a line with the
+        // state label, and a full sentence here wraps and breaks the row.
+        const freeIn = eta
+          ? (eta.val === '<1'
+              ? escHtml(i18n.t('etaSoonShort'))
+              : `~${escHtml(eta.val)} ${escHtml(i18n.t(eta.type))}`)
           : '';
         return `
-          <div class="conn-row">
-            <span class="conn-label">#${escHtml(c.id)}</span>
-            <div class="conn-track">
-              <div class="conn-fill ${tone}" style="--target: ${level}%"></div>
+          <div class="conn conn--charging">
+            <span class="conn-id">#${escHtml(c.id)}</span>
+            <div class="conn-body">
+              <div class="conn-line">
+                <span class="conn-state conn-state--charging">${escHtml(i18n.t('charging'))}</span>
+                ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
+              </div>
+              <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
+                <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+              </div>
+              <span class="conn-sub">${escHtml(i18n.t('chargeLabel'))} ${level}%</span>
             </div>
-            <span class="conn-val busy">${level}%</span>
-            ${etaHtml}
           </div>`;
       }
+
       return `
-        <div class="conn-row">
-          <span class="conn-label">#${escHtml(c.id)}</span>
-          <span class="conn-badge badge-busy">✕ ${escHtml(i18n.t('occupied'))}</span>
+        <div class="conn conn--busy">
+          <span class="conn-id">#${escHtml(c.id)}</span>
+          <span class="conn-state conn-state--busy">${escHtml(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
 
@@ -305,15 +338,12 @@ class StationMap {
     return `
       <div class="popup-content">
         <div class="popup-head">
-          <img src="logo.png" alt="NŪR" class="popup-logo-sm" aria-hidden="true">
-          <div class="popup-head-text">
-            <div class="popup-status-row">
-              <span class="popup-dot ${dotCls}" aria-hidden="true"></span>
-              <span class="popup-dot-label">${dotLabel}</span>
-            </div>
-            <h3 class="popup-title">${escHtml(station.name)}</h3>
-            ${showAddress ? `<p class="popup-address">${escHtml(station.address)}</p>` : ''}
+          <div class="popup-status-row">
+            <span class="popup-dot ${dotCls}" aria-hidden="true"></span>
+            <span class="popup-dot-label">${dotLabel}</span>
           </div>
+          <h3 class="popup-title">${escHtml(station.name)}</h3>
+          ${showAddress ? `<p class="popup-address">${escHtml(station.address)}</p>` : ''}
         </div>
 
         <div class="popup-divider"></div>
