@@ -72,7 +72,7 @@
     const existing = document.getElementById('install-hint');
     if (existing) { existing.remove(); return; }
 
-    const { title, steps, note } = buildInstructions();
+    const { title, steps = [], note } = buildInstructions() || {};
 
     const modal = document.createElement('div');
     modal.id = 'install-hint';
@@ -84,7 +84,7 @@
         </button>
         <img src="logo.png" alt="" class="ios-install-logo">
         <h3 id="install-hint-title">${esc(title)}</h3>
-        <p>${esc(i18n.t('installHint') || 'Добавьте NŪR на домашний экран')}</p>
+        <p>${esc(i18n.t('installHint'))}</p>
         <ol>
           ${steps.map((s) => `<li>${s}</li>`).join('')}
         </ol>
@@ -98,86 +98,19 @@
   }
 
   function buildInstructions() {
-    // iOS Chrome / Firefox / Edge — cannot install PWA, must switch to Safari
+    // Every string comes from i18n, so the card speaks the language the user
+    // picked rather than defaulting to Russian.
     if (iOSOther) {
-      const name = iOSChrome ? 'Chrome' : iOSFirefox ? 'Firefox' : 'Edge';
-      return {
-        title: `${name} на iPhone не умеет устанавливать приложения`,
-        steps: [
-          'Откройте <strong>Safari</strong> на iPhone',
-          'Перейдите на этот сайт снова',
-          'Нажмите <strong>Поделиться</strong> <span aria-hidden="true">⎋</span> → <strong>«На экран «Домой»»</strong>',
-        ],
-        note: 'Это ограничение Apple: на iOS только Safari может установить веб-приложение на главный экран',
-      };
+      const browser = iOSChrome ? 'Chrome' : iOSFirefox ? 'Firefox' : 'Edge';
+      const t = i18n.install('iosAlt');
+      return { ...t, title: String(t.title).replace('{browser}', browser) };
     }
-
-    // iOS Safari
-    if (isIOS) {
-      return {
-        title: 'NŪR — iPhone / iPad',
-        steps: [
-          'Нажмите кнопку <strong>Поделиться</strong> <span aria-hidden="true">⎋</span> внизу экрана',
-          'Прокрутите и выберите <strong>«На экран «Домой»»</strong>',
-          'Нажмите <strong>«Добавить»</strong> в правом верхнем углу',
-        ],
-      };
-    }
-    // Samsung Internet
-    if (isSamsung) {
-      return {
-        title: 'NŪR — Samsung Internet',
-        steps: [
-          'Откройте меню (иконка <strong>☰</strong> внизу)',
-          'Выберите <strong>«Добавить страницу на»</strong>',
-          'Нажмите <strong>«Главный экран»</strong>',
-        ],
-      };
-    }
-    // Firefox Android
-    if (isFirefox && isAndroid) {
-      return {
-        title: 'NŪR — Firefox',
-        steps: [
-          'Откройте меню (три точки <strong>⋮</strong>)',
-          'Выберите <strong>«Установить»</strong> или <strong>«Добавить на главный экран»</strong>',
-          'Подтвердите установку',
-        ],
-      };
-    }
-    // Firefox Desktop
-    if (isFirefox) {
-      return {
-        title: 'NŪR — Firefox',
-        steps: [
-          'Firefox на десктопе пока не поддерживает установку PWA напрямую',
-          'Создайте закладку через <strong>Ctrl/Cmd + D</strong>',
-          'Или откройте сайт в Chrome/Edge для установки',
-        ],
-      };
-    }
-    // Chrome / Edge / Opera (Chromium) — if prompt not ready yet
-    if (isAndroid) {
-      return {
-        title: 'NŪR — Android',
-        steps: [
-          'Откройте меню браузера (три точки <strong>⋮</strong>)',
-          'Выберите <strong>«Установить приложение»</strong> или <strong>«Добавить на главный экран»</strong>',
-          'Подтвердите — NŪR появится как обычное приложение',
-        ],
-        note: 'Если пункта нет — используйте Chrome или обновите браузер',
-      };
-    }
-    // Desktop Chromium
-    return {
-      title: 'NŪR — установка',
-      steps: [
-        'В адресной строке справа найдите иконку <strong>«Установить»</strong> ⊕',
-        'Или откройте меню браузера (⋮) → <strong>«Установить NŪR»</strong>',
-        'Нажмите <strong>«Установить»</strong> в диалоговом окне',
-      ],
-      note: 'Приложение откроется в отдельном окне без адресной строки',
-    };
+    if (isIOS) return i18n.install('ios');
+    if (isSamsung) return i18n.install('samsung');
+    if (isFirefox && isAndroid) return i18n.install('ffAndroid');
+    if (isFirefox) return i18n.install('ffDesktop');
+    if (isAndroid) return i18n.install('android');
+    return i18n.install('desktop');
   }
 
   function esc(s) {

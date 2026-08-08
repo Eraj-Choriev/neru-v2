@@ -4279,9 +4279,9 @@ body.sidebar-open { overflow: hidden; }
   position: fixed; inset: 0; z-index: 5000;
   display: grid; place-items: center;
   padding: 20px;
-  background: rgba(4, 6, 12, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(4, 6, 12, 0.62);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   animation: iosHintFade 300ms var(--ease-out) both;
 }
 @keyframes iosHintFade { from { opacity: 0; } to { opacity: 1; } }
@@ -4290,10 +4290,12 @@ body.sidebar-open { overflow: hidden; }
   position: relative;
   width: min(340px, 92vw);
   padding: 28px 24px 24px;
-  background: var(--ink-900);
-  border: 1px solid var(--line-volt);
-  border-radius: var(--r-xl);
-  box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px var(--line-volt);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: 0.5px solid var(--hair-strong);
+  border-radius: 22px;
+  box-shadow: var(--mat-shadow), var(--edge-top), var(--edge-ring);
   text-align: center;
   color: var(--text-1);
   animation: iosHintPop 400ms var(--ease-spring) both;
@@ -4312,8 +4314,8 @@ body.sidebar-open { overflow: hidden; }
 .ios-install-close:hover { color: var(--text-1); }
 
 .ios-install-logo {
-  width: 72px; height: 72px;
-  margin: 0 auto 12px;
+  width: 140px; height: 140px;
+  margin: -14px auto 6px;
   object-fit: contain;
   mix-blend-mode: screen;
   filter: drop-shadow(0 0 14px var(--volt-glow));
@@ -4342,9 +4344,9 @@ body.sidebar-open { overflow: hidden; }
   counter-increment: step;
   position: relative;
   padding: 10px 12px 10px 38px;
-  background: var(--ink-800);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  border-radius: 13px;
   font-size: 13px;
   color: var(--text-2);
 }
@@ -4365,11 +4367,12 @@ body.sidebar-open { overflow: hidden; }
 }
 
 :root[data-theme="light"] .ios-install-card {
-  background: #ffffff;
-  box-shadow: 0 40px 80px -20px rgba(13,18,32,0.3), 0 0 0 1px rgba(14,183,128,0.25);
+  background: var(--mat-regular);
+  border-color: var(--hair-strong);
+  box-shadow: var(--mat-shadow), var(--edge-top), var(--edge-ring);
 }
 :root[data-theme="light"] .ios-install-logo { mix-blend-mode: normal; filter: drop-shadow(0 0 14px rgba(14,183,128,0.4)); }
-:root[data-theme="light"] .ios-install-card ol li { background: #f4f6fa; border-color: rgba(13,18,32,0.08); color: #3a4057; }
+:root[data-theme="light"] .ios-install-card ol li { background: var(--mat-thin); border-color: var(--hair); color: #3a4057; }
 
 /* ============================================================
    LOCATION CONSENT — first-visit permission priming card
@@ -4868,3 +4871,8 @@ body.sidebar-open .install-btn {
    stale cached script might still emit one. Keep it bounded so a cache
    mismatch degrades quietly instead of blowing up to natural image size. */
 .popup-logo-sm { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+
+/* Install hint scrim follows the theme, like the location consent card */
+:root[data-theme="light"] .ios-install-hint {
+  background: rgba(232, 236, 244, 0.72);
+}

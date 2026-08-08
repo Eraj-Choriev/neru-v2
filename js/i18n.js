@@ -102,6 +102,68 @@ const translations = {
     somoniPerKwhShort: 'сом.',
     installApp: 'Насб кардан',
     installHint: 'Барномаро ба экрани асосӣ илова кунед',
+    // Install instructions, one entry per browser situation.
+    install: {
+      iosAlt: {
+        title: '{browser} дар iPhone барнома насб карда наметавонад',
+        steps: [
+          'Дар iPhone <strong>Safari</strong>-ро кушоед',
+          'Боз ба ин сомона гузаред',
+          'Тугмаи <strong>Мубодила</strong> <span aria-hidden="true">⎋</span> → <strong>«Ба экрани асосӣ»</strong>',
+        ],
+        note: 'Ин маҳдудияти Apple аст: дар iOS танҳо Safari веб-барномаро ба экрани асосӣ насб карда метавонад',
+      },
+      ios: {
+        title: 'NŪR — iPhone / iPad',
+        steps: [
+          'Тугмаи <strong>Мубодила</strong> <span aria-hidden="true">⎋</span>-ро дар поёни экран пахш кунед',
+          'Ба поён ҳаракат карда <strong>«Ба экрани асосӣ»</strong>-ро интихоб кунед',
+          'Дар кунҷи болоии рост <strong>«Илова кардан»</strong>-ро пахш кунед',
+        ],
+      },
+      samsung: {
+        title: 'NŪR — Samsung Internet',
+        steps: [
+          'Менюро кушоед (аломати <strong>☰</strong> дар поён)',
+          '<strong>«Иловаи саҳифа ба»</strong>-ро интихоб кунед',
+          '<strong>«Экрани асосӣ»</strong>-ро пахш кунед',
+        ],
+      },
+      ffAndroid: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Менюро кушоед (се нуқта <strong>⋮</strong>)',
+          '<strong>«Насб кардан»</strong> ё <strong>«Ба экрани асосӣ»</strong>-ро интихоб кунед',
+          'Насбро тасдиқ кунед',
+        ],
+      },
+      ffDesktop: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Firefox дар компютер ҳанӯз насби PWA-ро дастгирӣ намекунад',
+          'Бо <strong>Ctrl/Cmd + D</strong> хатбарак созед',
+          'Ё барои насб сомонаро дар Chrome/Edge кушоед',
+        ],
+      },
+      android: {
+        title: 'NŪR — Android',
+        steps: [
+          'Менюи браузерро кушоед (се нуқта <strong>⋮</strong>)',
+          '<strong>«Насби барнома»</strong> ё <strong>«Ба экрани асосӣ»</strong>-ро интихоб кунед',
+          'Тасдиқ кунед — NŪR ҳамчун барномаи оддӣ пайдо мешавад',
+        ],
+        note: 'Агар ин банд набошад — Chrome-ро истифода баред ё браузерро нав кунед',
+      },
+      desktop: {
+        title: 'NŪR — насб',
+        steps: [
+          'Дар сатри суроға аз тарафи рост аломати <strong>«Насб»</strong> ⊕-ро ёбед',
+          'Ё менюи браузер (⋮) → <strong>«Насби NŪR»</strong>',
+          'Дар равзанаи муколама <strong>«Насб»</strong>-ро пахш кунед',
+        ],
+        note: 'Барнома дар равзанаи алоҳида бе сатри суроға кушода мешавад',
+      },
+    },
   },
   ru: {
     appName: 'NŪR',
@@ -202,6 +264,68 @@ const translations = {
     somoniPerKwhShort: 'сом.',
     installApp: 'Установить',
     installHint: 'Добавьте приложение на главный экран',
+    // Install instructions, one entry per browser situation.
+    install: {
+      iosAlt: {
+        title: '{browser} на iPhone не умеет устанавливать приложения',
+        steps: [
+          'Откройте <strong>Safari</strong> на iPhone',
+          'Перейдите на этот сайт снова',
+          'Нажмите <strong>Поделиться</strong> <span aria-hidden="true">⎋</span> → <strong>«На экран «Домой»»</strong>',
+        ],
+        note: 'Это ограничение Apple: на iOS только Safari может установить веб-приложение на главный экран',
+      },
+      ios: {
+        title: 'NŪR — iPhone / iPad',
+        steps: [
+          'Нажмите кнопку <strong>Поделиться</strong> <span aria-hidden="true">⎋</span> внизу экрана',
+          'Прокрутите и выберите <strong>«На экран «Домой»»</strong>',
+          'Нажмите <strong>«Добавить»</strong> в правом верхнем углу',
+        ],
+      },
+      samsung: {
+        title: 'NŪR — Samsung Internet',
+        steps: [
+          'Откройте меню (иконка <strong>☰</strong> внизу)',
+          'Выберите <strong>«Добавить страницу на»</strong>',
+          'Нажмите <strong>«Главный экран»</strong>',
+        ],
+      },
+      ffAndroid: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Откройте меню (три точки <strong>⋮</strong>)',
+          'Выберите <strong>«Установить»</strong> или <strong>«Добавить на главный экран»</strong>',
+          'Подтвердите установку',
+        ],
+      },
+      ffDesktop: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Firefox на десктопе пока не поддерживает установку PWA напрямую',
+          'Создайте закладку через <strong>Ctrl/Cmd + D</strong>',
+          'Или откройте сайт в Chrome/Edge для установки',
+        ],
+      },
+      android: {
+        title: 'NŪR — Android',
+        steps: [
+          'Откройте меню браузера (три точки <strong>⋮</strong>)',
+          'Выберите <strong>«Установить приложение»</strong> или <strong>«Добавить на главный экран»</strong>',
+          'Подтвердите — NŪR появится как обычное приложение',
+        ],
+        note: 'Если пункта нет — используйте Chrome или обновите браузер',
+      },
+      desktop: {
+        title: 'NŪR — установка',
+        steps: [
+          'В адресной строке справа найдите иконку <strong>«Установить»</strong> ⊕',
+          'Или откройте меню браузера (⋮) → <strong>«Установить NŪR»</strong>',
+          'Нажмите <strong>«Установить»</strong> в диалоговом окне',
+        ],
+        note: 'Приложение откроется в отдельном окне без адресной строки',
+      },
+    },
   },
   en: {
     appName: 'NŪR',
@@ -302,6 +426,68 @@ const translations = {
     somoniPerKwhShort: 'TJS',
     installApp: 'Install',
     installHint: 'Add app to home screen',
+    // Install instructions, one entry per browser situation.
+    install: {
+      iosAlt: {
+        title: '{browser} on iPhone cannot install apps',
+        steps: [
+          'Open <strong>Safari</strong> on your iPhone',
+          'Visit this site again',
+          'Tap <strong>Share</strong> <span aria-hidden="true">⎋</span> → <strong>Add to Home Screen</strong>',
+        ],
+        note: 'This is an Apple restriction: on iOS only Safari can install a web app to the home screen',
+      },
+      ios: {
+        title: 'NŪR — iPhone / iPad',
+        steps: [
+          'Tap the <strong>Share</strong> <span aria-hidden="true">⎋</span> button at the bottom of the screen',
+          'Scroll down and choose <strong>Add to Home Screen</strong>',
+          'Tap <strong>Add</strong> in the top right corner',
+        ],
+      },
+      samsung: {
+        title: 'NŪR — Samsung Internet',
+        steps: [
+          'Open the menu (<strong>☰</strong> at the bottom)',
+          'Choose <strong>Add page to</strong>',
+          'Tap <strong>Home screen</strong>',
+        ],
+      },
+      ffAndroid: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Open the menu (three dots <strong>⋮</strong>)',
+          'Choose <strong>Install</strong> or <strong>Add to Home screen</strong>',
+          'Confirm the installation',
+        ],
+      },
+      ffDesktop: {
+        title: 'NŪR — Firefox',
+        steps: [
+          'Firefox on desktop cannot install PWAs directly yet',
+          'Bookmark the page with <strong>Ctrl/Cmd + D</strong>',
+          'Or open the site in Chrome/Edge to install it',
+        ],
+      },
+      android: {
+        title: 'NŪR — Android',
+        steps: [
+          'Open the browser menu (three dots <strong>⋮</strong>)',
+          'Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>',
+          'Confirm — NŪR appears like a regular app',
+        ],
+        note: 'If you do not see the option, use Chrome or update your browser',
+      },
+      desktop: {
+        title: 'NŪR — Install',
+        steps: [
+          'Find the <strong>Install</strong> ⊕ icon at the right of the address bar',
+          'Or open the browser menu (⋮) → <strong>Install NŪR</strong>',
+          'Click <strong>Install</strong> in the dialog',
+        ],
+        note: 'The app opens in its own window, without an address bar',
+      },
+    },
   }
 };
 
@@ -326,6 +512,16 @@ class I18n {
 
   getLang() {
     return this.currentLang;
+  }
+
+  /**
+   * Install instructions for one browser situation, in the active language.
+   * Falls back to English so a missing entry still reads as instructions
+   * rather than a blank card.
+   */
+  install(variant) {
+    const set = translations[this.currentLang]?.install || {};
+    return set[variant] || translations.en.install?.[variant] || null;
   }
 
   updateDOM() {
