@@ -56,7 +56,7 @@ Each module exposes a single global singleton:
 
 - `sw.js` — service worker, cache `nur-shell-v1`. App shell (HTML/CSS/JS/logo/manifest) is **cache-first** with background update; **network-only** (never cached) for `parking.dc.tj`, the CORS proxies, `router.project-osrm.org`, CARTO basemaps, and `cloudflareinsights.com`. When editing the module list, keep `sw.js`'s `SHELL` array in sync with the `<script>` tags in `index.html`.
 - `manifest.webmanifest` — standalone, portrait, `logo.png` icons, `lang: tj`, theme/background `#05070d`.
-- `vercel.json` — deploy config: `cleanUrls`, security headers (HSTS, `X-Frame-Options: DENY`, `nosniff`, geolocation-only `Permissions-Policy`), and per-path `Cache-Control` tiers (long-lived for assets, `max-age=0` for HTML and `sw.js`).
+- `vercel.json` — deploy config: `cleanUrls`, security headers (HSTS, `X-Frame-Options: DENY`, `nosniff`, geolocation-only `Permissions-Policy`), and per-path `Cache-Control` tiers. **CSS and JS must stay `max-age=0, must-revalidate`**: their filenames are not fingerprinted, so any real max-age lets a browser pair week-old CSS/JS with fresh HTML — the service worker cannot help, since its own `fetch()` also goes through the HTTP cache. Revalidation is a cheap 304 thanks to ETags. Only images/fonts carry a long `immutable` cache.
 
 ## Localization
 
