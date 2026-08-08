@@ -8,22 +8,22 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v8';
+const CACHE = 'nur-shell-v9';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css',
-  '/js/i18n.js',
-  '/js/api.js',
-  '/js/geolocation.js',
-  '/js/finder.js',
-  '/js/map.js',
-  '/js/ui.js',
-  '/js/notifications.js',
-  '/js/router.js',
-  '/js/analytics.js',
-  '/js/pwa.js',
-  '/js/app.js',
+  '/css/style.css?v=8',
+  '/js/i18n.js?v=8',
+  '/js/api.js?v=8',
+  '/js/geolocation.js?v=8',
+  '/js/finder.js?v=8',
+  '/js/map.js?v=8',
+  '/js/ui.js?v=8',
+  '/js/notifications.js?v=8',
+  '/js/router.js?v=8',
+  '/js/analytics.js?v=8',
+  '/js/pwa.js?v=8',
+  '/js/app.js?v=8',
   '/logo.png',
   '/manifest.webmanifest',
 ];
