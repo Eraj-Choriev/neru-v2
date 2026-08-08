@@ -84,24 +84,38 @@
           </span>
         </button>
 
-        <label class="cosmic-toggle" title="Toggle theme" aria-label="Toggle theme">
-          <input class="toggle" type="checkbox" id="theme-toggle">
-          <div class="slider">
-            <div class="cosmos"></div>
-            <div class="energy-line"></div>
-            <div class="energy-line"></div>
-            <div class="energy-line"></div>
-            <div class="toggle-orb">
-              <div class="inner-orb"></div>
-              <div class="ring"></div>
+        <!-- Theme switch: a droid rolling from day into night.
+             Adapted from Uiverse.io by Galahhad, recoloured to the NŪR palette. -->
+        <label class="droid-toggle" title="Toggle theme" aria-label="Toggle theme">
+          <input class="droid-toggle__checkbox" type="checkbox" id="theme-toggle">
+          <div class="droid-toggle__container">
+            <div class="droid-toggle__scenery" aria-hidden="true">
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="droid-toggle__star"></div>
+              <div class="sun-main"></div>
+              <div class="sun-far"></div>
+              <div class="moon-lg"></div>
+              <div class="moon-md"></div>
+              <div class="moon-sm"></div>
+              <div class="droid-toggle__cloud"></div>
+              <div class="droid-toggle__cloud"></div>
+              <div class="droid-toggle__cloud"></div>
             </div>
-            <div class="particles">
-              <div style="--angle: 30deg" class="particle"></div>
-              <div style="--angle: 60deg" class="particle"></div>
-              <div style="--angle: 90deg" class="particle"></div>
-              <div style="--angle: 120deg" class="particle"></div>
-              <div style="--angle: 150deg" class="particle"></div>
-              <div style="--angle: 180deg" class="particle"></div>
+            <div class="droid" aria-hidden="true">
+              <div class="droid__head-container">
+                <div class="droid__antenna"></div>
+                <div class="droid__antenna"></div>
+                <div class="droid__head"></div>
+              </div>
+              <div class="droid__body"></div>
+            </div>
+            <div class="droid__clip" aria-hidden="true">
+              <div class="droid__shadow"></div>
             </div>
           </div>
         </label>

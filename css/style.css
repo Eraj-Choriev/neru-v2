@@ -2104,7 +2104,6 @@ body.sidebar-open { overflow: hidden; }
     opacity var(--t-base) var(--ease-out),
     visibility var(--t-base),
     transform 420ms var(--ease-spring);
-  backdrop-filter: blur(12px);
 }
 
 .toast-visible {
@@ -2131,10 +2130,13 @@ body.sidebar-open { overflow: hidden; }
   box-shadow: 0 14px 32px -10px rgba(255, 211, 122, 0.4);
 }
 
+/* Neutral messages ("Notifications off") carry no state, so instead of a
+   colour they invert against the theme — bright on dark, dark on light.
+   That keeps them the most legible thing on screen for their two seconds. */
 .toast-info {
-  background: linear-gradient(160deg, var(--cyan-400), var(--cyan-500));
-  color: var(--ink-900);
-  box-shadow: 0 14px 32px -10px rgba(74, 208, 255, 0.4);
+  background: #f2f5fa;
+  color: #0b1220;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 /* ============================================================
@@ -3064,7 +3066,6 @@ body.sidebar-open { overflow: hidden; }
   .notif-toggle { width: 36px; height: 36px; }
   /* Burger size */
   .burger-btn { width: 38px; height: 38px; }
-  /* Keep cosmic-toggle default size — don't break its transform math */
   .sidebar {
     top: auto; bottom: 0;
     height: 86dvh;
@@ -3176,9 +3177,15 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .orb-core,
 :root[data-theme="light"] .toast-success,
 :root[data-theme="light"] .toast-warning,
-:root[data-theme="light"] .toast-info,
 :root[data-theme="light"] .segmented[data-indicator-tone="volt"] .seg-btn.is-active {
   color: #07190f;
+}
+
+/* Neutral toast flips with the theme */
+:root[data-theme="light"] .toast-info {
+  background: #10151f;
+  color: #f2f5fa;
+  box-shadow: 0 16px 40px -12px rgba(13, 18, 32, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Scanline vignette — lighten it so the map isn't darkened */
@@ -3303,208 +3310,479 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .open-now::before { background: var(--volt-700); }
 
 /* ============================================================
-   COSMIC THEME TOGGLE
+   THEME SWITCH — NŪR droid
+   Adapted from Uiverse.io by Galahhad (BB-8 toggle), recoloured to
+   this palette: the droid's markings carry our volt mint, the night
+   sky uses the app's ink tones, and the second sun is our amber.
+   Legacy -o-/-webkit-gradient fallbacks from the source were dropped;
+   the standard declarations already override them everywhere.
    ============================================================ */
-.cosmic-toggle {
+.droid-toggle {
+  --toggle-size: 7px;
+  --toggle-width: 10.625em;
+  --toggle-height: 5.625em;
+  --droid-diameter: 4.375em;
+  --toggle-offset: calc((var(--toggle-height) - var(--droid-diameter)) / 2);
+  --radius: 99em;
+  --transition: 0.4s;
+
+  /* Night on top, day on the bottom; the container slides between them. */
+  --toggle-bg: linear-gradient(#0a1220, #04060c 35%, #6f9db8 50% 70%, #c9dde8) no-repeat;
+  --droid-accent: #0ed58f;     /* volt-700 — reads cleanly on the white shell */
+  --droid-bg: #fff;
+  --ground: #39465a;
+
   position: relative;
-  width: 64px;
-  height: 32px;
+  display: inline-flex;
   flex-shrink: 0;
   cursor: pointer;
+  font-size: var(--toggle-size);
+  line-height: 0;
 }
 
-.cosmic-toggle .toggle {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
+.droid-toggle,
+.droid-toggle *,
+.droid-toggle *::before,
+.droid-toggle *::after { box-sizing: border-box; }
 
-.cosmic-toggle .slider {
+/* Kept in the layout (not display:none) so it stays keyboard-reachable. */
+.droid-toggle__checkbox {
   position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(45deg, var(--ink-900), var(--ink-800));
-  border-radius: 16px;
-  transition: 0.45s;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 0 12px rgba(0, 0, 0, 0.4),
-    inset 0 0 8px rgba(255, 255, 255, 0.04);
-}
-
-/* Star field */
-.cosmic-toggle .cosmos {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(1px 1px at 15% 25%, #fff 100%, transparent),
-    radial-gradient(1px 1px at 35% 60%, #fff 100%, transparent),
-    radial-gradient(1px 1px at 55% 20%, #fff 100%, transparent),
-    radial-gradient(1px 1px at 75% 70%, #fff 100%, transparent),
-    radial-gradient(1px 1px at 90% 40%, #fff 100%, transparent),
-    radial-gradient(1px 1px at 25% 80%, #fff 100%, transparent);
-  background-size: 200% 200%;
-  opacity: 0.18;
-  transition: 0.5s;
-}
-
-/* Orb */
-.cosmic-toggle .toggle-orb {
-  position: absolute;
-  height: 26px;
-  width: 26px;
-  left: 3px;
-  bottom: 3px;
-  background: linear-gradient(145deg, var(--volt-400), var(--volt-700));
-  border-radius: 50%;
-  transition: 0.55s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  z-index: 2;
-  box-shadow: 0 0 10px -2px var(--volt-glow);
-}
-
-.cosmic-toggle .inner-orb {
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(220,255,240,0.7));
-  transition: 0.5s;
-  overflow: hidden;
-}
-
-.cosmic-toggle .inner-orb::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(0,0,0,0.08) 10deg,
-    transparent 20deg
-  );
-  animation: cosmicPatternRotate 10s linear infinite;
-}
-
-.cosmic-toggle .ring {
-  position: absolute;
-  inset: -2px;
-  border: 1.5px solid rgba(123, 255, 190, 0.2);
-  border-radius: 50%;
-  transition: 0.5s;
-}
-
-/* Energy lines */
-.cosmic-toggle .energy-line {
-  position: absolute;
-  width: 100%;
+  width: 1px;
   height: 1px;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(123, 255, 190, 0.55),
-    transparent
-  );
   opacity: 0;
-  transition: 0.5s;
+  margin: 0;
+  pointer-events: none;
 }
-.cosmic-toggle .energy-line:nth-child(2) { top: 25%; }
-.cosmic-toggle .energy-line:nth-child(3) { top: 50%; }
-.cosmic-toggle .energy-line:nth-child(4) { top: 75%; }
 
-/* Particles */
-.cosmic-toggle .particles {
+.droid-toggle__container {
+  width: var(--toggle-width);
+  height: var(--toggle-height);
+  background: var(--toggle-bg);
+  background-size: 100% 11.25em;
+  background-position-y: -5.625em;
+  border-radius: var(--radius);
+  position: relative;
+  transition: var(--transition);
+  box-shadow: var(--edge-top), 0 4px 14px -6px rgba(0, 0, 0, 0.5);
+}
+
+.droid-toggle__checkbox:focus-visible + .droid-toggle__container {
+  outline: 2px solid var(--volt-500);
+  outline-offset: 3px;
+}
+
+/* ---- Droid ---- */
+.droid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: absolute;
+  top: calc(var(--toggle-offset) - 1.688em + 0.188em);
+  left: var(--toggle-offset);
+  transition: var(--transition);
+  z-index: 2;
+}
+
+.droid__head-container {
+  position: relative;
+  transition: var(--transition);
+  z-index: 2;
+  transform-origin: 1.25em 3.75em;
+}
+
+.droid__head {
+  overflow: hidden;
+  margin-bottom: -0.188em;
+  width: 2.5em;
+  height: 1.688em;
+  background:
+    linear-gradient(
+      transparent 0.063em,
+      dimgray 0.063em 0.313em,
+      transparent 0.313em 0.375em,
+      var(--droid-accent) 0.375em 0.5em,
+      transparent 0.5em 1.313em,
+      silver 1.313em 1.438em,
+      transparent 1.438em
+    ),
+    linear-gradient(45deg, transparent 0.188em, var(--droid-bg) 0.188em 1.25em, transparent 1.25em),
+    linear-gradient(-45deg, transparent 0.188em, var(--droid-bg) 0.188em 1.25em, transparent 1.25em),
+    linear-gradient(var(--droid-bg) 1.25em, transparent 1.25em);
+  border-radius: var(--radius) var(--radius) 0 0;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0.063em 0.125em gray);
+}
+
+/* Eye */
+.droid__head::before {
+  content: "";
+  position: absolute;
+  width: 0.563em;
+  height: 0.563em;
+  background:
+    radial-gradient(0.125em circle at 0.25em 0.375em, var(--volt-500), transparent),
+    radial-gradient(0.063em circle at 0.375em 0.188em, var(--droid-bg) 50%, transparent 100%),
+    linear-gradient(45deg, #000 0.188em, dimgray 0.313em 0.375em, #000 0.5em);
+  border-radius: var(--radius);
+  top: 0.413em;
+  left: 50%;
+  transform: translate(-50%);
+  box-shadow:
+    0 0 0 0.089em lightgray,
+    0.563em 0.281em 0 -0.148em,
+    0.563em 0.281em 0 -0.1em var(--droid-bg),
+    0.563em 0.281em 0 -0.063em;
+  z-index: 1;
+  transition: var(--transition);
+}
+
+/* Banded trim around the head */
+.droid__head::after {
+  content: "";
+  position: absolute;
+  bottom: 0.375em;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: 0.188em;
+  background: linear-gradient(
+    to right,
+    var(--droid-accent) 0.125em,
+    transparent 0.125em 0.188em,
+    var(--droid-accent) 0.188em 0.313em,
+    transparent 0.313em 0.375em,
+    var(--droid-accent) 0.375em 0.938em,
+    transparent 0.938em 1em,
+    var(--droid-accent) 1em 1.125em,
+    transparent 1.125em 1.875em,
+    var(--droid-accent) 1.875em 2em,
+    transparent 2em 2.063em,
+    var(--droid-accent) 2.063em 2.25em,
+    transparent 2.25em 2.313em,
+    var(--droid-accent) 2.313em 2.375em,
+    transparent 2.375em 2.438em,
+    var(--droid-accent) 2.438em
+  );
+  transition: var(--transition);
 }
 
-.cosmic-toggle .particle {
+.droid__antenna {
   position: absolute;
-  width: 3px;
-  height: 3px;
-  background: var(--volt-500);
+  transform: translateY(-90%);
+  width: 0.059em;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: var(--transition);
+}
+
+.droid__antenna:nth-child(1) {
+  height: 0.938em;
+  right: 0.938em;
+  background: linear-gradient(#000 0.188em, silver 0.188em);
+}
+
+.droid__antenna:nth-child(2) {
+  height: 0.375em;
+  left: 50%;
+  transform: translate(-50%, -90%);
+  background: silver;
+}
+
+.droid__body {
+  width: 4.375em;
+  height: 4.375em;
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+  z-index: 1;
+  transform: rotate(45deg);
+  background:
+    linear-gradient(-90deg, var(--droid-bg) 4%, var(--droid-accent) 4% 10%, transparent 10% 90%, var(--droid-accent) 90% 96%, var(--droid-bg) 96%),
+    linear-gradient(var(--droid-bg) 4%, var(--droid-accent) 4% 10%, transparent 10% 90%, var(--droid-accent) 90% 96%, var(--droid-bg) 96%),
+    linear-gradient(to right, transparent 2.156em, silver 2.156em 2.219em, transparent 2.188em),
+    linear-gradient(transparent 2.156em, silver 2.156em 2.219em, transparent 2.188em);
+  background-color: var(--droid-bg);
+}
+
+.droid__body::after {
+  content: "";
+  bottom: 1.5em;
+  left: 0.563em;
+  position: absolute;
+  width: 0.188em;
+  height: 0.188em;
+  background: rgb(236, 236, 236);
+  color: rgb(236, 236, 236);
   border-radius: 50%;
-  opacity: 0;
+  box-shadow:
+    0.875em 0.938em, 0 -1.25em, 0.875em -2.125em, 2.125em -2.125em,
+    3.063em -1.25em, 3.063em 0, 2.125em 0.938em;
+}
+
+.droid__body::before {
+  content: "";
+  width: 2.625em;
+  height: 2.625em;
+  position: absolute;
+  border-radius: 50%;
+  overflow: hidden;
   top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
+  border: 0.313em solid var(--droid-accent);
+  background:
+    radial-gradient(1em circle at center, rgb(236, 236, 236) 50%, transparent 51%),
+    radial-gradient(1.25em circle at center, var(--droid-bg) 50%, transparent 51%),
+    linear-gradient(-90deg, transparent 42%, var(--droid-accent) 42% 58%, transparent 58%),
+    linear-gradient(var(--droid-bg) 42%, var(--droid-accent) 42% 58%, var(--droid-bg) 58%);
 }
 
-/* ---- Checked (light theme) state ---- */
-.cosmic-toggle .toggle:checked + .slider {
-  background: linear-gradient(45deg, #d4eeff, #eef6ff);
-  border-color: rgba(0, 0, 0, 0.08);
+.droid__clip {
+  position: absolute;
+  border-radius: inherit;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-.cosmic-toggle .toggle:checked + .slider .cosmos {
-  opacity: 0.05;
+.droid__shadow {
+  width: var(--droid-diameter);
+  height: 20%;
+  border-radius: 50%;
+  background: #10151f;
+  box-shadow: 0.313em 0 3.125em #10151f;
+  opacity: 0.3;
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--toggle-offset) - 0.938em);
+  transition: var(--transition);
+  transform: skew(-70deg);
+  z-index: 1;
 }
 
-.cosmic-toggle .toggle:checked + .slider .toggle-orb {
-  transform: translateX(32px) rotate(360deg);
-  background: linear-gradient(145deg, #ffd166, #ff9a3c);
-  box-shadow: 0 0 14px -2px rgba(255, 180, 0, 0.6);
+/* ---- Sky ---- */
+.droid-toggle__scenery {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  position: relative;
+  border-radius: inherit;
 }
 
-.cosmic-toggle .toggle:checked + .slider .inner-orb {
-  background: linear-gradient(145deg, #ffe57a, #ffcf40);
+/* Horizon line the droid rolls along */
+.droid-toggle__scenery::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 30%;
+  bottom: 0;
+  background: var(--ground);
+  z-index: 1;
 }
 
-.cosmic-toggle .toggle:checked + .slider .ring {
-  border-color: rgba(255, 180, 0, 0.35);
-  animation: cosmicRingPulse 2s infinite;
+.droid-toggle__cloud {
+  z-index: 1;
+  position: absolute;
+  border-radius: 50%;
 }
 
-.cosmic-toggle .toggle:checked + .slider .energy-line {
-  opacity: 1;
-  animation: cosmicEnergyFlow 2s linear infinite;
+.droid-toggle__cloud:nth-last-child(1) {
+  width: 0.875em;
+  height: 0.625em;
+  filter: blur(0.125em) drop-shadow(0.313em 0.313em #ffffffae)
+    drop-shadow(-0.625em 0 #fff) drop-shadow(-0.938em -0.125em #fff);
+  right: 1.875em;
+  top: 2.813em;
+  background: #ffffffae;
+  transition: var(--transition);
 }
 
-.cosmic-toggle .toggle:checked + .slider .particle {
-  animation: cosmicParticleBurst 1s ease-out infinite;
+.droid-toggle__cloud:nth-last-child(2) {
+  top: 0.625em;
+  right: 4.375em;
+  width: 0.875em;
+  height: 0.375em;
+  background: #dfdedeae;
+  filter: blur(0.125em) drop-shadow(-0.313em -0.188em #e0dfdfae)
+    drop-shadow(-0.625em -0.188em #bbbbbbae) drop-shadow(-1em 0.063em #cfcfcfae);
+  transition: 0.6s;
 }
 
-.cosmic-toggle .particle:nth-child(1) { animation-delay: 0s; }
-.cosmic-toggle .particle:nth-child(2) { animation-delay: 0.16s; }
-.cosmic-toggle .particle:nth-child(3) { animation-delay: 0.32s; }
-.cosmic-toggle .particle:nth-child(4) { animation-delay: 0.48s; }
-.cosmic-toggle .particle:nth-child(5) { animation-delay: 0.64s; }
-.cosmic-toggle .particle:nth-child(6) { animation-delay: 0.8s; }
-
-/* Hover */
-.cosmic-toggle .slider:hover .toggle-orb {
-  filter: brightness(1.15);
-  box-shadow: 0 0 16px -2px var(--volt-glow);
+.droid-toggle__cloud:nth-last-child(3) {
+  top: 1.25em;
+  right: 0.938em;
+  width: 0.875em;
+  height: 0.375em;
+  background: #ffffffae;
+  filter: blur(0.125em) drop-shadow(0.438em 0.188em #ffffffae)
+    drop-shadow(-0.625em 0.313em #ffffffae);
+  transition: 0.8s;
 }
 
-.cosmic-toggle .slider:hover .cosmos {
-  opacity: 0.28;
+/* Moons rise with the night */
+.moon-lg,
+.moon-md,
+.moon-sm {
+  position: absolute;
+  border-radius: var(--radius);
+  background: linear-gradient(#eef1f7, #57657a);
+  top: 100%;
 }
 
-/* ---- Keyframes ---- */
-@keyframes cosmicRingPulse {
-  0%, 100% { transform: scale(1);   opacity: 0.3; }
-  50%       { transform: scale(1.12); opacity: 0.6; }
+.moon-lg {
+  left: 0.938em;
+  width: 1.875em;
+  height: 1.875em;
+  box-shadow: 0 0 0.188em #ffffff52, 0 0 0.188em #6e8ea24b;
+  transition: var(--transition);
 }
 
-@keyframes cosmicPatternRotate {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.moon-lg::before,
+.moon-lg::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0.063em rgb(140, 162, 169);
+  background: rgb(184, 196, 200);
 }
 
-@keyframes cosmicEnergyFlow {
-  0%   { transform: scaleX(0) translateX(0);    opacity: 0; }
-  50%  { transform: scaleX(1) translateX(25%);  opacity: 1; }
-  100% { transform: scaleX(0) translateX(100%); opacity: 0; }
+.moon-lg::before { left: 0.313em; top: 0.313em; width: 0.438em; height: 0.438em; }
+.moon-lg::after  { left: 1.25em;  top: 0.75em;  width: 0.25em;  height: 0.25em; }
+
+.moon-md {
+  left: 3.438em;
+  width: 0.625em;
+  height: 0.625em;
+  box-shadow: 0 0 0.125em #ffffff52, 0 0 0.125em #6e8ea24b;
+  transition: 0.6s;
 }
 
-@keyframes cosmicParticleBurst {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% {
-    transform:
-      translate(calc(cos(var(--angle)) * 20px), calc(sin(var(--angle)) * 20px))
-      scale(0);
-    opacity: 0;
-  }
+.moon-sm {
+  left: 4.375em;
+  width: 0.5em;
+  height: 0.5em;
+  box-shadow: 0 0 0.125em #ffffff52, 0 0 0.125em #6e8ea24b;
+  transition: 0.8s;
+}
+
+/* Twin suns — the second one borrows the app's amber */
+.sun-main,
+.sun-far {
+  position: absolute;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: var(--radius);
+}
+
+.sun-main {
+  background: #fffaf0;
+  right: 3.125em;
+  top: 0.625em;
+  box-shadow: 0 0 0.438em #fdf4e1;
+  transition: var(--transition);
+}
+
+.sun-far {
+  background: linear-gradient(var(--amber-400), var(--amber-500));
+  right: 1.25em;
+  top: 2.188em;
+  box-shadow: 0 0 0.438em rgba(255, 211, 122, 0.35), 0 0 0.438em rgba(255, 182, 72, 0.3);
+  transition: 0.7s;
+}
+
+/* Stars carry a faint volt glow */
+.droid-toggle__star {
+  position: absolute;
+  width: 0.063em;
+  height: 0.063em;
+  background: #fff;
+  border-radius: var(--radius);
+  filter: drop-shadow(0 0 0.075em var(--volt-500));
+  color: #fff;
+  top: 100%;
+}
+
+.droid-toggle__star:nth-child(1) {
+  left: 3.75em;
+  box-shadow: 1.25em 0.938em, -1.25em 2.5em, 0 1.25em, 1.875em 0.625em, -3.125em 1.875em, 1.25em 2.813em;
+  transition: 0.2s;
+}
+.droid-toggle__star:nth-child(2) {
+  left: 4.688em;
+  box-shadow: 0.625em 0, 0 0.625em, -0.625em -0.625em, 0.625em 0.938em, -3.125em 1.25em, 1.25em -1.563em;
+  transition: 0.3s;
+}
+.droid-toggle__star:nth-child(3) {
+  left: 5.313em;
+  box-shadow: -0.625em -0.625em, -2.188em 1.25em, -2.188em 0, -3.75em -0.625em, -3.125em -0.625em, -2.5em -0.313em, 0.75em -0.625em;
+  transition: var(--transition);
+}
+.droid-toggle__star:nth-child(4) { left: 1.875em; width: 0.125em; height: 0.125em; transition: 0.5s; }
+.droid-toggle__star:nth-child(5) { left: 5em;     width: 0.125em; height: 0.125em; transition: 0.6s; }
+.droid-toggle__star:nth-child(6) { left: 2.5em;   width: 0.125em; height: 0.125em; transition: 0.7s; }
+.droid-toggle__star:nth-child(7) { left: 3.438em; width: 0.125em; height: 0.125em; transition: 0.8s; }
+
+/* ---- Checked = night ---- */
+.droid-toggle__checkbox:checked + .droid-toggle__container { background-position-y: 0; }
+
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(1) { top: 0.625em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(2) { top: 1.875em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(3) { top: 1.25em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(4) { top: 3.438em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(5) { top: 3.438em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(6) { top: 0.313em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(7) { top: 1.875em; }
+
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__cloud { right: -100%; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .moon-lg { top: 0.938em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .moon-md { top: 2.5em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .moon-sm { top: 2.75em; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .sun-main { top: 100%; }
+.droid-toggle__checkbox:checked + .droid-toggle__container .sun-far  { top: 100%; }
+
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid {
+  left: calc(100% - var(--droid-diameter) - var(--toggle-offset));
+}
+
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid__shadow {
+  left: calc(100% - var(--droid-diameter) - var(--toggle-offset) + 0.938em);
+  transform: skew(70deg);
+}
+
+.droid-toggle__checkbox:checked + .droid-toggle__container .droid__body { transform: rotate(225deg); }
+
+/* ---- Hover / press ---- */
+.droid-toggle__checkbox:hover + .droid-toggle__container .droid__head::before { left: 100%; }
+.droid-toggle__checkbox:not(:checked):hover + .droid-toggle__container .droid__antenna:nth-child(1) { right: 1.5em; }
+.droid-toggle__checkbox:hover + .droid-toggle__container .droid__antenna:nth-child(2) { left: 0.938em; }
+.droid-toggle__checkbox:hover + .droid-toggle__container .droid__head::after { background-position: 1.375em 0; }
+
+.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__head::before { left: 0; }
+.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__antenna:nth-child(2) { left: calc(100% - 0.938em); }
+.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__head::after { background-position: -1.375em 0; }
+
+.droid-toggle__checkbox:active + .droid-toggle__container .droid__head-container { transform: rotate(25deg); }
+.droid-toggle__checkbox:checked:active + .droid-toggle__container .droid__head-container { transform: rotate(-25deg); }
+
+.droid:hover .droid__head::before,
+.droid:hover .droid__antenna:nth-child(2) { left: 50% !important; }
+.droid:hover .droid__antenna:nth-child(1) { right: 0.938em !important; }
+.droid:hover .droid__head::after { background-position: 0 0 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .droid-toggle *,
+  .droid-toggle *::before,
+  .droid-toggle *::after { transition-duration: 1ms !important; }
+}
+
+/* Slightly smaller on phones, where the header is shorter */
+@media (max-width: 768px) {
+  .droid-toggle { --toggle-size: 6px; }
+}
+@media (max-width: 400px) {
+  .droid-toggle { --toggle-size: 5.2px; }
 }
 
 /* ============================================================
@@ -4514,9 +4792,11 @@ body.sidebar-open .install-btn {
   box-shadow: var(--edge-top), 0 8px 22px -10px rgba(0, 0, 0, 0.55);
 }
 
-/* ---- Route panel, toast, drawer, segmented ---- */
+/* ---- Route panel, drawer, segmented ----
+   The toast is deliberately NOT in this list: it is a semantic colour
+   surface, and giving it the dark glass material made every message
+   render as an unreadable dark pill. */
 .route-panel,
-.toast,
 .mobile-drawer {
   background: var(--mat-thick);
   backdrop-filter: var(--mat-blur-reg);

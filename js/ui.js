@@ -69,7 +69,7 @@ class UI {
     this.cacheElements();
     this.bindEvents();
     if (this.themeToggle) {
-      this.themeToggle.checked = (this.getTheme() === 'light');
+      this.themeToggle.checked = (this.getTheme() === 'dark');
     }
     i18n.updateDOM();
     // Position the segmented indicators once fonts/layout settle
@@ -136,7 +136,8 @@ class UI {
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('neru-theme', next); } catch (_) {}
 
-    if (this.themeToggle) this.themeToggle.checked = (next === 'light');
+    // The droid switch reads "on = night", so checked tracks the dark theme.
+    if (this.themeToggle) this.themeToggle.checked = (next === 'dark');
 
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
