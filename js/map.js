@@ -475,7 +475,7 @@ class StationMap {
     }
   }
 
-  drawOSRMRoute(coords, station) {
+  drawOSRMRoute(coords, station, fit = true) {
     this.clearHighlight();
 
     this.routeLine = L.polyline(coords, {
@@ -499,11 +499,15 @@ class StationMap {
       weight: 1.5,
     }).addTo(this.map);
 
-    const bounds = L.latLngBounds(coords);
-    this.map.fitBounds(bounds, {
-      paddingTopLeft: [24, 90],
-      paddingBottomRight: [24, 140],
-    });
+    // Only frame the whole route on the initial draw. During live re-routes
+    // this would fight follow-mode and yank the map away from the user.
+    if (fit) {
+      const bounds = L.latLngBounds(coords);
+      this.map.fitBounds(bounds, {
+        paddingTopLeft: [24, 90],
+        paddingBottomRight: [24, 140],
+      });
+    }
   }
 
   flyTo(lat, lng, zoom = 16) {

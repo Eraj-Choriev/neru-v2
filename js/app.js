@@ -7,6 +7,7 @@ class App {
     this.refreshInterval = null;
     this.REFRESH_MS = 30000; // 30 seconds
     this.initialized = false;
+    this.CONSENT_KEY = 'neru-loc-consent'; // 'granted' | 'denied' | null (unasked)
   }
 
   async init() {
@@ -26,27 +27,15 @@ class App {
       // Load stations
       await this.loadStations();
 
-      // Get user location (non-blocking — works even if denied)
-      const pos = await geoLocation.getUserLocation().catch(() => null);
-      if (pos) {
-        stationMap.setUserLocation(pos.lat, pos.lng, {
-          accuracy: geoLocation.userAccuracy,
-          heading: geoLocation.userHeading,
-          animate: false,
-        });
-        if (geoLocation.isLocated) {
-          stationMap.flyTo(pos.lat, pos.lng, 14);
-          document.getElementById('loc-btn')?.classList.add('is-located');
-          // Start continuous live tracking (marker follows device)
-          this.startLiveTracking();
-        }
+      // Location is gated behind a first-visit consent card, so the native
+      // browser prompt only fires once the user has opted in.
+      const consent = localStorage.getItem(this.CONSENT_KEY);
+      if (consent === 'granted') {
+        this.acquireLocation();          // returning user — fetch straight away
+      } else if (consent == null) {
+        this.showLocationConsent();      // first visit — ask first
       }
-
-      // Seed notification states now that location and stations are both available
-      if (typeof stationNotifications !== 'undefined' && geoLocation.isLocated && !stationNotifications.seeded) {
-        const stations = stationAPI.getStations();
-        stationNotifications.seedStates(stations, geoLocation.userLat, geoLocation.userLng);
-      }
+      // consent === 'denied' → stay location-less; the location button re-offers it
 
       ui.hideLoading();
       this.initialized = true;
@@ -123,6 +112,12 @@ class App {
     if (!station) return;
     if (ui.sidebarOpen) ui.closeSidebar();
     await stationRouter.routeTo(station);
+    // Seed re-route throttle so we don't immediately re-fetch a route we just built.
+    if (stationRouter.activeRoute) {
+      this._lastReroute = Date.now();
+      const p = geoLocation.getPosition();
+      this._lastReroutePos = p.isLocated ? { lat: p.lat, lng: p.lng } : null;
+    }
   }
 
   async handleFindNearest() {
@@ -216,6 +211,73 @@ class App {
   }
 
   /**
+   * First-visit consent card. Explains the value, then only triggers the
+   * native geolocation prompt if the user chooses "Allow". Choice is
+   * remembered so the card never nags on return visits.
+   */
+  showLocationConsent() {
+    const card = document.getElementById('loc-consent');
+    if (!card) return;
+
+    const allow = document.getElementById('loc-consent-allow');
+    const deny  = document.getElementById('loc-consent-deny');
+
+    const onKey = (e) => { if (e.key === 'Escape') decide('denied'); };
+    const close = () => {
+      card.classList.remove('is-active');
+      document.removeEventListener('keydown', onKey);
+    };
+
+    const decide = async (choice) => {
+      localStorage.setItem(this.CONSENT_KEY, choice);
+      close();
+      if (choice !== 'granted') return;
+      ui.showLoading();
+      const located = await this.acquireLocation();
+      ui.hideLoading();
+      if (located && typeof stationNotifications !== 'undefined') {
+        stationNotifications.showNearbyNow();
+      }
+    };
+
+    allow.addEventListener('click', () => decide('granted'), { once: true });
+    deny.addEventListener('click', () => decide('denied'), { once: true });
+    document.addEventListener('keydown', onKey);
+
+    card.classList.add('is-active');
+    requestAnimationFrame(() => allow.focus());
+  }
+
+  /**
+   * Fetch the device location and wire up the map marker, camera, live
+   * tracking and notification seeding. Shared by the consent flow and by
+   * returning users who already granted access. Returns true if located.
+   */
+  async acquireLocation() {
+    const pos = await geoLocation
+      .getUserLocation({ highAccuracy: true })
+      .catch(() => null);
+    if (!pos || !geoLocation.isLocated) return false;
+
+    stationMap.setUserLocation(pos.lat, pos.lng, {
+      accuracy: geoLocation.userAccuracy,
+      heading: geoLocation.userHeading,
+      animate: false,
+    });
+    stationMap.flyTo(pos.lat, pos.lng, 14);
+    document.getElementById('loc-btn')?.classList.add('is-located');
+    this.startLiveTracking();
+
+    if (typeof stationNotifications !== 'undefined' && !stationNotifications.seeded) {
+      const stations = stationAPI.getStations();
+      if (stations?.length) {
+        stationNotifications.seedStates(stations, geoLocation.userLat, geoLocation.userLng);
+      }
+    }
+    return true;
+  }
+
+  /**
    * Live tracking — user marker smoothly follows device as it moves.
    * Auto-re-routes active route and keeps sidebar distances fresh.
    */
@@ -223,7 +285,16 @@ class App {
     if (this._liveTrackingStarted) return;
     this._liveTrackingStarted = true;
     this._lastReroute = 0;
+    this._lastReroutePos = null;
     this._lastSidebarRefresh = 0;
+
+    // Tuning (metres / ms)
+    const ARRIVE_M = 40;        // within this of destination → arrived
+    const OFFROUTE_M = 45;      // drifted this far off the drawn line → recalc fast
+    const MOVE_M = 25;          // meaningful progress before a periodic recalc
+    const MIN_REROUTE_MS = 6000;   // never hit OSRM more often than this
+    const MAX_REROUTE_MS = 20000;  // safety recalc even when barely moving
+    const ACCURACY_MAX_M = 60; // ignore off-route recalc on jittery GPS fixes
 
     geoLocation.startWatching((snap) => {
       stationMap.setUserLocation(snap.lat, snap.lng, {
@@ -234,10 +305,35 @@ class App {
 
       const now = Date.now();
 
-      // Re-route every 12s while following a route (avoid hammering OSRM)
-      if (stationRouter?.activeRoute && now - this._lastReroute > 12000) {
-        this._lastReroute = now;
-        stationRouter.refreshFromCurrent();
+      // --- Live route tracking: arrival, off-route detection, throttled recalc ---
+      if (stationRouter?.activeRoute) {
+        const dest = stationRouter.activeRoute.station;
+        const toDest = GeoLocation.distanceBetween(snap.lat, snap.lng, dest.lat, dest.lng) * 1000;
+
+        if (toDest <= ARRIVE_M) {
+          stationRouter.arrive();
+        } else {
+          const gpsOk = !Number.isFinite(snap.accuracy) || snap.accuracy < ACCURACY_MAX_M;
+          const off = stationRouter.distanceToRoute(snap.lat, snap.lng);
+          const moved = this._lastReroutePos
+            ? GeoLocation.distanceBetween(snap.lat, snap.lng, this._lastReroutePos.lat, this._lastReroutePos.lng) * 1000
+            : Infinity;
+          const since = now - this._lastReroute;
+
+          const needReroute =
+            (gpsOk && off > OFFROUTE_M && since > MIN_REROUTE_MS) || // drifted off the line → correct fast
+            (moved > MOVE_M && since > MIN_REROUTE_MS) ||            // progressed enough
+            (since > MAX_REROUTE_MS);                               // periodic safety net
+
+          if (needReroute) {
+            this._lastReroute = now;
+            this._lastReroutePos = { lat: snap.lat, lng: snap.lng };
+            stationRouter.refreshFromCurrent();
+          } else {
+            // Between network recalcs, keep the panel ETA/distance live for free.
+            stationRouter.updateProgress(snap.lat, snap.lng);
+          }
+        }
       }
 
       // If sidebar open with results, refresh distances every 5s

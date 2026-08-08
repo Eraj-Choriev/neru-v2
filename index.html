@@ -213,6 +213,45 @@
       </div>
     </div>
 
+    <!-- ===== Location Consent (first-visit priming) ===== -->
+    <div class="loc-consent" id="loc-consent" role="dialog" aria-modal="true"
+         aria-labelledby="loc-consent-title" aria-describedby="loc-consent-body">
+      <div class="loc-consent-card">
+        <div class="loc-radar" aria-hidden="true">
+          <span class="loc-radar-sweep"></span>
+          <span class="loc-radar-grid"></span>
+          <span class="loc-radar-ring r3"></span>
+          <span class="loc-radar-ring r2"></span>
+          <span class="loc-radar-ring r1"></span>
+          <span class="loc-radar-blip b1"></span>
+          <span class="loc-radar-blip b2"></span>
+          <span class="loc-radar-pin">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/>
+              <circle cx="12" cy="10" r="2.6" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
+        </div>
+
+        <span class="loc-consent-tag" data-i18n="locConsentTag">On-device</span>
+        <h2 class="loc-consent-title" id="loc-consent-title" data-i18n="locConsentTitle">Find charging near you</h2>
+        <p class="loc-consent-body" id="loc-consent-body" data-i18n="locConsentBody">Share your location and NŪR points you to the nearest free charger — and draws the route there.</p>
+
+        <div class="loc-consent-actions">
+          <button class="loc-consent-btn primary" id="loc-consent-allow" data-i18n="locConsentAllow">Allow location</button>
+          <button class="loc-consent-btn ghost" id="loc-consent-deny" data-i18n="locConsentDeny">Not now</button>
+        </div>
+
+        <p class="loc-consent-note">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="9" rx="2"/>
+            <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+          </svg>
+          <span data-i18n="locConsentNote">We never store or share where you are.</span>
+        </p>
+      </div>
+    </div>
+
     <!-- ===== Route Panel ===== -->
     <div class="route-panel" id="route-panel" role="status" aria-live="polite">
       <div class="route-panel-track">
@@ -302,7 +341,6 @@
   <script src="js/ui.js"></script>
   <script src="js/notifications.js"></script>
   <script src="js/router.js"></script>
-  <script src="js/calculator.js"></script>
   <script src="js/pwa.js"></script>
   <script src="js/app.js"></script>
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "564d13df8dba417a9193fe33cef8e220"}'></script><!-- End Cloudflare Web Analytics -->

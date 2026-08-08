@@ -4,7 +4,7 @@
 //  - Map tiles + API: network-first (always fresh when online)
 //  - Everything else: network-first with cache fallback
 
-const CACHE = 'nur-shell-v1';
+const CACHE = 'nur-shell-v2';
 const SHELL = [
   '/',
   '/index.html',
@@ -17,7 +17,6 @@ const SHELL = [
   '/js/ui.js',
   '/js/notifications.js',
   '/js/router.js',
-  '/js/calculator.js',
   '/js/pwa.js',
   '/js/app.js',
   '/logo.png',
