@@ -19,7 +19,9 @@ function parseSchedule(str) {
     return { is24: true, isOpen: true, open: '00:00', close: '24:00' };
   }
 
-  const times = [...s.matchAll(/(\d{1,2}):(\d{2})/g)];
+  // The feed writes the same hours five different ways — "07:00 - 22:00",
+  // "07:00 то 22:00", "07.00 - 22.00" — so the separator has to be either.
+  const times = [...s.matchAll(/(\d{1,2})[:.](\d{2})/g)];
   if (times.length < 2) return null;
 
   const h1 = +times[0][1], m1 = +times[0][2];
@@ -63,6 +65,7 @@ class UI {
     this.sidebarOpen = false;
     this.currentFilter = 'all';
     this.toastTimeout = null;
+    this.statsMode = 'ev'; // 'ev' | 'parking'
   }
 
   init() {
@@ -559,13 +562,46 @@ class UI {
   }
 
   updateStats(stats) {
-    if (this.statsTotal) this.statsTotal.textContent = stats.total;
-    if (this.statsFree) this.statsFree.textContent = stats.freeConnectors;
-    if (this.statsBusy) this.statsBusy.textContent = stats.totalConnectors - stats.freeConnectors;
+    // While the map shows parking only, the HUD counts bays. The 30s station
+    // refresh must not quietly overwrite it with charger numbers.
+    if (this.statsMode === 'parking') return;
+    this._writeStats(stats.total, stats.freeConnectors, stats.totalConnectors - stats.freeConnectors);
+  }
+
+  updateParkingStats(pstats) {
+    if (this.statsMode !== 'parking') return;
+    this._writeStats(pstats.zones, pstats.places, pstats.accessible);
+  }
+
+  _writeStats(total, mid, right) {
+    if (this.statsTotal) this.statsTotal.textContent = total;
+    if (this.statsFree)  this.statsFree.textContent  = mid;
+    if (this.statsBusy)  this.statsBusy.textContent  = right;
     // Mirror in mobile drawer
-    if (this.mdTotal) this.mdTotal.textContent = stats.total;
-    if (this.mdFree)  this.mdFree.textContent  = stats.freeConnectors;
-    if (this.mdBusy)  this.mdBusy.textContent  = stats.totalConnectors - stats.freeConnectors;
+    if (this.mdTotal) this.mdTotal.textContent = total;
+    if (this.mdFree)  this.mdFree.textContent  = mid;
+    if (this.mdBusy)  this.mdBusy.textContent  = right;
+  }
+
+  /**
+   * Swap what the three HUD cells mean. The labels keep their data-i18n
+   * wiring so a language change after the swap still translates them.
+   */
+  setStatsMode(mode) {
+    this.statsMode = mode;
+    const keys = mode === 'parking'
+      ? ['pkZonesLabel', 'pkPlaces', 'pkAccessible']
+      : ['totalStations', 'availableNow', 'occupiedNow'];
+
+    ['total', 'free', 'busy'].forEach((cell, i) => {
+      document.getElementById(`stat-label-${cell}`)?.setAttribute('data-i18n', keys[i]);
+      document.getElementById(`md-label-${cell}`)?.setAttribute('data-i18n', keys[i]);
+    });
+
+    document.body.dataset.mode = mode;
+    document.getElementById('filter-seg')?.classList.toggle('is-inert', mode === 'parking');
+    document.getElementById('filter-seg')?.setAttribute('aria-disabled', String(mode === 'parking'));
+    i18n.updateDOM();
   }
 
   updateLastRefresh(date) {

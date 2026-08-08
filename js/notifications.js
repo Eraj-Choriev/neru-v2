@@ -102,6 +102,7 @@ class StationNotifications {
 
       this._log('log', '✅ Enabling notifications (in-app cards + OS if permitted)');
       this.setEnabled(true);
+      this._ringSwitch();
       ui.showToast(i18n.t('notifEnabled'), 'success', 2500);
       this._notifyAvailableNearby();
     }
@@ -120,8 +121,20 @@ class StationNotifications {
     const btn = document.getElementById('notif-toggle');
     if (!btn) return;
     btn.classList.toggle('is-active', this.enabled);
-    btn.setAttribute('aria-pressed', String(this.enabled));
+    btn.setAttribute('aria-checked', String(this.enabled));
     btn.title = i18n.t(this.enabled ? 'notifDisableTitle' : 'notifEnableTitle');
+  }
+
+  /**
+   * The bell only rings when the user flips the switch. Restoring a saved
+   * "on" state at page load must not replay the animation — a chime every
+   * time the app opens is noise, not feedback.
+   */
+  _ringSwitch() {
+    const btn = document.getElementById('notif-toggle');
+    if (!btn) return;
+    btn.classList.add('is-ringing');
+    setTimeout(() => btn.classList.remove('is-ringing'), 900);
   }
 
   // ── Seeding ───────────────────────────────────────────────────────────────
@@ -392,6 +405,50 @@ class StationNotifications {
     card.addEventListener('animationend', () => {
       if (card.parentNode) card.parentNode.removeChild(card);
     }, { once: true });
+  }
+
+  // ── Generic OS notification ───────────────────────────────────────────────
+  /**
+   * Show an OS notification for any subject, not just a station.
+   *
+   * Chrome on Android refuses `new Notification()` inside an installed PWA
+   * ("Illegal constructor") — there, the service worker registration is the
+   * only way through, and it is also what lets the alert arrive while the app
+   * is backgrounded. Try that first, fall back to the constructor on desktop.
+   */
+  async notify(title, body, tag = 'nur') {
+    if (!this.isSupported() || Notification.permission !== 'granted') {
+      this._log('log', `ℹ️ notify() skipped — permission="${this.isSupported() ? Notification.permission : 'unsupported'}"`);
+      return false;
+    }
+
+    const options = {
+      body,
+      tag,
+      renotify: true,
+      icon: 'logo.png',
+      badge: 'logo.png',
+    };
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg?.showNotification) {
+          await reg.showNotification(title, options);
+          return true;
+        }
+      }
+    } catch (err) {
+      this._log('warn', 'SW notification failed, falling back:', err.message);
+    }
+
+    try {
+      new Notification(title, options);
+      return true;
+    } catch (err) {
+      this._log('error', '❌ Notification failed:', err.name, err.message);
+      return false;
+    }
   }
 
   // ── Native OS notification (background fallback) ───────────────────────────

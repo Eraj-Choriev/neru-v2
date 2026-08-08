@@ -43,6 +43,28 @@
   --edge-ring: inset 0 0 0 0.5px rgba(255, 255, 255, 0.09);
   --mat-shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.62);
 
+  /* ---- Glass edge ----
+     A pane of glass does not have an outline. Its top rim catches the light,
+     its bottom rim falls into shadow, and a hairline contains the whole
+     thing. Every control uses this instead of `border`, because a uniform
+     1px stroke around a filled shape is what makes a button look printed on
+     rather than lit. */
+  --edge-glass:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.11);
+  --edge-glass-lit:
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+
+  /* Tints — colour arrives as light through the glass, never as paint */
+  --tint-volt:       rgba(123, 255, 190, 0.20);
+  --tint-volt-hover: rgba(123, 255, 190, 0.30);
+  --tint-cyan:       rgba(74, 208, 255, 0.20);
+  --tint-cyan-hover: rgba(74, 208, 255, 0.30);
+  --tint-coral:      rgba(255, 107, 107, 0.16);
+
   /* Accents */
   --volt-400: #9cffcf;
   --volt-500: #7bffbe;      /* primary mint */
@@ -337,104 +359,152 @@ body {
   justify-content: flex-end;
 }
 
-/* ---- Icon group (notif + theme) ---- */
-/* ---- Notif toggle: clear on/off states via coloured dot + bell state ---- */
-.notif-toggle {
+/* ============================================================
+   NOTIFICATION SWITCH
+   ------------------------------------------------------------
+   The one place in the header allowed to be loud. A bell rides the
+   thumb: off, it is struck through and sits in cool glass; on, the
+   track floods with mint, the thumb springs across, the strike
+   clears and the bell rings once. Everything else stays quiet.
+   ============================================================ */
+.notif-switch {
+  --sw-h: 30px;
+  --sw-w: calc(var(--sw-h) * 1.8);
+  --sw-pad: 3px;
+  --sw-thumb: calc(var(--sw-h) - var(--sw-pad) * 2);
+
   position: relative;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  color: var(--text-2);
+  width: var(--sw-w);
+  height: var(--sw-h);
+  padding: 0;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-glass);
   cursor: pointer;
   flex-shrink: 0;
   transition:
     background var(--t-base) var(--ease-out),
-    border-color var(--t-base) var(--ease-out),
-    color var(--t-base) var(--ease-out),
-    box-shadow var(--t-base) var(--ease-out),
-    transform var(--t-fast) var(--ease-spring);
+    box-shadow var(--t-base) var(--ease-out);
 }
 
-.notif-toggle:hover {
-  background: var(--ink-700);
-  border-color: var(--line-strong);
-  color: var(--text-1);
-  transform: translateY(-1px);
+.notif-switch:focus-visible { outline: 2px solid var(--volt-500); outline-offset: 3px; }
+.notif-switch:active { transform: scale(0.96); }
+
+.notif-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
-.notif-toggle:active { transform: scale(0.94); }
-
-/* Off-state: red tint on entire button (no separate dot) */
-.notif-toggle:not(.is-active) {
-  color: var(--coral-400);
-  border-color: rgba(255, 138, 138, 0.35);
-  background: rgba(255, 107, 107, 0.06);
-}
-
-/* Diagonal slash over the bell when OFF — uses pseudo on inner icon */
-.notif-toggle .notif-icon {
-  position: relative;
+.notif-switch-thumb {
+  position: absolute;
+  top: var(--sw-pad);
+  left: var(--sw-pad);
+  width: var(--sw-thumb);
+  height: var(--sw-thumb);
   display: grid;
   place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.90);
+  color: #4a5164;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  /* Overshoot on the way across — the thumb has weight */
+  transition:
+    transform 420ms var(--ease-spring),
+    background var(--t-base) var(--ease-out),
+    color var(--t-base) var(--ease-out);
 }
 
-.notif-toggle .notif-icon::before {
-  content: '';
+.notif-switch-bell {
+  width: 13px;
+  height: 13px;
+  transition: transform var(--t-base) var(--ease-out);
+}
+
+/* The strike-through that reads as "muted" */
+.notif-switch-slash {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 22px;
+  width: 17px;
   height: 2px;
-  background: currentColor;
   border-radius: 2px;
+  background: currentColor;
   transform: translate(-50%, -50%) rotate(-45deg);
-  opacity: 1;
-  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
-  box-shadow: 0 0 0 2px var(--ink-900);
+  transform-origin: center;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+  transition: transform 280ms var(--ease-spring), opacity 200ms var(--ease-out);
 }
 
-/* ON state: volt green icon + glow, slash removed */
-.notif-toggle.is-active {
-  color: var(--volt-500);
-  border-color: var(--volt-500);
-  background: rgba(123, 255, 190, 0.1);
-  box-shadow: 0 0 14px -4px var(--volt-glow);
-}
+/* ---- Off ---- */
+.notif-switch:not(.is-active) { background: var(--tint-coral); }
+.notif-switch:not(.is-active):hover { background: rgba(255, 107, 107, 0.24); }
 
-.notif-toggle.is-active .notif-icon::before {
+/* ---- On ---- */
+.notif-switch.is-active {
+  background: var(--tint-volt-hover);
+  box-shadow: var(--edge-glass-lit), 0 0 18px -6px var(--volt-glow);
+}
+.notif-switch.is-active .notif-switch-thumb {
+  transform: translateX(calc(var(--sw-w) - var(--sw-thumb) - var(--sw-pad) * 2));
+  background: var(--volt-400);
+  color: var(--on-volt);
+  box-shadow: 0 2px 10px -2px var(--volt-glow), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+}
+.notif-switch.is-active .notif-switch-slash {
   opacity: 0;
-  transform: translate(-50%, -50%) rotate(-45deg) scale(0.4);
+  transform: translate(-50%, -50%) rotate(-45deg) scaleX(0);
 }
 
-/* Light theme adjustments */
-:root[data-theme="light"] .notif-toggle {
-  background: rgba(13, 18, 32, 0.04);
-  border-color: rgba(13, 18, 32, 0.12);
-  color: #5e6578;
+/* ---- The ring, only on a real toggle (not on page load) ---- */
+.notif-switch.is-active.is-ringing .notif-switch-bell {
+  animation: bellRing 640ms var(--ease-out) 120ms;
 }
-:root[data-theme="light"] .notif-toggle:hover {
-  background: rgba(13, 18, 32, 0.08);
-  border-color: rgba(13, 18, 32, 0.2);
-  color: #0d1220;
+.notif-switch.is-active.is-ringing .notif-switch-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 var(--volt-glow);
+  animation: bellPing 640ms var(--ease-out) 140ms;
+  pointer-events: none;
 }
-:root[data-theme="light"] .notif-toggle:not(.is-active) {
-  background: rgba(255, 107, 107, 0.06);
-  border-color: rgba(255, 107, 107, 0.3);
-  color: #d24b4b;
+
+@keyframes bellRing {
+  0%   { transform: rotate(0); }
+  20%  { transform: rotate(-16deg); }
+  40%  { transform: rotate(12deg); }
+  60%  { transform: rotate(-8deg); }
+  80%  { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
 }
-:root[data-theme="light"] .notif-toggle .notif-icon::before {
-  box-shadow: 0 0 0 2px #ffffff;
+
+@keyframes bellPing {
+  0%   { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.55); }
+  100% { box-shadow: 0 0 0 12px rgba(123, 255, 190, 0); }
 }
-:root[data-theme="light"] .notif-toggle.is-active {
-  background: rgba(14, 183, 128, 0.12);
-  border-color: var(--volt-600);
-  color: var(--volt-700);
-  box-shadow: 0 4px 14px -4px rgba(14, 183, 128, 0.45);
+
+:root[data-theme="light"] .notif-switch-thumb {
+  background: #ffffff;
+  color: #8a91a3;
+  box-shadow: 0 2px 6px rgba(13, 18, 32, 0.18), inset 0 -1px 0 rgba(13, 18, 32, 0.08);
 }
+:root[data-theme="light"] .notif-switch:not(.is-active) .notif-switch-thumb { color: var(--coral-500); }
+:root[data-theme="light"] .notif-switch.is-active .notif-switch-thumb {
+  background: var(--volt-500);
+  color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-switch-thumb { transition-duration: 1ms; }
+  .notif-switch.is-active.is-ringing .notif-switch-bell,
+  .notif-switch.is-active.is-ringing .notif-switch-thumb::after { animation: none; }
+}
+
 
 /* ============================================================
    SEGMENTED CONTROL — shared for filter + lang
@@ -663,20 +733,23 @@ body {
   align-items: center;
   gap: 10px;
   padding: 13px 20px 13px 16px;
-  background: linear-gradient(160deg, var(--volt-400) 0%, var(--volt-600) 55%, var(--volt-700) 100%);
-  color: var(--on-volt);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--tint-volt-hover);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  color: var(--volt-400);
+  border: none;
   border-radius: var(--r-pill);
   font-family: var(--f-display);
   font-weight: 700;
   font-size: 14.5px;
   letter-spacing: -0.01em;
   box-shadow:
-    0 18px 50px -12px var(--volt-glow),
-    0 2px 0 rgba(255, 255, 255, 0.35) inset,
-    0 -4px 12px rgba(0, 0, 0, 0.2) inset;
+    var(--edge-glass-lit),
+    0 16px 44px -16px var(--volt-glow);
   transition:
     transform 320ms var(--ease-spring),
+    background var(--t-base) var(--ease-out),
+    color var(--t-base) var(--ease-out),
     box-shadow var(--t-base) var(--ease-out);
   animation: fabIn 700ms 200ms var(--ease-spring) both;
 }
@@ -688,10 +761,10 @@ body {
 
 .fab:hover {
   transform: translateX(-50%) translateY(-3px);
+  background: rgba(123, 255, 190, 0.38);
   box-shadow:
-    0 26px 64px -14px var(--volt-glow),
-    0 2px 0 rgba(255, 255, 255, 0.4) inset,
-    0 -4px 12px rgba(0, 0, 0, 0.25) inset;
+    var(--edge-glass-lit),
+    0 24px 56px -16px var(--volt-glow);
 }
 
 .fab:active { transform: translateX(-50%) translateY(0) scale(0.97); }
@@ -701,8 +774,9 @@ body {
   place-items: center;
   width: 26px; height: 26px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  color: var(--on-volt);
+  background: rgba(123, 255, 190, 0.22);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.22);
+  color: inherit;
   animation: fabBolt 2.6s var(--ease-io) infinite;
 }
 
@@ -1463,8 +1537,12 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 12px 16px;
-  border: 1px solid transparent;
+  /* No border anywhere in the button system — the edge is light, see
+     --edge-glass. A border here would also fight the backdrop blur. */
+  border: none;
   border-radius: var(--r-md);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
   font-family: var(--f-body);
   font-size: 13.5px;
   font-weight: 600;
@@ -1497,28 +1575,33 @@ body {
 
 .btn:active::after { opacity: 1; transition-duration: 0ms; }
 
+/* Primary: mint light through glass, not mint paint. The label stays bright
+   mint so it reads against the map showing through. */
 .btn-primary {
-  background: linear-gradient(160deg, var(--volt-400), var(--volt-600) 60%, var(--volt-700));
-  color: var(--on-volt);
-  box-shadow: 0 10px 26px -10px var(--volt-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: var(--tint-volt);
+  color: var(--volt-400);
+  box-shadow: var(--edge-glass-lit), 0 8px 24px -12px var(--volt-glow);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 34px -10px var(--volt-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: var(--tint-volt-hover);
+  box-shadow: var(--edge-glass-lit), 0 14px 32px -12px var(--volt-glow);
 }
 
 .btn-ghost {
-  background: var(--glass-light);
-  color: var(--text-1);
-  border-color: var(--line);
+  background: var(--mat-thin);
+  color: var(--text-2);
+  box-shadow: var(--edge-glass);
 }
 
 .btn-ghost:hover {
-  background: var(--ink-700);
-  border-color: var(--line-strong);
-  color: var(--volt-500);
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--text-1);
 }
+
+:root[data-theme="light"] .btn-primary { color: var(--volt-700); }
+:root[data-theme="light"] .btn-ghost:hover { background: rgba(13, 18, 32, 0.06); }
 
 .btn-arrow {
   font-family: var(--f-mono);
@@ -3062,8 +3145,8 @@ body.sidebar-open { overflow: hidden; }
   #lang-seg { display: none; }
   /* Tighten header-right gap */
   .header-right { gap: 8px; }
-  /* Notif toggle size */
-  .notif-toggle { width: 36px; height: 36px; }
+  /* Notification switch shrinks but keeps its proportions */
+  .notif-switch { --sw-h: 26px; }
   /* Burger size */
   .burger-btn { width: 38px; height: 38px; }
   .sidebar {
@@ -3148,6 +3231,25 @@ body.sidebar-open { overflow: hidden; }
   --line: rgba(13, 18, 32, 0.08);
   --line-strong: rgba(13, 18, 32, 0.16);
   --line-volt: rgba(14, 183, 128, 0.32);
+
+  /* Glass on a light backdrop: the shaded rim carries the edge, not the
+     specular one — a white highlight on white reads as nothing. */
+  --edge-glass:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(13, 18, 32, 0.10),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.09);
+  --edge-glass-lit:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(13, 18, 32, 0.13),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.14);
+
+  /* Denser on light: a 20% wash over a pale map leaves almost no colour for
+     the label to sit on, and the control stops reading as a control. */
+  --tint-volt:       rgba(14, 183, 128, 0.20);
+  --tint-volt-hover: rgba(14, 183, 128, 0.34);
+  --tint-cyan:       rgba(26, 156, 208, 0.20);
+  --tint-cyan-hover: rgba(26, 156, 208, 0.34);
+  --tint-coral:      rgba(217, 56, 56, 0.16);
 
   /* Shadows: softer, tinted */
   --sh-1: 0 2px 8px rgba(13, 18, 32, 0.08);
@@ -4207,27 +4309,28 @@ body.sidebar-open { overflow: hidden; }
   gap: 8px;
   padding: 9px 16px 9px 14px;
   border-radius: var(--r-pill);
-  background: linear-gradient(145deg, var(--volt-400), var(--volt-700));
-  color: var(--ink-900);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: var(--tint-volt);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  color: var(--volt-400);
+  border: none;
   font-family: var(--f-display);
   font-weight: 700;
   font-size: 13px;
   letter-spacing: -0.01em;
   box-shadow:
-    0 10px 26px -8px var(--volt-glow),
-    inset 0 1px 0 rgba(255,255,255,0.4),
-    inset 0 -2px 6px rgba(0,0,0,0.15);
+    var(--edge-glass-lit),
+    0 10px 26px -12px var(--volt-glow);
   cursor: pointer;
-  transition: transform 220ms var(--ease-spring), box-shadow var(--t-base);
+  transition: transform 220ms var(--ease-spring), background var(--t-base), box-shadow var(--t-base);
   animation: installIn 700ms 900ms var(--ease-spring) both;
 }
 .install-btn:hover {
   transform: translateY(-2px);
+  background: var(--tint-volt-hover);
   box-shadow:
-    0 14px 34px -8px var(--volt-glow),
-    inset 0 1px 0 rgba(255,255,255,0.5),
-    inset 0 -2px 6px rgba(0,0,0,0.15);
+    var(--edge-glass-lit),
+    0 16px 34px -12px var(--volt-glow);
 }
 .install-btn:active { transform: scale(0.96); }
 .install-btn[hidden] { display: none; }
@@ -4776,14 +4879,12 @@ body.sidebar-open .install-btn {
 }
 .chip:hover { background: rgba(255, 255, 255, 0.10); }
 
-/* ---- Ghost buttons ---- */
+/* Ghost buttons sit inside surfaces that are already blurred — stacking a
+   second backdrop-filter there costs a compositing layer and buys nothing. */
 .btn-ghost {
-  background: var(--mat-thin);
-  border: 0.5px solid var(--hair);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-.btn-ghost:hover { background: rgba(255, 255, 255, 0.12); }
 
 /* ---- Floating controls ---- */
 .loc-btn,
@@ -5141,3 +5242,622 @@ body.sidebar-open .install-btn {
   .an-live { animation: none; }
   .an-modal .an-card { transition-duration: 1ms; }
 }
+
+/* ============================================================
+   Paid parking zones
+   Cyan throughout, so a parking bay never reads as a charger.
+   ============================================================ */
+
+/* ---------- Map: "P" pins, clusters, active strip ---------- */
+
+.parking-marker { background: none; border: none; }
+
+.parking-marker .marker-inner {
+  width: 30px; height: 30px;
+  background: linear-gradient(140deg, var(--cyan-400), var(--cyan-500));
+}
+
+.parking-glyph {
+  transform: rotate(45deg);
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-900);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cluster-parking .cluster-inner {
+  background: linear-gradient(150deg, var(--cyan-400), var(--cyan-500));
+}
+.cluster-parking .cluster-ring { background: var(--cyan-400); }
+
+/* The strip the user is parked on, marching under the session card */
+.parking-active-line {
+  stroke-dasharray: 2 16;
+  animation: pkStripFlow 1.6s linear infinite;
+}
+@keyframes pkStripFlow {
+  to { stroke-dashoffset: -18; }
+}
+
+/* Layer toggle in its active state */
+.pk-trigger.is-active {
+  color: var(--cyan-400);
+  background: rgba(74, 208, 255, 0.16);
+}
+.pk-trigger.is-active:hover { color: var(--cyan-400); }
+
+.md-parking svg { color: var(--cyan-400); }
+.md-parking-state {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-4);
+}
+.md-parking.is-active .md-parking-state { color: var(--cyan-400); }
+
+/* ---------- Zone popup ---------- */
+
+.pk-badge {
+  display: grid;
+  place-items: center;
+  width: 17px; height: 17px;
+  border-radius: 5px;
+  background: linear-gradient(140deg, var(--cyan-400), var(--cyan-500));
+  color: var(--ink-900);
+  font-family: var(--f-display);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.popup-content--parking .chip--tariff .chip-value { color: var(--cyan-400); }
+
+.pk-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.pk-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.pk-fact-label { color: var(--text-3); }
+.pk-fact-val {
+  font-family: var(--f-mono);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.pk-free-note {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+
+/* ---------- Running session card ---------- */
+
+.pk-session {
+  position: fixed;
+  left: 50%;
+  bottom: calc(90px + var(--safe-bottom));
+  z-index: 901;
+  width: min(400px, calc(100vw - 24px));
+  transform: translateX(-50%) translateY(20px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 440ms var(--ease-spring),
+    opacity 300ms var(--ease-out),
+    visibility 300ms;
+
+  padding: 13px 14px 12px;
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: 0.5px solid rgba(74, 208, 255, 0.3);
+  border-radius: var(--r-lg);
+  box-shadow: var(--mat-shadow), var(--edge-top), 0 8px 40px -12px rgba(74, 208, 255, 0.35);
+}
+
+.pk-session.is-active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.pk-session-main {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.pk-session-badge {
+  flex: none;
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(140deg, var(--cyan-400), var(--cyan-500));
+  color: var(--ink-900);
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+/* The meter is running — say so without a word */
+.pk-session.is-active:not(.is-free) .pk-session-badge {
+  animation: pkMeterPulse 2.6s var(--ease-io) infinite;
+}
+@keyframes pkMeterPulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 0 rgba(74,208,255,0.45); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 6px rgba(74,208,255,0); }
+}
+
+.pk-session-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.pk-session-eyebrow {
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan-400);
+}
+
+.pk-session-zone {
+  font-family: var(--f-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+
+.pk-session-addr {
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-session-meter {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.pk-session-timer {
+  font-family: var(--f-mono);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.pk-session-cost {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cyan-400);
+}
+.pk-session.is-free .pk-session-cost,
+.pk-session.is-free .pk-session-eyebrow { color: var(--volt-500); }
+
+.pk-session-note {
+  margin-top: 9px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+
+.pk-session-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 11px;
+}
+.pk-session-actions .btn { flex: 1; justify-content: center; font-size: 12px; padding: 8px 10px; }
+
+/* The undo button only exists during its window */
+.pk-undo-btn { display: none; }
+.pk-session.can-undo .pk-undo-btn { display: inline-flex; }
+
+/* ---------- Rules & fines sheet ---------- */
+
+.pk-sec { margin-bottom: 22px; }
+.pk-sec:last-child { margin-bottom: 4px; }
+
+.pk-sec-title {
+  font-family: var(--f-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 9px;
+}
+
+.pk-sec-note {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-3);
+  margin-top: 9px;
+}
+.pk-sec-note--strong { color: var(--text-2); font-weight: 600; }
+.pk-sec-note a { color: var(--cyan-400); text-decoration: none; }
+.pk-sec-note a:hover { text-decoration: underline; }
+
+.pk-hero {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.pk-hero-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 14px 8px;
+  border-radius: var(--r-md);
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  box-shadow: var(--edge-ring);
+  text-align: center;
+}
+
+.pk-hero-num {
+  font-family: var(--f-mono);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--cyan-400);
+}
+.pk-hero-num--warn { color: var(--coral-400); }
+
+.pk-hero-lbl {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-3);
+}
+
+.pk-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pk-list li {
+  position: relative;
+  padding-left: 17px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.pk-list li::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cyan-400);
+}
+.pk-list--warn li::before { background: var(--coral-400); }
+
+.pk-cover {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.pk-cover-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border-radius: var(--r-md);
+  background: var(--mat-thin);
+  border: 0.5px solid var(--hair);
+  box-shadow: var(--edge-ring);
+}
+.pk-cover-cell span {
+  font-family: var(--f-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.pk-cover-cell small {
+  font-size: 9.5px;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 1.3;
+}
+
+:root[data-theme="light"] .pk-hero-cell,
+:root[data-theme="light"] .pk-cover-cell {
+  background: rgba(13, 18, 32, 0.035);
+  border-color: rgba(13, 18, 32, 0.08);
+}
+:root[data-theme="light"] .pk-trigger.is-active {
+  background: rgba(26, 156, 208, 0.14);
+  color: var(--cyan-500);
+}
+:root[data-theme="light"] .pk-session {
+  border-color: rgba(26, 156, 208, 0.28);
+}
+:root[data-theme="light"] .pk-session-eyebrow,
+:root[data-theme="light"] .pk-session-cost,
+:root[data-theme="light"] .pk-sec-note a,
+:root[data-theme="light"] .pk-hero-num { color: var(--cyan-500); }
+
+/* A route panel and a parking card must never overlap */
+.route-panel.is-active ~ .pk-session.is-active {
+  bottom: calc(160px + var(--safe-bottom));
+}
+
+@media (max-width: 560px) {
+  .pk-hero, .pk-cover { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pk-hero-num { font-size: 21px; }
+  .pk-session-actions { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parking-active-line { animation: none; }
+  .pk-session.is-active:not(.is-free) .pk-session-badge { animation: none; }
+}
+
+/* "P" prefix inside a parking cluster count */
+.cluster-p {
+  font-family: var(--f-display);
+  font-style: normal;
+  font-weight: 800;
+  font-size: 11px;
+  opacity: 0.72;
+  margin-right: 2px;
+}
+
+/* Toasts sit just above the running session card instead of on top of its
+   buttons — the card is persistent, the toast is not. */
+.pk-session.is-active ~ .toast { bottom: 236px; }
+.route-panel.is-active ~ .pk-session.is-active ~ .toast { bottom: 306px; }
+@media (max-width: 560px) {
+  .pk-session.is-active ~ .toast { bottom: 272px; }
+  .route-panel.is-active ~ .pk-session.is-active ~ .toast { bottom: 342px; }
+}
+
+/* ============================================================
+   GLASS PASS — every control becomes a lens, not a chip
+   ------------------------------------------------------------
+   One rule for the whole app: a control is a pane of tinted glass
+   held over the map. Colour arrives as light through it, never as
+   paint on top of it, and the edge is a lit top rim plus a shaded
+   bottom rim (--edge-glass) instead of a uniform 1px stroke.
+
+   Discipline: ONE backdrop-filter per surface. Controls nested in an
+   already-blurred parent (popup buttons, drawer rows) get a flat
+   translucent fill instead — re-blurring inside a blur costs GPU
+   time and looks identical.
+   ============================================================ */
+
+/* ---- Round icon controls: location, analytics, parking ---- */
+.loc-btn,
+.an-trigger {
+  border: none;
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-glass), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+}
+
+.loc-btn:hover {
+  background: var(--tint-volt);
+  color: var(--volt-400);
+  box-shadow: var(--edge-glass-lit), 0 12px 30px -14px var(--volt-glow);
+}
+.an-trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--edge-glass-lit), 0 10px 28px -14px rgba(0, 0, 0, 0.6);
+}
+
+.loc-btn.is-located {
+  background: var(--tint-volt);
+  color: var(--volt-400);
+  box-shadow: var(--edge-glass-lit), 0 10px 30px -14px var(--volt-glow);
+}
+.loc-btn.is-following {
+  background: var(--tint-volt-hover);
+  box-shadow: var(--edge-glass-lit), 0 0 0 1px var(--line-volt), 0 12px 34px -14px var(--volt-glow);
+}
+
+.pk-trigger.is-active {
+  background: var(--tint-cyan);
+  color: var(--cyan-400);
+  box-shadow: var(--edge-glass-lit), 0 10px 28px -14px rgba(74, 208, 255, 0.5);
+}
+:root[data-theme="light"] .pk-trigger.is-active { color: var(--cyan-500); }
+
+/* ---- Segmented controls ---- */
+.segmented {
+  border: none;
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-glass), 0 8px 24px -14px rgba(0, 0, 0, 0.5);
+}
+
+.seg-indicator {
+  border: none;
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: var(--edge-glass-lit);
+}
+:root[data-theme="light"] .seg-indicator { background: rgba(255, 255, 255, 0.9); }
+
+.segmented[data-indicator-tone="volt"] .seg-indicator {
+  background: var(--tint-volt-hover);
+  box-shadow: var(--edge-glass-lit), 0 6px 18px -10px var(--volt-glow);
+}
+
+/* The charger filter has nothing to act on while the map shows parking
+   only. Dimmed and inert beats present-but-lying. */
+.segmented.is-inert {
+  opacity: 0.32;
+  pointer-events: none;
+  filter: saturate(0.4);
+  transition: opacity var(--t-base) var(--ease-out), filter var(--t-base) var(--ease-out);
+}
+
+/* ---- Stats HUD ---- */
+.map-stats {
+  border: none;
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-glass), 0 10px 30px -16px rgba(0, 0, 0, 0.55);
+}
+
+/* In parking mode the HUD counts bays, so its accent follows the layer */
+body[data-mode="parking"] .stat-accent {
+  color: var(--cyan-400);
+  text-shadow: 0 0 12px rgba(74, 208, 255, 0.4);
+}
+body[data-mode="parking"] .stat-busy,
+body[data-mode="parking"] .mdstat-busy { color: var(--text-1); }
+body[data-mode="parking"] .stat-live-dot { background: var(--cyan-400); }
+body[data-mode="parking"] .mdstat-accent { color: var(--cyan-400); }
+:root[data-theme="light"] body[data-mode="parking"] .stat-accent,
+:root[data-theme="light"] body[data-mode="parking"] .mdstat-accent { color: var(--cyan-500); }
+
+/* The find button hunts bays, not chargers, while parking is showing */
+body[data-mode="parking"] .fab {
+  background: var(--tint-cyan-hover);
+  color: var(--cyan-400);
+  box-shadow: var(--edge-glass-lit), 0 16px 44px -16px rgba(74, 208, 255, 0.55);
+}
+body[data-mode="parking"] .fab:hover {
+  background: rgba(74, 208, 255, 0.38);
+  box-shadow: var(--edge-glass-lit), 0 24px 56px -16px rgba(74, 208, 255, 0.6);
+}
+body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
+:root[data-theme="light"] body[data-mode="parking"] .fab { color: var(--cyan-500); }
+
+/* ---- Toasts: heavy blur is what makes glass legible over a busy map ---- */
+.toast {
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+}
+.toast-success {
+  background: var(--tint-volt-hover);
+  color: var(--volt-400);
+  box-shadow: var(--edge-glass-lit), 0 16px 40px -16px var(--volt-glow);
+}
+.toast-error {
+  background: var(--tint-coral);
+  color: var(--coral-400);
+  box-shadow: var(--edge-glass-lit), 0 16px 40px -16px rgba(255, 107, 107, 0.45);
+}
+.toast-warning {
+  background: rgba(255, 182, 72, 0.22);
+  color: var(--amber-400);
+  box-shadow: var(--edge-glass-lit), 0 16px 40px -16px rgba(255, 182, 72, 0.45);
+}
+.toast-info {
+  background: var(--mat-thick);
+  color: var(--text-1);
+  box-shadow: var(--edge-glass-lit), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme="light"] .toast-success { color: var(--volt-700); }
+:root[data-theme="light"] .toast-error   { color: var(--coral-500); }
+:root[data-theme="light"] .toast-warning { color: var(--amber-500); }
+
+/* ---- Buttons inside blurred parents ---- */
+.btn { border: none; }
+.pk-session-actions .btn,
+.popup-actions .btn,
+.card-actions .btn { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* A card with one action gives it the full width — a lone button hugging
+   the left edge reads as though something is missing beside it. */
+.popup-actions--single .btn { flex: 1; }
+
+/* Inside an already-blurred card there is no map to see through, so a 20%
+   wash reads as grey. The primary action gets a denser tint there to keep
+   its rank against the ghost buttons beside it. */
+.popup-actions .btn-primary,
+.card-actions .btn-primary,
+.pk-session-actions .btn-primary {
+  background: rgba(123, 255, 190, 0.16);
+  color: var(--volt-400);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(123, 255, 190, 0.34);
+}
+.popup-actions .btn-primary:hover,
+.card-actions .btn-primary:hover,
+.pk-session-actions .btn-primary:hover {
+  background: rgba(123, 255, 190, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(123, 255, 190, 0.5);
+}
+
+/* A parking card's primary action belongs to the parking layer */
+.popup-content--parking .btn-primary {
+  background: rgba(74, 208, 255, 0.16);
+  color: var(--cyan-400);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(74, 208, 255, 0.34);
+}
+.popup-content--parking .btn-primary:hover {
+  background: rgba(74, 208, 255, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(74, 208, 255, 0.5);
+}
+:root[data-theme="light"] .popup-content--parking .btn-primary { color: var(--cyan-500); }
+
+/* The find button is the one control that must survive a pale basemap */
+:root[data-theme="light"] .fab { background: rgba(14, 183, 128, 0.40); }
+:root[data-theme="light"] .fab:hover { background: rgba(14, 183, 128, 0.52); }
+:root[data-theme="light"] body[data-mode="parking"] .fab { background: rgba(26, 156, 208, 0.40); }
+:root[data-theme="light"] body[data-mode="parking"] .fab:hover { background: rgba(26, 156, 208, 0.52); }
+
+/* ---- Light theme: ink carries the label, glass carries the colour ----
+   On a dark map, colour IS the light and a mint label glows. On a pale
+   basemap the same label sits on near-white and drops to ~2.4:1. So the
+   tint keeps the identity and the text goes to ink, which reads at 10:1
+   and still looks like glass rather than a painted chip. */
+:root[data-theme="light"] .fab,
+:root[data-theme="light"] .install-btn,
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] body[data-mode="parking"] .fab,
+:root[data-theme="light"] .popup-content--parking .btn-primary,
+:root[data-theme="light"] .toast-success,
+:root[data-theme="light"] .toast-warning,
+:root[data-theme="light"] .toast-error {
+  color: var(--text-1);
+}
+:root[data-theme="light"] .fab-bolt { background: rgba(255, 255, 255, 0.55); }
+
+/* The icon controls keep their accent — an icon at 2px stroke on a tinted
+   pill stays legible where a word would not. */
+:root[data-theme="light"] .loc-btn.is-located,
+:root[data-theme="light"] .loc-btn:hover { color: var(--volt-700); }

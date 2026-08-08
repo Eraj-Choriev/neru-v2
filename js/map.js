@@ -13,6 +13,13 @@ class StationMap {
     this.highlightCircle = null;
     this.tileLayer = null;
     this._followUser = false; // auto-pan map to follow user when true
+
+    // Paid parking zones — a separate, independently toggled layer
+    this.parkingLineLayer = null;   // the kerbside strips
+    this.parkingMarkerLayer = null; // the "P" pins (own cluster group)
+    this.parkingRenderer = null;
+    this.parkingMarkers = [];
+    this.parkingVisible = false;
   }
 
   _buildTileLayer(theme) {
@@ -32,6 +39,7 @@ class StationMap {
     if (this.tileLayer) this.map.removeLayer(this.tileLayer);
     this.tileLayer = this._buildTileLayer(next);
     this.tileLayer.addTo(this.map);
+    this.refreshParkingTheme();
   }
 
   init(containerId = 'map') {
@@ -77,6 +85,30 @@ class StationMap {
 
     this.map.addLayer(this.markerLayer);
 
+    // ── Parking zones ──────────────────────────────────────────────────────
+    // 223 strips is enough polylines that SVG starts to stutter on a phone
+    // while panning, so they get their own canvas renderer.
+    this.parkingRenderer = L.canvas({ padding: 0.4 });
+    this.parkingLineLayer = L.layerGroup();
+
+    // Parking pins need their own cluster group: the station clusters are
+    // coloured by free-connector count (see iconCreateFunction above), which
+    // means nothing for a parking bay.
+    this.parkingMarkerLayer = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 46,
+      spiderLegPolylineOptions: { weight: 2, color: '#6b7280', opacity: 0.5 },
+      // Carry the "P" into the cluster too — a bare cyan number next to the
+      // station clusters is a colour riddle at a glance.
+      iconCreateFunction: (cluster) => L.divIcon({
+        html: `<div class="cluster-inner"><span><i class="cluster-p">P</i>${cluster.getChildCount()}</span><div class="cluster-ring"></div></div>`,
+        className: 'custom-cluster cluster-parking',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      }),
+    });
+
     // User-initiated drag disables follow-mode (like Google Maps)
     this.map.on('dragstart', () => {
       if (this._followUser) {
@@ -101,12 +133,17 @@ class StationMap {
       window.dispatchEvent(new CustomEvent('popupClosed'));
     });
 
-    // Delegate "Route" button clicks inside Leaflet popups
+    // Delegate popup button clicks (stations and parking zones alike)
     this.map.getContainer().addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action="route"]');
-      if (btn) {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+
+      if (action === 'route') {
         const id = btn.getAttribute('data-station-id');
         if (id) window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
+      } else if (action === 'zone-rules') {
+        window.dispatchEvent(new CustomEvent('parkingRulesRequest'));
       }
     });
 
@@ -184,6 +221,258 @@ class StationMap {
       marker.stationId = station.id;
       this.markers.push(marker);
     });
+  }
+
+  // ============================================
+  // Paid parking zones
+  // ============================================
+
+  /** Parking accent, per theme. Canvas strokes take a literal colour, not a CSS var. */
+  _parkingColor() {
+    return document.documentElement.getAttribute('data-theme') === 'light'
+      ? '#1a9cd0'
+      : '#4ad0ff';
+  }
+
+  createParkingIcon() {
+    return L.divIcon({
+      className: 'parking-marker',
+      html: `<div class="marker-inner"><span class="parking-glyph">P</span></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -34],
+    });
+  }
+
+  /**
+   * Each zone is a kerbside strip, so it is drawn as the thick rounded line
+   * the feed actually describes — not as a point. The "P" pin sits at its
+   * midpoint and carries the popup.
+   */
+  renderParkingZones(zones) {
+    if (!this.parkingLineLayer || !this.parkingMarkerLayer) return;
+
+    this.parkingLineLayer.clearLayers();
+    this.parkingMarkerLayer.clearLayers();
+    this.parkingMarkers = [];
+
+    const color = this._parkingColor();
+
+    zones.forEach((zone) => {
+      const line = L.polyline([zone.a, zone.b], {
+        renderer: this.parkingRenderer,
+        color,
+        weight: 9,
+        opacity: 0.5,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: true,
+      });
+      line.on('click', () => this.openZonePopup(zone.id));
+      line.addTo(this.parkingLineLayer);
+
+      const marker = L.marker([zone.lat, zone.lng], { icon: this.createParkingIcon() })
+        .bindPopup(this._buildZonePopup(zone), {
+          maxWidth: 320,
+          minWidth: 280,
+          className: 'neru-popup neru-popup--parking',
+          autoPan: true,
+          autoPanPaddingTopLeft: L.point(16, 84),
+          autoPanPaddingBottomRight: L.point(16, 16),
+        });
+
+      marker.zoneId = zone.id;
+      marker.addTo(this.parkingMarkerLayer);
+      this.parkingMarkers.push(marker);
+    });
+  }
+
+  /**
+   * Parking and chargers are two different errands, and showing both at once
+   * turns the centre of the city into a wall of pins. Turning one layer on
+   * takes the other off.
+   */
+  setParkingVisible(on) {
+    if (!this.map || !this.parkingLineLayer) return;
+    this.parkingVisible = !!on;
+    if (on) {
+      this.parkingLineLayer.addTo(this.map);
+      this.parkingMarkerLayer.addTo(this.map);
+    } else {
+      this.map.removeLayer(this.parkingLineLayer);
+      this.map.removeLayer(this.parkingMarkerLayer);
+    }
+    this.setStationsVisible(!on);
+  }
+
+  setStationsVisible(on) {
+    if (!this.map || !this.markerLayer) return;
+    if (on) {
+      if (!this.map.hasLayer(this.markerLayer)) this.map.addLayer(this.markerLayer);
+    } else {
+      this.map.closePopup();
+      this.clearHighlight();
+      this.map.removeLayer(this.markerLayer);
+    }
+  }
+
+  isParkingVisible() { return this.parkingVisible; }
+
+  /** Recolour the strips after a theme swap — canvas strokes don't inherit CSS. */
+  refreshParkingTheme() {
+    if (!this.parkingLineLayer) return;
+    const color = this._parkingColor();
+    this.parkingLineLayer.eachLayer((l) => {
+      if (l.setStyle) l.setStyle({ color });
+    });
+  }
+
+  /** Re-render every zone popup — used on language change. */
+  refreshParkingPopups(zones) {
+    if (!this.parkingMarkers.length) return;
+    this.parkingMarkers.forEach((m) => {
+      const zone = zones.find((z) => String(z.id) === String(m.zoneId));
+      if (zone) m.setPopupContent(this._buildZonePopup(zone));
+    });
+  }
+
+  openZonePopup(zoneId) {
+    const marker = this.parkingMarkers.find((m) => String(m.zoneId) === String(zoneId));
+    if (!marker) return;
+
+    // A clustered marker has no popup of its own until the cluster is broken
+    // apart, so ask the group to zoom in on it first.
+    const show = () => { marker.openPopup(); this._panForPopup(marker); };
+    if (this.parkingMarkerLayer?.zoomToShowLayer) {
+      this.parkingMarkerLayer.zoomToShowLayer(marker, show);
+    } else {
+      this.map.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
+      this.map.once('moveend', show);
+    }
+  }
+
+  /**
+   * Mark the strip the user is currently parked on. Drawn on the normal
+   * (SVG) renderer so it can carry the dashed pulse the canvas layer cannot.
+   */
+  highlightZone(zone) {
+    this.clearZoneHighlight();
+    if (!zone || !this.map) return;
+    this.zoneHighlight = L.polyline([zone.a, zone.b], {
+      color: this._parkingColor(),
+      weight: 14,
+      opacity: 0.9,
+      lineCap: 'round',
+      className: 'parking-active-line',
+      interactive: false,
+    }).addTo(this.map);
+  }
+
+  clearZoneHighlight() {
+    if (this.zoneHighlight) {
+      this.map.removeLayer(this.zoneHighlight);
+      this.zoneHighlight = null;
+    }
+  }
+
+  _buildZonePopup(zone) {
+    const esc = (v) => this._esc(v);
+
+    // Same schedule treatment as a station card, so a place reads identically
+    // wherever the user meets it.
+    const sch = (typeof parseSchedule === 'function') ? parseSchedule(zone.schedule) : null;
+    let scheduleRow = '';
+    const CLOCK_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
+    if (sch || zone.schedule) {
+      const time = sch ? (sch.is24 ? '24/7' : `${sch.open}–${sch.close}`) : zone.schedule;
+      let badge = '';
+      if (sch?.is24) {
+        badge = `<span class="open-now">${esc(i18n.t('open247'))}</span>`;
+      } else if (sch) {
+        // Outside the paid window the strip is simply free to use.
+        badge = sch.isOpen
+          ? `<span class="open-now">${esc(i18n.t('pkPaidNow'))}</span>`
+          : `<span class="open-now">${esc(i18n.t('pkFreeNow'))}</span>`;
+      }
+      scheduleRow = `
+        <div class="popup-schedule-row">
+          <span class="popup-schedule-icon">${CLOCK_SVG}</span>
+          <span class="popup-schedule-time">${esc(time)}</span>
+          ${badge}
+        </div>`;
+    }
+
+    // Distance chip — only when we know where the user is
+    const PIN_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    let distChip = '';
+    if (typeof geoLocation !== 'undefined' && geoLocation.userLat != null && geoLocation.userLng != null) {
+      // Distance to the strip itself, not to its midpoint — a 400m strip would
+      // otherwise report 200m while the user stands on one end of it.
+      const meters = parkingAPI.distanceToZone(geoLocation.userLat, geoLocation.userLng, zone);
+      const d = GeoLocation.formatDistance(meters / 1000);
+      distChip = `
+        <div class="chip chip--dist">
+          <span class="chip-icon">${PIN_SVG}</span>
+          <span class="chip-value">${esc(d.value)}<span class="unit">${esc(i18n.t(d.unit))}</span></span>
+        </div>`;
+    }
+
+    const placesRow = zone.places != null
+      ? `<div class="pk-fact">
+           <span class="pk-fact-label">${esc(i18n.t('pkPlaces'))}</span>
+           <span class="pk-fact-val">${esc(zone.places)}</span>
+         </div>`
+      : '';
+
+    const accessibleRow = zone.accessiblePlaces != null
+      ? `<div class="pk-fact">
+           <span class="pk-fact-label">${esc(i18n.t('pkAccessible'))}</span>
+           <span class="pk-fact-val">${esc(zone.accessiblePlaces)}</span>
+         </div>`
+      : '';
+
+    const districtRow = zone.district
+      ? `<div class="pk-fact">
+           <span class="pk-fact-label">${esc(i18n.t('pkDistrict'))}</span>
+           <span class="pk-fact-val">${esc(zone.district)}</span>
+         </div>`
+      : '';
+
+    return `
+      <div class="popup-content popup-content--parking">
+        <div class="popup-head">
+          <div class="popup-status-row">
+            <span class="pk-badge" aria-hidden="true">P</span>
+            <span class="popup-dot-label">${esc(i18n.t('pkPaidZone'))}${zone.code ? ` · ${esc(zone.code)}` : ''}</span>
+          </div>
+          <h3 class="popup-title">${esc(zone.address || i18n.t('pkPaidZone'))}</h3>
+        </div>
+
+        <div class="popup-divider"></div>
+
+        <div class="chip-row">
+          <div class="chip chip--tariff">
+            <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 8.5h3a2 2 0 0 1 0 4h-3v4"/><path d="M9.5 12.5h3.5"/></svg></span>
+            <span class="chip-value">${esc(zone.tariff)}<span class="unit"> ${esc(i18n.t('pkPerHour'))}</span></span>
+          </div>
+          ${distChip}
+        </div>
+
+        ${scheduleRow}
+
+        <div class="pk-facts">
+          ${placesRow}
+          ${accessibleRow}
+          ${districtRow}
+        </div>
+
+        <p class="pk-free-note">${esc(i18n.t('pkFreeMinutesNote'))}</p>
+
+        <div class="popup-actions popup-actions--single">
+          <button class="btn btn-primary" data-action="zone-rules">${esc(i18n.t('pkRules'))}</button>
+        </div>
+      </div>
+    `;
   }
 
   _esc(v) {

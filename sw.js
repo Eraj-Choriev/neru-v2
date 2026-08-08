@@ -8,22 +8,24 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v9';
+const CACHE = 'nur-shell-v10';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=8',
-  '/js/i18n.js?v=8',
-  '/js/api.js?v=8',
-  '/js/geolocation.js?v=8',
-  '/js/finder.js?v=8',
-  '/js/map.js?v=8',
-  '/js/ui.js?v=8',
-  '/js/notifications.js?v=8',
-  '/js/router.js?v=8',
-  '/js/analytics.js?v=8',
-  '/js/pwa.js?v=8',
-  '/js/app.js?v=8',
+  '/css/style.css?v=9',
+  '/js/i18n.js?v=9',
+  '/js/api.js?v=9',
+  '/js/parking.js?v=9',
+  '/js/geolocation.js?v=9',
+  '/js/finder.js?v=9',
+  '/js/map.js?v=9',
+  '/js/ui.js?v=9',
+  '/js/notifications.js?v=9',
+  '/js/router.js?v=9',
+  '/js/analytics.js?v=9',
+  '/js/parking-session.js?v=9',
+  '/js/pwa.js?v=9',
+  '/js/app.js?v=9',
   '/logo.png',
   '/manifest.webmanifest',
 ];
@@ -42,6 +44,21 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// Notifications shown via registration.showNotification() (the only path that
+// works in an installed Android PWA) are dismissed by the SW, not the page —
+// so the SW has to be the one that brings the app back to the front.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
+      }
+      return self.clients.openWindow('/');
+    })
+  );
 });
 
 self.addEventListener('fetch', (event) => {

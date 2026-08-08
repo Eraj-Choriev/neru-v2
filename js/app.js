@@ -27,6 +27,10 @@ class App {
       // Load stations
       await this.loadStations();
 
+      // Parking zones are a static reference list, so they load in the
+      // background and never join the 30s station refresh.
+      this.loadParking();
+
       // Location is gated behind a first-visit consent card, so the native
       // browser prompt only fires once the user has opted in.
       const consent = localStorage.getItem(this.CONSENT_KEY);
@@ -91,6 +95,52 @@ class App {
     }
   }
 
+  /**
+   * Fetch the paid parking zones, draw them (hidden until toggled) and start
+   * the geofence. Deliberately not awaited by init() — a slow proxy must not
+   * hold up the charger map.
+   */
+  async loadParking() {
+    // Bind the session card first: a timer restored from a previous visit has
+    // to come back even if the zone list is slow or unreachable this time.
+    parkingSession.init();
+
+    const zones = await parkingAPI.fetchZones();
+    if (!zones.length) return;
+
+    stationMap.renderParkingZones(zones);
+    stationMap.setParkingVisible(this._parkingVisible === true);
+  }
+
+  toggleParking(force = null) {
+    const zones = parkingAPI.getZones();
+    if (!zones.length) {
+      ui.showToast(i18n.t('pkNoZones'), 'warning', 3000);
+      return;
+    }
+
+    const next = force === null ? !stationMap.isParkingVisible() : !!force;
+    this._parkingVisible = next;
+
+    // One errand at a time: parking hides the chargers, and everything that
+    // describes the map — the HUD, the charger filter, the find button —
+    // follows the layer instead of contradicting it.
+    stationMap.setParkingVisible(next);
+    if (ui.sidebarOpen) ui.closeSidebar();
+    ui.setStatsMode(next ? 'parking' : 'ev');
+    if (next) ui.updateParkingStats(parkingAPI.getStats());
+    else ui.updateStats(stationAPI.getStats());
+
+    document.getElementById('pk-toggle')?.classList.toggle('is-active', next);
+    document.getElementById('pk-toggle')?.setAttribute('aria-pressed', String(next));
+    document.getElementById('md-parking')?.classList.toggle('is-active', next);
+    document.getElementById('md-parking')?.setAttribute('aria-pressed', String(next));
+    const state = document.getElementById('md-parking-state');
+    if (state) state.textContent = next ? 'ON' : 'OFF';
+
+    ui.showToast(i18n.t(next ? 'pkZonesOn' : 'pkZonesOff'), 'info', 2000);
+  }
+
   bindEvents() {
     // Find nearest button
     window.addEventListener('findNearest', () => this.handleFindNearest());
@@ -129,9 +179,27 @@ class App {
       if (e.target.id === 'an-modal') stationAnalytics.close();
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && stationAnalytics.isOpen()) stationAnalytics.close();
+      if (e.key !== 'Escape') return;
+      if (stationAnalytics.isOpen()) stationAnalytics.close();
+      if (parkingRules.isOpen()) parkingRules.close();
     });
     window.addEventListener('langchange', () => stationAnalytics.refresh());
+
+    // Parking zones — layer toggle, rules sheet, and routing to a zone
+    document.getElementById('pk-toggle')?.addEventListener('click', () => this.toggleParking());
+    document.getElementById('md-parking')?.addEventListener('click', () => {
+      ui.toggleMobileDrawer();
+      this.toggleParking();
+    });
+    window.addEventListener('parkingRulesRequest', () => parkingRules.open());
+    document.getElementById('pk-close')?.addEventListener('click', () => parkingRules.close());
+    document.getElementById('pk-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'pk-modal') parkingRules.close();
+    });
+    window.addEventListener('langchange', () => {
+      parkingRules.refresh();
+      stationMap.refreshParkingPopups(parkingAPI.getZones());
+    });
 
     // Apply a refresh that was held back while a station card was open
     window.addEventListener('popupClosed', () => {
@@ -154,7 +222,46 @@ class App {
     }
   }
 
+  /** Fly to the closest paid parking strip and open its card. */
+  async handleFindNearestZone() {
+    ui.showLoading();
+    try {
+      const loc = await geoLocation
+        .getUserLocation({ force: false, maxAgeMs: 30000 })
+        .catch(() => null);
+
+      const pos = loc ? { lat: loc.lat, lng: loc.lng } : geoLocation.getPosition();
+      if (loc) {
+        stationMap.setUserLocation(pos.lat, pos.lng);
+        document.getElementById('loc-btn')?.classList.add('is-located');
+      }
+
+      const nearest = parkingAPI.nearestZone(pos.lat, pos.lng);
+      ui.hideLoading();
+
+      if (!nearest) {
+        ui.showToast(i18n.t('pkNoZones'), 'warning');
+        return;
+      }
+
+      stationMap.openZonePopup(nearest.zone.id);
+      const d = GeoLocation.formatDistance(nearest.meters / 1000);
+      ui.showToast(
+        `${i18n.t('pkPaidZone')} · ${d.value} ${i18n.t(d.unit)}`,
+        'info',
+        3000
+      );
+    } catch (err) {
+      ui.hideLoading();
+      ui.showToast(i18n.t('errorLoading'), 'error');
+    }
+  }
+
   async handleFindNearest() {
+    // In parking mode the button hunts bays — a "find nearest charger" while
+    // no charger is drawn would be a button lying about what it does.
+    if (ui.statsMode === 'parking') return this.handleFindNearestZone();
+
     ui.showLoading();
     try {
       const [loc] = await Promise.all([
@@ -338,6 +445,9 @@ class App {
       });
 
       const now = Date.now();
+
+      // Paid-parking geofence rides on the same fix stream.
+      if (typeof parkingSession !== 'undefined') parkingSession.onPosition(snap);
 
       // --- Live route tracking: arrival, off-route detection, throttled recalc ---
       if (stationRouter?.activeRoute) {
