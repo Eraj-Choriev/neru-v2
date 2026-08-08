@@ -4915,6 +4915,12 @@ body.sidebar-open .install-btn {
 .md-analytics-arrow { margin-left: auto; color: var(--text-3); }
 
 /* ---- Modal ---- */
+/* The `hidden` attribute's display:none lives in the UA stylesheet, so this
+   author rule's `display: flex` would beat it and leave a full-screen,
+   invisible overlay swallowing every click on the app. Keep this guard
+   directly above the rule that sets display. */
+.an-modal[hidden] { display: none; }
+
 .an-modal {
   position: fixed; inset: 0; z-index: 5200;
   height: 100dvh;
