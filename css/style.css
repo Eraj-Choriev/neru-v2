@@ -5861,3 +5861,400 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    pill stays legible where a word would not. */
 :root[data-theme="light"] .loc-btn.is-located,
 :root[data-theme="light"] .loc-btn:hover { color: var(--volt-700); }
+
+/* ============================================================
+   MOBILE TAB BAR
+   ------------------------------------------------------------
+   One glass bar replaces the burger, the FAB and two header icons.
+   It floats clear of the screen edge and rides above the home
+   indicator, the way a native iOS tab bar does — a bar welded to
+   the bottom edge collides with the gesture area on modern iPhones.
+
+   Two of the five slots are modes (chargers / parking), one is the
+   primary action, two open overlays. The sliding pill always shows
+   the mode you are in; while an overlay is open it borrows the pill
+   and hands it back on close, so the bar never lies about state.
+   ============================================================ */
+.tabbar {
+  position: fixed;
+  z-index: 1250;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  display: none; /* phones only — enabled in the media query below */
+  align-items: stretch;
+  padding: 6px;
+  border-radius: 26px;
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  box-shadow:
+    var(--edge-glass),
+    0 18px 44px -18px rgba(0, 0, 0, 0.75);
+  animation: tabbarIn 600ms 260ms var(--ease-spring) both;
+}
+
+@keyframes tabbarIn {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The pill that travels between tabs */
+.tabbar-indicator {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--edge-glass-lit);
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 460ms var(--ease-spring),
+    width 460ms var(--ease-spring),
+    background 260ms var(--ease-out),
+    box-shadow 260ms var(--ease-out);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tabbar[data-tone="volt"] .tabbar-indicator {
+  background: var(--tint-volt);
+  box-shadow: var(--edge-glass-lit), 0 6px 20px -10px var(--volt-glow);
+}
+.tabbar[data-tone="cyan"] .tabbar-indicator {
+  background: var(--tint-cyan);
+  box-shadow: var(--edge-glass-lit), 0 6px 20px -10px rgba(74, 208, 255, 0.55);
+}
+
+.tabbar-item {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  /* 56px + the 6px bar padding clears the 44pt minimum with room to spare */
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 2px 7px;
+  border: none;
+  background: none;
+  border-radius: 20px;
+  color: var(--text-3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 260ms var(--ease-out),
+    transform 220ms var(--ease-spring);
+}
+
+.tabbar-item:active { transform: scale(0.93); }
+.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -2px; }
+
+.tabbar-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  transition: transform 380ms var(--ease-spring);
+}
+.tabbar-icon svg { width: 20px; height: 20px; }
+
+.tabbar-label {
+  font-family: var(--f-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabbar-item.is-active { color: var(--text-1); }
+.tabbar-item.is-active .tabbar-icon { transform: translateY(-1px) scale(1.06); }
+
+.tabbar-item[data-tab="ev"].is-active     { color: var(--volt-400); }
+.tabbar-item[data-tab="parking"].is-active { color: var(--cyan-400); }
+
+/* The primary action reads as an action, not a third destination */
+.tabbar-item--action .tabbar-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--tint-volt);
+  color: var(--volt-400);
+  box-shadow: var(--edge-glass-lit);
+  transition:
+    transform 380ms var(--ease-spring),
+    background 260ms var(--ease-out),
+    color 260ms var(--ease-out);
+}
+.tabbar-item--action .tabbar-icon svg { width: 17px; height: 17px; }
+.tabbar-item--action:active .tabbar-icon { transform: scale(0.9); }
+
+body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
+  background: var(--tint-cyan);
+  color: var(--cyan-400);
+}
+
+/* Working state while the button is finding something */
+.tabbar-item--action.is-busy .tabbar-icon { animation: tabFindPulse 900ms var(--ease-io) infinite; }
+@keyframes tabFindPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+:root[data-theme="light"] .tabbar-indicator { background: rgba(255, 255, 255, 0.9); }
+:root[data-theme="light"] .tabbar-item[data-tab="ev"].is-active { color: var(--volt-700); }
+:root[data-theme="light"] .tabbar-item[data-tab="parking"].is-active { color: var(--cyan-500); }
+:root[data-theme="light"] .tabbar-item--action .tabbar-icon { color: var(--volt-700); }
+:root[data-theme="light"] body[data-mode="parking"] .tabbar-item--action .tabbar-icon { color: var(--cyan-500); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar { animation: none; }
+  .tabbar-indicator { transition-duration: 1ms; }
+  .tabbar-item--action.is-busy .tabbar-icon { animation: none; }
+}
+
+/* ============================================================
+   PHONE LAYOUT — iOS standalone fit
+   ------------------------------------------------------------
+   Installed to the Home Screen the app runs full-bleed under the
+   status bar and over the home indicator, so every fixed element
+   has to earn its place inside the safe area rather than assume
+   the browser chrome will pad it.
+   ============================================================ */
+@media (max-width: 768px) {
+  :root {
+    /* 6px bar padding × 2 + 56px item */
+    --tabbar-h: 68px;
+    --tabbar-gap: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tabbar { display: flex; }
+
+  /* Their jobs moved into the bar */
+  .fab,
+  .burger-btn { display: none; }
+
+  /* ---- Header ----
+     The logo was 104px tall inside a 66px header: it overflowed the
+     content box, pushing the optical centre up into the status bar and
+     making everything read as "too high" once installed. Size it to the
+     bar, then add the small breath below the status bar that iOS apps
+     leave before their first row of content. */
+  :root { --header-h: 56px; }
+  .header {
+    height: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 6px);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .logo-img { height: 40px; width: auto; max-width: 108px; }
+  .header-right { gap: 10px; }
+
+  /* ---- Map controls clear the bar ---- */
+  .loc-btn {
+    bottom: calc(var(--tabbar-gap) + 12px);
+    left: max(16px, env(safe-area-inset-left));
+    width: 44px;
+    height: 44px;
+  }
+  .leaflet-bottom.leaflet-right .leaflet-control-zoom { margin-bottom: calc(var(--tabbar-gap) + 12px); }
+  .leaflet-control-attribution { margin-bottom: calc(var(--tabbar-gap) - 2px) !important; }
+
+  /* Sheets and cards stack on top of the bar, so they own the bottom
+     inset themselves rather than floating above a gap. */
+  .sidebar { padding-bottom: calc(var(--tabbar-gap) + 8px); }
+  .mobile-drawer { padding-bottom: calc(var(--tabbar-gap) + 12px); }
+  .pk-session { bottom: calc(var(--tabbar-gap) + 10px); }
+  .toast { bottom: calc(var(--tabbar-gap) + 14px); }
+
+  /* Popups open above the bar, never behind it */
+  .leaflet-popup { margin-bottom: 8px; }
+}
+
+/* Very short phones (SE, landscape): give the map back its height */
+@media (max-width: 768px) and (max-height: 620px) {
+  :root { --tabbar-h: 56px; }
+  .tabbar-item { min-height: 44px; padding: 5px 2px; }
+  .tabbar-label { font-size: 9.5px; }
+  .tabbar-item--action .tabbar-icon { width: 28px; height: 28px; }
+}
+
+/* ============================================================
+   NOTIFICATION CARDS — same glass as the rest of the app
+   ------------------------------------------------------------
+   These were the last surface still built the old way: a solid
+   panel ringed by a hard 1px mint border with a green halo behind
+   it. The border is gone; the card is a thick pane with a lit top
+   rim, and the state colour survives in the left accent bar and
+   the eyebrow, where it actually carries meaning.
+   ============================================================ */
+.neru-nc {
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border: none;
+  border-radius: 22px;
+  box-shadow:
+    var(--edge-glass),
+    0 20px 52px -20px rgba(0, 0, 0, 0.72);
+}
+
+/* The sweep read as a scanline against a solid panel; on glass it
+   just fights the blur. */
+.neru-nc::before { display: none; }
+
+.neru-nc-bar {
+  width: 2.5px;
+  border-radius: 0 3px 3px 0;
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+.neru-nc-badge {
+  background: var(--tint-volt);
+  border: none;
+  box-shadow: inset 0 0 0 0.5px rgba(123, 255, 190, 0.28);
+}
+
+.neru-nc-btn-map,
+.neru-nc-btn-route {
+  height: 34px;
+  border: none;
+  border-radius: 12px;
+}
+
+.neru-nc-btn-map {
+  background: var(--mat-thin);
+  color: var(--text-2);
+  box-shadow: var(--edge-glass);
+}
+.neru-nc-btn-map:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-1);
+}
+
+.neru-nc-btn-route {
+  background: rgba(123, 255, 190, 0.16);
+  color: var(--volt-400);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(123, 255, 190, 0.34);
+}
+.neru-nc-btn-route:hover { background: rgba(123, 255, 190, 0.26); opacity: 1; }
+
+.neru-nc-dismiss {
+  background: var(--mat-thin);
+  border: none;
+  box-shadow: var(--edge-glass);
+}
+
+:root[data-theme="light"] .neru-nc-btn-route { color: var(--volt-700); }
+:root[data-theme="light"] .neru-nc-btn-map:hover { background: rgba(13, 18, 32, 0.06); }
+
+/* On a phone the cards slide down from under the header and must clear
+   the notch; they keep out of the tab bar's way by staying up top. */
+@media (max-width: 768px) {
+  #neru-notif-stack {
+    top: calc(var(--header-total-h) + 10px);
+    right: max(10px, env(safe-area-inset-right));
+    width: min(320px, calc(100vw - 20px));
+  }
+  .neru-nc { border-radius: 20px; }
+}
+
+/* ---- The last painted controls ----
+   The consent card and the calculator predate the glass pass and were
+   still filling their primary states with a solid mint gradient. */
+.loc-consent-btn.primary {
+  color: var(--volt-400);
+  background: var(--tint-volt-hover);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
+  box-shadow: var(--edge-glass-lit), 0 10px 26px -14px var(--volt-glow);
+}
+.loc-consent-btn.primary:hover {
+  transform: translateY(-1px);
+  background: rgba(123, 255, 190, 0.38);
+  box-shadow: var(--edge-glass-lit), 0 14px 32px -14px var(--volt-glow);
+}
+.loc-consent-btn.ghost {
+  border: none;
+  background: var(--mat-thin);
+  box-shadow: var(--edge-glass);
+}
+.loc-consent-btn.ghost:hover { background: rgba(255, 255, 255, 0.10); color: var(--text-1); }
+
+.calc-chip.is-active {
+  background: var(--tint-volt);
+  color: var(--volt-400);
+  border-color: transparent;
+  box-shadow: var(--edge-glass-lit);
+}
+
+:root[data-theme="light"] .loc-consent-btn.primary { color: var(--text-1); }
+:root[data-theme="light"] .loc-consent-btn.ghost:hover { background: rgba(13, 18, 32, 0.06); }
+:root[data-theme="light"] .calc-chip.is-active { color: var(--volt-700); }
+
+/* Drawer rows share the button edge instead of a flat hairline box */
+.md-analytics {
+  border: none;
+  box-shadow: var(--edge-glass);
+}
+.md-analytics:hover { background: rgba(255, 255, 255, 0.10); }
+.md-parking[aria-pressed="true"] {
+  background: var(--tint-cyan);
+  color: var(--cyan-400);
+  box-shadow: var(--edge-glass-lit);
+}
+:root[data-theme="light"] .md-parking[aria-pressed="true"] { color: var(--cyan-500); }
+
+/* First placement is instant and invisible; the pill only starts travelling
+   once it knows where the active tab is. */
+.tabbar:not([data-ready]) .tabbar-indicator {
+  transition: none;
+  opacity: 0;
+}
+.tabbar[data-ready] .tabbar-indicator {
+  opacity: 1;
+  transition:
+    transform 460ms var(--ease-spring),
+    width 460ms var(--ease-spring),
+    opacity 200ms var(--ease-out),
+    background 260ms var(--ease-out),
+    box-shadow 260ms var(--ease-out);
+}
+
+/* A truncated station name hides the one fact the card exists to deliver.
+   Two lines fit every name in the feed. */
+.neru-nc-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.25;
+}
+
+/* On light glass a white pill needs a shadow to read as raised rather than
+   as a gap in the bar. */
+:root[data-theme="light"] .tabbar-indicator {
+  box-shadow:
+    var(--edge-glass-lit),
+    0 2px 8px -2px rgba(13, 18, 32, 0.16);
+}
+:root[data-theme="light"] .tabbar {
+  box-shadow:
+    var(--edge-glass),
+    0 16px 40px -18px rgba(13, 18, 32, 0.35);
+}

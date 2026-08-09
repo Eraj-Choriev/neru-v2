@@ -186,6 +186,7 @@ class App {
     window.addEventListener('langchange', () => stationAnalytics.refresh());
 
     // Parking zones — layer toggle, rules sheet, and routing to a zone
+    this.bindTabBar();
     document.getElementById('pk-toggle')?.addEventListener('click', () => this.toggleParking());
     document.getElementById('md-parking')?.addEventListener('click', () => {
       ui.toggleMobileDrawer();
@@ -220,6 +221,69 @@ class App {
       const p = geoLocation.getPosition();
       this._lastReroutePos = p.isLocated ? { lat: p.lat, lng: p.lng } : null;
     }
+  }
+
+  /**
+   * The phone tab bar. Two tabs switch the map layer, one runs the primary
+   * action, two open panels. Nothing here duplicates logic — each tab calls
+   * the same method its old control did.
+   */
+  bindTabBar() {
+    const bar = document.getElementById('tabbar');
+    if (!bar) return;
+
+    bar.addEventListener('click', (e) => {
+      const item = e.target.closest('.tabbar-item');
+      if (!item) return;
+
+      switch (item.dataset.tab) {
+        case 'ev':
+          if (ui.statsMode === 'parking') this.toggleParking(false);
+          else ui.setActiveTab('ev');
+          break;
+
+        case 'parking':
+          if (ui.statsMode !== 'parking') this.toggleParking(true);
+          else ui.setActiveTab('parking');
+          break;
+
+        case 'find':
+          // The search can take a second or two on a cold GPS fix, so the
+          // icon says so instead of leaving the tap unanswered.
+          item.classList.add('is-busy');
+          Promise.resolve(this.handleFindNearest())
+            .finally(() => item.classList.remove('is-busy'));
+          break;
+
+        case 'analytics':
+          if (stationAnalytics.isOpen()) {
+            stationAnalytics.close();
+          } else {
+            ui.closeMobileDrawer();
+            stationAnalytics.open();
+            ui.setActiveTab('analytics');
+          }
+          break;
+
+        case 'more':
+          ui.toggleMobileDrawer();
+          break;
+      }
+    });
+
+    // The analytics panel can also be closed by its own X, the scrim or Esc,
+    // so the pill follows the panel rather than the tap that opened it.
+    const modal = document.getElementById('an-modal');
+    if (modal) {
+      new MutationObserver(() => {
+        if (!modal.classList.contains('is-open') &&
+            document.getElementById('tab-analytics')?.classList.contains('is-active')) {
+          ui.syncTabToMode();
+        }
+      }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    requestAnimationFrame(() => ui.setActiveTab('ev'));
   }
 
   /** Fly to the closest paid parking strip and open its card. */

@@ -119,6 +119,7 @@ class UI {
 
     // Mobile drawer
     this.burgerBtn = document.getElementById('burger-btn');
+    this.tabbar = document.getElementById('tabbar');
     this.mobileDrawer = document.getElementById('mobile-drawer');
     this.mobileOverlay = document.getElementById('mobile-overlay');
     this.mobileSeg = document.getElementById('mobile-filter-seg');
@@ -251,6 +252,9 @@ class UI {
 
     window.addEventListener('resize', () => {
       if (window.innerWidth > 768) this.closeMobileDrawer();
+      // The bar is display:none above 768px, so its offsets only become real
+      // once a resize brings it back.
+      this.moveTabIndicator();
     });
 
     this.themeToggle?.addEventListener('change', () => {
@@ -271,6 +275,48 @@ class UI {
     const { offsetLeft, offsetWidth } = active;
     indicator.style.transform = `translate3d(${offsetLeft}px, 0, 0)`;
     indicator.style.width = `${offsetWidth}px`;
+  }
+
+  /**
+   * Light up a tab and slide the pill to it.
+   *
+   * Overlay tabs (analytics, more) borrow the pill while their panel is
+   * open; `syncTabToMode()` hands it back on close, so the bar always ends
+   * up showing the layer the map is actually on.
+   */
+  setActiveTab(tab) {
+    const bar = this.tabbar;
+    if (!bar) return;
+    bar.querySelectorAll('.tabbar-item').forEach((item) => {
+      const on = item.dataset.tab === tab;
+      item.classList.toggle('is-active', on);
+      if (on) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
+    bar.dataset.tone = tab === 'parking' ? 'cyan' : tab === 'ev' ? 'volt' : 'neutral';
+    this.moveTabIndicator();
+  }
+
+  /** Return the pill to whichever map layer is showing. */
+  syncTabToMode() {
+    this.setActiveTab(this.statsMode === 'parking' ? 'parking' : 'ev');
+  }
+
+  moveTabIndicator() {
+    const bar = this.tabbar;
+    const indicator = bar?.querySelector('.tabbar-indicator');
+    const active = bar?.querySelector('.tabbar-item.is-active');
+    if (!indicator || !active) return;
+    // Hidden on desktop, where every offset measures 0 — leave the pill be
+    // rather than parking it at the left edge for the next resize to reveal.
+    if (!active.offsetWidth) return;
+    indicator.style.transform = `translate3d(${active.offsetLeft}px, 0, 0)`;
+    indicator.style.width = `${active.offsetWidth}px`;
+    // The very first placement must not animate: growing from 0px at the left
+    // edge reads as a stray element sliding in, not as a tab being selected.
+    if (!bar.dataset.ready) {
+      requestAnimationFrame(() => { bar.dataset.ready = '1'; });
+    }
   }
 
   updateLangButtons(lang) {
@@ -547,6 +593,8 @@ class UI {
     const currentLang = i18n?.currentLang || document.documentElement.getAttribute('lang') || 'tj';
     const activeLang = [...this.mobileLangBtns].find(b => b.getAttribute('data-lang') === currentLang);
     if (activeLang) this.setActive(this.mobileLangBtns, activeLang);
+    this.setActiveTab('more');
+    document.getElementById('tab-more')?.setAttribute('aria-expanded', 'true');
     // Recalculate indicators after drawer becomes visible
     requestAnimationFrame(() => {
       this.moveIndicator(this.mobileSeg);
@@ -559,6 +607,8 @@ class UI {
     this.mobileOverlay?.classList.remove('is-open');
     this.burgerBtn?.setAttribute('aria-expanded', 'false');
     this.burgerBtn?.classList.remove('is-open');
+    document.getElementById('tab-more')?.setAttribute('aria-expanded', 'false');
+    this.syncTabToMode();
   }
 
   updateStats(stats) {
@@ -601,6 +651,7 @@ class UI {
     document.body.dataset.mode = mode;
     document.getElementById('filter-seg')?.classList.toggle('is-inert', mode === 'parking');
     document.getElementById('filter-seg')?.setAttribute('aria-disabled', String(mode === 'parking'));
+    this.syncTabToMode();
     i18n.updateDOM();
   }
 
