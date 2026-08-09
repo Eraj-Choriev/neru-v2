@@ -236,11 +236,13 @@ class App {
           break;
 
         case 'find':
-          // The search can take a second or two on a cold GPS fix, so the
-          // icon says so instead of leaving the tap unanswered.
-          item.classList.add('is-busy');
+          // Finding is an action, not a place, so the badge rises for the
+          // length of the search and then hands itself back to the map layer
+          // you are actually on. A tab that stays lit for a finished action
+          // would claim you are somewhere you are not.
+          ui.setActiveTab('find');
           Promise.resolve(this.handleFindNearest())
-            .finally(() => item.classList.remove('is-busy'));
+            .finally(() => ui.syncTabToMode());
           break;
 
         case 'analytics':
@@ -266,7 +268,7 @@ class App {
       }).observe(modal, { attributes: true, attributeFilter: ['class'] });
     }
 
-    ui.bindLensPressure();
+    ui.bindTabPressure();
     requestAnimationFrame(() => ui.setActiveTab('ev'));
   }
 

@@ -79,14 +79,12 @@ class UI {
     requestAnimationFrame(() => {
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
-      this.moveTabIndicator();
     });
     // Language change re-flows widths — re-measure after DOM updates
     window.addEventListener('langchange', () => {
       requestAnimationFrame(() => {
         this.moveIndicator(this.filterSeg);
         this.moveIndicator(this.langSeg);
-        this.moveTabIndicator();
       });
     });
   }
@@ -196,9 +194,6 @@ class UI {
     });
 
     window.addEventListener('resize', () => {
-      // The bar is display:none above 768px, so its offsets only become real
-      // once a resize brings it back.
-      this.moveTabIndicator();
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
     });
@@ -224,78 +219,68 @@ class UI {
   }
 
   /**
-   * Light up a tab and slide the pill to it.
+   * Light up a tab. The badge rises out of the bar for the active one and
+   * settles back for the rest.
    *
-   * Overlay tabs (analytics, more) borrow the pill while their panel is
+   * Overlay tabs (analytics) borrow the raised badge while their panel is
    * open; `syncTabToMode()` hands it back on close, so the bar always ends
    * up showing the layer the map is actually on.
    */
   setActiveTab(tab) {
     const bar = this.tabbar;
     if (!bar) return;
+
     bar.querySelectorAll('.tabbar-item').forEach((item) => {
       const on = item.dataset.tab === tab;
+      const was = item.classList.contains('is-active');
       item.classList.toggle('is-active', on);
-      if (on) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
+
+      if (on) {
+        item.setAttribute('aria-current', 'page');
+        // Only animate the arrival, never the restore of a tab that was
+        // already up — a badge that re-springs on every state sync reads as
+        // a glitch rather than as feedback.
+        if (!was) {
+          item.classList.add('is-landing');
+          setTimeout(() => item.classList.remove('is-landing'), 420);
+        }
+      } else {
+        item.removeAttribute('aria-current');
+      }
     });
-    bar.dataset.tone = tab === 'parking' ? 'cyan' : tab === 'ev' ? 'volt' : 'neutral';
-    this.moveTabIndicator();
   }
 
-  /** Return the pill to whichever map layer is showing. */
+  /** Return the raised badge to whichever map layer is showing. */
   syncTabToMode() {
     this.setActiveTab(this.statsMode === 'parking' ? 'parking' : 'ev');
   }
 
-  moveTabIndicator() {
-    const bar = this.tabbar;
-    const indicator = bar?.querySelector('.tabbar-indicator');
-    const active = bar?.querySelector('.tabbar-item.is-active');
-    if (!indicator || !active) return;
-    // Hidden on desktop, where every offset measures 0 — leave the pill be
-    // rather than parking it at the left edge for the next resize to reveal.
-    if (!active.offsetWidth) return;
-    // Inset so the lens never collides with the bar's own rounded corner on
-    // the first and last tab — a bubble escaping the silhouette at the corner
-    // reads as a mistake, while the same overflow mid-bar reads as glass.
-    const INSET = 5;
-    const x = active.offsetLeft + INSET;
-    const w = active.offsetWidth - INSET * 2;
-    const moved = indicator.style.transform !== `translate3d(${x}px, 0, 0)`;
-
-    indicator.style.transform = `translate3d(${x}px, 0, 0)`;
-    indicator.style.width = `${w}px`;
-
-    // The very first placement must not animate: growing from 0px at the left
-    // edge reads as a stray element sliding in, not as a tab being selected.
-    if (!bar.dataset.ready) {
-      requestAnimationFrame(() => { bar.dataset.ready = '1'; });
-      return;
-    }
-
-    // Glass with weight: it stretches along the way and settles on arrival.
-    if (moved) {
-      bar.classList.add('is-traveling');
-      clearTimeout(this._lensTimer);
-      this._lensTimer = setTimeout(() => bar.classList.remove('is-traveling'), 300);
-    }
-  }
-
   /**
-   * Let the lens answer the finger. Pressing anywhere on the bar dips it,
-   * releasing lets it spring — the tab change then reads as the lens being
-   * thrown across rather than a class quietly swapping.
+   * Press feedback. The badge dips under the finger and a short pulse fires
+   * where the platform has a motor — Safari on iOS has neither Vibration API
+   * nor a web haptics hook, so the guard means most of our users get the
+   * visual dip alone. That is the whole feedback there, which is why the dip
+   * is not optional.
    */
-  bindLensPressure() {
+  bindTabPressure() {
     const bar = this.tabbar;
     if (!bar) return;
-    const down = () => bar.classList.add('is-pressed');
-    const up = () => bar.classList.remove('is-pressed');
-    bar.addEventListener('pointerdown', down);
-    bar.addEventListener('pointerup', up);
-    bar.addEventListener('pointercancel', up);
-    bar.addEventListener('pointerleave', up);
+
+    bar.addEventListener('pointerdown', (e) => {
+      const item = e.target.closest('.tabbar-item');
+      if (!item) return;
+      item.classList.add('is-pressing');
+      if (navigator.vibrate) {
+        try { navigator.vibrate(10); } catch (_) {}
+      }
+    });
+
+    const release = () => {
+      bar.querySelectorAll('.is-pressing').forEach((i) => i.classList.remove('is-pressing'));
+    };
+    bar.addEventListener('pointerup', release);
+    bar.addEventListener('pointercancel', release);
+    bar.addEventListener('pointerleave', release);
   }
 
   updateLangButtons(lang) {

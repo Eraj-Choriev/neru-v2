@@ -5862,165 +5862,6 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 :root[data-theme="light"] .loc-btn.is-located,
 :root[data-theme="light"] .loc-btn:hover { color: var(--volt-700); }
 
-/* ============================================================
-   MOBILE TAB BAR
-   ------------------------------------------------------------
-   One glass bar replaces the burger, the FAB and two header icons.
-   It floats clear of the screen edge and rides above the home
-   indicator, the way a native iOS tab bar does — a bar welded to
-   the bottom edge collides with the gesture area on modern iPhones.
-
-   Two of the five slots are modes (chargers / parking), one is the
-   primary action, two open overlays. The sliding pill always shows
-   the mode you are in; while an overlay is open it borrows the pill
-   and hands it back on close, so the bar never lies about state.
-   ============================================================ */
-.tabbar {
-  position: fixed;
-  z-index: 1250;
-  left: max(12px, env(safe-area-inset-left));
-  right: max(12px, env(safe-area-inset-right));
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  display: none; /* phones only — enabled in the media query below */
-  align-items: stretch;
-  padding: 6px;
-  border-radius: 26px;
-  background: var(--mat-thick);
-  backdrop-filter: var(--mat-blur-thick);
-  -webkit-backdrop-filter: var(--mat-blur-thick);
-  box-shadow:
-    var(--edge-glass),
-    0 18px 44px -18px rgba(0, 0, 0, 0.75);
-  animation: tabbarIn 600ms 260ms var(--ease-spring) both;
-}
-
-@keyframes tabbarIn {
-  from { opacity: 0; transform: translateY(26px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* The pill that travels between tabs */
-.tabbar-indicator {
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 0;
-  width: 0;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: var(--edge-glass-lit);
-  transform: translate3d(0, 0, 0);
-  transition:
-    transform 460ms var(--ease-spring),
-    width 460ms var(--ease-spring),
-    background 260ms var(--ease-out),
-    box-shadow 260ms var(--ease-out);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.tabbar[data-tone="volt"] .tabbar-indicator {
-  background: var(--tint-volt);
-  box-shadow: var(--edge-glass-lit), 0 6px 20px -10px var(--volt-glow);
-}
-.tabbar[data-tone="cyan"] .tabbar-indicator {
-  background: var(--tint-cyan);
-  box-shadow: var(--edge-glass-lit), 0 6px 20px -10px rgba(74, 208, 255, 0.55);
-}
-
-.tabbar-item {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 0;
-  /* 56px + the 6px bar padding clears the 44pt minimum with room to spare */
-  min-height: 56px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 8px 2px 7px;
-  border: none;
-  background: none;
-  border-radius: 20px;
-  color: var(--text-3);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    color 260ms var(--ease-out),
-    transform 220ms var(--ease-spring);
-}
-
-.tabbar-item:active { transform: scale(0.93); }
-.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -2px; }
-
-.tabbar-icon {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  transition: transform 380ms var(--ease-spring);
-}
-.tabbar-icon svg { width: 20px; height: 20px; }
-
-.tabbar-label {
-  font-family: var(--f-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  line-height: 1;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tabbar-item.is-active { color: var(--text-1); }
-.tabbar-item.is-active .tabbar-icon { transform: translateY(-1px) scale(1.06); }
-
-.tabbar-item[data-tab="ev"].is-active     { color: var(--volt-400); }
-.tabbar-item[data-tab="parking"].is-active { color: var(--cyan-400); }
-
-/* The primary action reads as an action, not a third destination */
-.tabbar-item--action .tabbar-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--tint-volt);
-  color: var(--volt-400);
-  box-shadow: var(--edge-glass-lit);
-  transition:
-    transform 380ms var(--ease-spring),
-    background 260ms var(--ease-out),
-    color 260ms var(--ease-out);
-}
-.tabbar-item--action .tabbar-icon svg { width: 17px; height: 17px; }
-.tabbar-item--action:active .tabbar-icon { transform: scale(0.9); }
-
-body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
-  background: var(--tint-cyan);
-  color: var(--cyan-400);
-}
-
-/* Working state while the button is finding something */
-.tabbar-item--action.is-busy .tabbar-icon { animation: tabFindPulse 900ms var(--ease-io) infinite; }
-@keyframes tabFindPulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.12); }
-}
-
-:root[data-theme="light"] .tabbar-indicator { background: rgba(255, 255, 255, 0.9); }
-:root[data-theme="light"] .tabbar-item[data-tab="ev"].is-active { color: var(--volt-700); }
-:root[data-theme="light"] .tabbar-item[data-tab="parking"].is-active { color: var(--cyan-500); }
-:root[data-theme="light"] .tabbar-item--action .tabbar-icon { color: var(--volt-700); }
-:root[data-theme="light"] body[data-mode="parking"] .tabbar-item--action .tabbar-icon { color: var(--cyan-500); }
-
-@media (prefers-reduced-motion: reduce) {
-  .tabbar { animation: none; }
-  .tabbar-indicator { transition-duration: 1ms; }
-  .tabbar-item--action.is-busy .tabbar-icon { animation: none; }
-}
 
 /* ============================================================
    PHONE LAYOUT — iOS standalone fit
@@ -6036,8 +5877,6 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
     --tabbar-h: 68px;
     --tabbar-gap: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px));
   }
-
-  .tabbar { display: flex; }
 
   /* Their jobs moved into the bar */
   .fab,
@@ -6085,7 +5924,6 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
   :root { --tabbar-h: 56px; }
   .tabbar-item { min-height: 44px; padding: 5px 2px; }
   .tabbar-label { font-size: 9.5px; }
-  .tabbar-item--action .tabbar-icon { width: 28px; height: 28px; }
 }
 
 /* ============================================================
@@ -6222,21 +6060,6 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
 }
 :root[data-theme="light"] .md-parking[aria-pressed="true"] { color: var(--cyan-500); }
 
-/* First placement is instant and invisible; the pill only starts travelling
-   once it knows where the active tab is. */
-.tabbar:not([data-ready]) .tabbar-indicator {
-  transition: none;
-  opacity: 0;
-}
-.tabbar[data-ready] .tabbar-indicator {
-  opacity: 1;
-  transition:
-    transform 460ms var(--ease-spring),
-    width 460ms var(--ease-spring),
-    opacity 200ms var(--ease-out),
-    background 260ms var(--ease-out),
-    box-shadow 260ms var(--ease-out);
-}
 
 /* A truncated station name hides the one fact the card exists to deliver.
    Two lines fit every name in the feed. */
@@ -6250,18 +6073,6 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
   line-height: 1.25;
 }
 
-/* On light glass a white pill needs a shadow to read as raised rather than
-   as a gap in the bar. */
-:root[data-theme="light"] .tabbar-indicator {
-  box-shadow:
-    var(--edge-glass-lit),
-    0 2px 8px -2px rgba(13, 18, 32, 0.16);
-}
-:root[data-theme="light"] .tabbar {
-  box-shadow:
-    var(--edge-glass),
-    0 16px 40px -18px rgba(13, 18, 32, 0.35);
-}
 
 /* ============================================================
    PHONE CHROME — after the drawer
@@ -6308,112 +6119,6 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
   }
 }
 
-/* ============================================================
-   LIQUID LENS — the tab bar's travelling indicator
-   ------------------------------------------------------------
-   Not a filled pill: a lens. It is taller than the bar so it
-   breaks the silhouette top and bottom, it refracts what is
-   already blurred behind the bar instead of adding its own
-   frost, and its rim splits into warm and cool fringes the way
-   a real lens edge does. That chromatic split is what makes the
-   border read as glass rather than as a stroke.
-
-   It also has weight: it stretches along the direction of
-   travel, squashes on landing, and dips under the finger.
-   ============================================================ */
-.tabbar { overflow: visible; }
-
-.tabbar-indicator {
-  /* Break the bar's silhouette top and bottom, the way a lens sitting on
-     glass would — but only by 5px, so the bar still reads as one shape. */
-  top: -5px;
-  bottom: -5px;
-  border-radius: 50%;
-
-  /* Refraction, not frost — the bar behind is already blurred, so the
-     lens only bends and brightens what is there. */
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(2px) saturate(190%) brightness(1.22);
-  -webkit-backdrop-filter: blur(2px) saturate(190%) brightness(1.22);
-
-  /* The rim: specular top-left, shaded bottom-right, crisp containing ring */
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
-    inset 0 -1.5px 1px rgba(0, 0, 0, 0.30),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.30),
-    inset 3px 0 10px -6px rgba(255, 120, 220, 0.55),
-    inset -3px 0 10px -6px rgba(120, 230, 255, 0.55),
-    0 6px 18px -10px rgba(0, 0, 0, 0.6);
-
-  transform-origin: center;
-  will-change: transform, width;
-}
-
-/* Chromatic fringe — a hair of colour that only lives on the rim, laid
-   over the lens with screen blending so it tints light instead of paint. */
-.tabbar-indicator::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 90, 210, 0.55) 0%,
-    rgba(255, 90, 210, 0) 22%,
-    rgba(120, 255, 220, 0) 50%,
-    rgba(90, 220, 255, 0) 78%,
-    rgba(90, 220, 255, 0.55) 100%
-  );
-  -webkit-mask:
-    radial-gradient(closest-side, transparent 72%, #000 88%, #000 100%);
-  mask:
-    radial-gradient(closest-side, transparent 72%, #000 88%, #000 100%);
-  mix-blend-mode: screen;
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-/* Mode tint rides underneath the lens rather than replacing it */
-.tabbar[data-tone="volt"] .tabbar-indicator { background: rgba(123, 255, 190, 0.13); }
-.tabbar[data-tone="cyan"] .tabbar-indicator { background: rgba(74, 208, 255, 0.13); }
-
-/* ---- Weight ----
-   Stretched along the direction of travel, then it settles. */
-.tabbar[data-ready] .tabbar-indicator {
-  transition:
-    transform 520ms var(--ease-spring),
-    width 520ms var(--ease-spring),
-    opacity 200ms var(--ease-out),
-    background 300ms var(--ease-out);
-}
-.tabbar.is-traveling .tabbar-indicator { transform: scale(1.06, 0.9); }
-
-/* Dips under the finger, and lets go when the finger does */
-.tabbar.is-pressed .tabbar-indicator { transform: scale(0.93, 0.93); }
-
-/* The label under the lens brightens, as if lit through it */
-.tabbar-item.is-active .tabbar-label { text-shadow: 0 0 12px rgba(255, 255, 255, 0.28); }
-
-:root[data-theme="light"] .tabbar-indicator {
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(2px) saturate(170%) brightness(1.08);
-  -webkit-backdrop-filter: blur(2px) saturate(170%) brightness(1.08);
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
-    inset 0 -1.5px 1px rgba(13, 18, 32, 0.14),
-    inset 0 0 0 0.5px rgba(13, 18, 32, 0.10),
-    inset 3px 0 10px -6px rgba(255, 90, 190, 0.40),
-    inset -3px 0 10px -6px rgba(60, 190, 255, 0.40),
-    0 4px 14px -8px rgba(13, 18, 32, 0.4);
-}
-:root[data-theme="light"] .tabbar[data-tone="volt"] .tabbar-indicator { background: rgba(14, 183, 128, 0.20); }
-:root[data-theme="light"] .tabbar[data-tone="cyan"] .tabbar-indicator { background: rgba(26, 156, 208, 0.20); }
-:root[data-theme="light"] .tabbar-item.is-active .tabbar-label { text-shadow: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .tabbar.is-traveling .tabbar-indicator,
-  .tabbar.is-pressed .tabbar-indicator { transform: none; }
-}
 
 /* ============================================================
    NOTIFICATION CARD — premium, minimal
@@ -6580,3 +6285,231 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
 
 /* Title needs room now that the dismiss control overlaps the first line */
 .neru-nc-eyebrow { padding-right: 30px; }
+
+/* ============================================================
+   BOTTOM TAB BAR — frosted capsule, pressed-through active tab
+   ------------------------------------------------------------
+   The active tab is not marked by a ring travelling behind the
+   labels; it is pushed up out of the glass. A filled accent
+   squircle rises above the bar's top edge, a soft radial lens
+   sits behind it as the dent it came through, and the label
+   stays down on the bottom edge where the row still reads as a
+   row. Everything else in the bar is one weight, one colour.
+   ============================================================ */
+:root {
+  --nav-bg: rgba(30, 30, 30, 0.65);
+  --nav-blur: blur(24px) saturate(1.4);
+  --nav-radius: 30px;
+  --nav-height: 66px;
+  --nav-bottom-offset: 18px;
+  --nav-border-color: rgba(255, 255, 255, 0.08);
+  --nav-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+
+  --tab-icon-size: 23px;
+  --tab-label-size: 10px;
+  --tab-color-inactive: rgba(255, 255, 255, 0.55);
+  --tab-label-inactive: rgba(255, 255, 255, 0.45);
+  /* The icon rides a saturated accent fill in both themes, so it stays white.
+     The label sits on the bar itself and has to follow the theme — white on
+     a white capsule is not a label. */
+  --tab-icon-on-badge: #ffffff;
+  --tab-label-active: #ffffff;
+
+  /* A 54px badge cannot clear a label inside a 66px bar, so the badge is
+     48px and lifts 14px: the same amount of glass is broken, and the row
+     of labels stays on one baseline. */
+  --badge-size: 48px;
+  --badge-radius: 16px;
+  --badge-lift: -14px;
+  --badge-bg: var(--volt-500);
+  --badge-shadow: 0 4px 16px rgba(52, 211, 153, 0.35);
+
+  --lens-size: 68px;
+
+  --nav-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --nav-duration: 380ms;
+}
+
+:root[data-theme="light"] {
+  --nav-bg: rgba(252, 253, 255, 0.72);
+  --nav-border-color: rgba(13, 18, 32, 0.07);
+  --nav-shadow: 0 8px 32px rgba(13, 18, 32, 0.18);
+  --tab-color-inactive: rgba(13, 18, 32, 0.52);
+  --tab-label-inactive: rgba(13, 18, 32, 0.45);
+  --badge-bg: var(--volt-600);
+  --badge-shadow: 0 4px 16px rgba(14, 183, 128, 0.32);
+  --tab-label-active: #0d1220;
+}
+
+.tabbar {
+  position: fixed;
+  z-index: 1250;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 460px;
+  bottom: calc(var(--nav-bottom-offset) + env(safe-area-inset-bottom, 0px));
+  display: none; /* phones only */
+  align-items: stretch;
+  height: var(--nav-height);
+  padding: 0 8px;
+  border-radius: var(--nav-radius);
+  background: var(--nav-bg);
+  border: 1px solid var(--nav-border-color);
+  box-shadow: var(--nav-shadow);
+  /* The badge rises past the top edge, so nothing here may clip */
+  overflow: visible;
+  animation: tabbarIn 600ms 260ms var(--nav-spring) both;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .tabbar {
+    backdrop-filter: var(--nav-blur);
+    -webkit-backdrop-filter: var(--nav-blur);
+  }
+}
+/* Without backdrop-filter the bar would be a grey haze over the map, so it
+   falls back to an opaque surface instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar { background: rgba(24, 26, 32, 0.94); }
+  :root[data-theme="light"] .tabbar { background: rgba(250, 251, 253, 0.97); }
+}
+
+@keyframes tabbarIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(26px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tabbar-item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 2px 9px;
+  border: none;
+  background: none;
+  color: var(--tab-color-inactive);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -4px; border-radius: 20px; }
+
+/* ---- The badge: transparent slot when idle, raised accent tile when active ---- */
+.tabbar-badge {
+  position: relative;
+  width: var(--badge-size);
+  height: 30px;              /* flow height — the tile grows past it, the row does not move */
+  display: grid;
+  place-items: center;
+  border-radius: var(--badge-radius);
+  will-change: transform;
+  transition:
+    transform var(--nav-duration) var(--nav-spring),
+    height var(--nav-duration) var(--nav-spring),
+    background 300ms ease,
+    box-shadow 300ms ease;
+}
+
+/* The dent the badge came through */
+.tabbar-badge::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: var(--lens-size);
+  height: var(--lens-size);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 70%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 260ms ease, transform var(--nav-duration) var(--nav-spring);
+  pointer-events: none;
+}
+
+.tabbar-ic {
+  grid-area: 1 / 1;
+  width: var(--tab-icon-size);
+  height: var(--tab-icon-size);
+  transition: opacity 200ms ease;
+}
+.tabbar-ic--solid { opacity: 0; }
+
+.tabbar-label {
+  font-family: var(--f-body);
+  font-size: var(--tab-label-size);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--tab-label-inactive);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 260ms ease;
+}
+
+/* ---- Active ---- */
+.tabbar-item.is-active .tabbar-badge {
+  height: var(--badge-size);
+  transform: translateY(var(--badge-lift));
+  background: var(--badge-bg);
+  box-shadow: var(--badge-shadow);
+  color: var(--tab-icon-on-badge);
+}
+.tabbar-item.is-active .tabbar-badge::before {
+  opacity: 1;
+  transform: scale(1);
+}
+.tabbar-item.is-active .tabbar-ic--line  { opacity: 0; }
+.tabbar-item.is-active .tabbar-ic--solid { opacity: 1; }
+.tabbar-item.is-active .tabbar-label { color: var(--tab-label-active); font-weight: 600; }
+
+/* Parking owns the map while it is on, so its badge carries the map's accent */
+body[data-mode="parking"] {
+  --badge-bg: var(--cyan-500);
+  --badge-shadow: 0 4px 16px rgba(74, 208, 255, 0.35);
+}
+
+/* ---- Press ---- */
+.tabbar-item.is-pressing .tabbar-badge { transform: scale(0.92); }
+.tabbar-item.is-active.is-pressing .tabbar-badge {
+  transform: translateY(var(--badge-lift)) scale(0.92);
+}
+
+/* ---- Landing squash, so a tab change is felt and not just seen ---- */
+.tabbar-item.is-landing .tabbar-badge {
+  animation: badgeLand var(--nav-duration) var(--nav-spring);
+}
+@keyframes badgeLand {
+  0%   { transform: translateY(0) scale(0.85); }
+  60%  { transform: translateY(var(--badge-lift)) scale(1.05); }
+  100% { transform: translateY(var(--badge-lift)) scale(1); }
+}
+
+/* The bar is a phone control. This has to live with the rules above rather
+   than in the earlier layout block — a later `display: none` at equal
+   specificity would silently win over an earlier media query and hide it. */
+@media (max-width: 768px) {
+  .tabbar { display: flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar { animation: none; }
+  .tabbar-badge,
+  .tabbar-badge::before { transition-duration: 1ms; }
+  .tabbar-item.is-landing .tabbar-badge { animation: none; }
+  .tabbar-item.is-active .tabbar-badge { transform: none; }
+  .tabbar-item.is-active.is-pressing .tabbar-badge { transform: none; }
+}
