@@ -133,10 +133,6 @@ class App {
 
     document.getElementById('pk-toggle')?.classList.toggle('is-active', next);
     document.getElementById('pk-toggle')?.setAttribute('aria-pressed', String(next));
-    document.getElementById('md-parking')?.classList.toggle('is-active', next);
-    document.getElementById('md-parking')?.setAttribute('aria-pressed', String(next));
-    const state = document.getElementById('md-parking-state');
-    if (state) state.textContent = next ? 'ON' : 'OFF';
 
     ui.showToast(i18n.t(next ? 'pkZonesOn' : 'pkZonesOff'), 'info', 2000);
   }
@@ -170,10 +166,6 @@ class App {
 
     // Analytics panel
     document.getElementById('an-trigger')?.addEventListener('click', () => stationAnalytics.open());
-    document.getElementById('md-analytics')?.addEventListener('click', () => {
-      ui.toggleMobileDrawer();
-      stationAnalytics.open();
-    });
     document.getElementById('an-close')?.addEventListener('click', () => stationAnalytics.close());
     document.getElementById('an-modal')?.addEventListener('click', (e) => {
       if (e.target.id === 'an-modal') stationAnalytics.close();
@@ -188,10 +180,6 @@ class App {
     // Parking zones — layer toggle, rules sheet, and routing to a zone
     this.bindTabBar();
     document.getElementById('pk-toggle')?.addEventListener('click', () => this.toggleParking());
-    document.getElementById('md-parking')?.addEventListener('click', () => {
-      ui.toggleMobileDrawer();
-      this.toggleParking();
-    });
     window.addEventListener('parkingRulesRequest', () => parkingRules.open());
     document.getElementById('pk-close')?.addEventListener('click', () => parkingRules.close());
     document.getElementById('pk-modal')?.addEventListener('click', (e) => {
@@ -259,14 +247,9 @@ class App {
           if (stationAnalytics.isOpen()) {
             stationAnalytics.close();
           } else {
-            ui.closeMobileDrawer();
             stationAnalytics.open();
             ui.setActiveTab('analytics');
           }
-          break;
-
-        case 'more':
-          ui.toggleMobileDrawer();
           break;
       }
     });
@@ -283,6 +266,7 @@ class App {
       }).observe(modal, { attributes: true, attributeFilter: ['class'] });
     }
 
+    ui.bindLensPressure();
     requestAnimationFrame(() => ui.setActiveTab('ev'));
   }
 

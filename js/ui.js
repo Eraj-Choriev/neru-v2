@@ -79,20 +79,14 @@ class UI {
     requestAnimationFrame(() => {
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
-      this.moveIndicator(this.mobileSeg);
-    });
-    // And on resize
-    window.addEventListener('resize', () => {
-      this.moveIndicator(this.filterSeg);
-      this.moveIndicator(this.langSeg);
-      this.moveIndicator(this.mobileSeg);
+      this.moveTabIndicator();
     });
     // Language change re-flows widths — re-measure after DOM updates
     window.addEventListener('langchange', () => {
       requestAnimationFrame(() => {
         this.moveIndicator(this.filterSeg);
         this.moveIndicator(this.langSeg);
-        this.moveIndicator(this.mobileSeg);
+        this.moveTabIndicator();
       });
     });
   }
@@ -117,18 +111,7 @@ class UI {
     this.themeToggle = document.getElementById('theme-toggle');
     this.statsBusy = document.getElementById('stat-busy');
 
-    // Mobile drawer
-    this.burgerBtn = document.getElementById('burger-btn');
     this.tabbar = document.getElementById('tabbar');
-    this.mobileDrawer = document.getElementById('mobile-drawer');
-    this.mobileOverlay = document.getElementById('mobile-overlay');
-    this.mobileSeg = document.getElementById('mobile-filter-seg');
-    this.mobileFilterBtns = this.mobileSeg?.querySelectorAll('.filter-btn') || [];
-    this.mobileLangSeg = document.getElementById('mobile-lang-seg');
-    this.mobileLangBtns = this.mobileLangSeg?.querySelectorAll('.lang-btn') || [];
-    this.mdTotal = document.getElementById('md-total');
-    this.mdFree = document.getElementById('md-free');
-    this.mdBusy = document.getElementById('md-busy');
   }
 
   getTheme() {
@@ -182,9 +165,6 @@ class UI {
         this.rippleFromEvent(e, btn);
         this.setActive(this.filterBtns, btn);
         this.moveIndicator(this.filterSeg);
-        // Sync mobile filter
-        const mob = [...this.mobileFilterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
-        if (mob) { this.setActive(this.mobileFilterBtns, mob); this.moveIndicator(this.mobileSeg); }
         window.dispatchEvent(new CustomEvent('filterChanged', {
           detail: { filter: this.currentFilter },
         }));
@@ -211,50 +191,16 @@ class UI {
       stationRouter.clear();
     });
 
-    // Burger + mobile drawer
-    this.burgerBtn?.addEventListener('click', () => this.toggleMobileDrawer());
-    this.mobileOverlay?.addEventListener('click', () => this.closeMobileDrawer());
-
-    this.mobileFilterBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        this.currentFilter = btn.getAttribute('data-filter');
-        this.rippleFromEvent(e, btn);
-        this.setActive(this.mobileFilterBtns, btn);
-        this.moveIndicator(this.mobileSeg);
-        // Sync desktop filter
-        const desk = [...this.filterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
-        if (desk) { this.setActive(this.filterBtns, desk); this.moveIndicator(this.filterSeg); }
-        window.dispatchEvent(new CustomEvent('filterChanged', { detail: { filter: this.currentFilter } }));
-        setTimeout(() => this.closeMobileDrawer(), 200);
-      });
-    });
-
-    // Mobile lang switcher
-    this.mobileLangBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const lang = btn.getAttribute('data-lang');
-        this.rippleFromEvent(e, btn);
-        i18n.setLang(lang);
-        this.setActive(this.mobileLangBtns, btn);
-        this.moveIndicator(this.mobileLangSeg);
-        // Sync desktop lang buttons (even though hidden on mobile)
-        const desk = [...this.langBtns].find(b => b.getAttribute('data-lang') === lang);
-        if (desk) { this.setActive(this.langBtns, desk); this.moveIndicator(this.langSeg); }
-      });
-    });
-
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (this.sidebarOpen) this.closeSidebar();
-        else this.closeMobileDrawer();
-      }
+      if (e.key === 'Escape' && this.sidebarOpen) this.closeSidebar();
     });
 
     window.addEventListener('resize', () => {
-      if (window.innerWidth > 768) this.closeMobileDrawer();
       // The bar is display:none above 768px, so its offsets only become real
       // once a resize brings it back.
       this.moveTabIndicator();
+      this.moveIndicator(this.filterSeg);
+      this.moveIndicator(this.langSeg);
     });
 
     this.themeToggle?.addEventListener('change', () => {
@@ -310,13 +256,46 @@ class UI {
     // Hidden on desktop, where every offset measures 0 — leave the pill be
     // rather than parking it at the left edge for the next resize to reveal.
     if (!active.offsetWidth) return;
-    indicator.style.transform = `translate3d(${active.offsetLeft}px, 0, 0)`;
-    indicator.style.width = `${active.offsetWidth}px`;
+    // Inset so the lens never collides with the bar's own rounded corner on
+    // the first and last tab — a bubble escaping the silhouette at the corner
+    // reads as a mistake, while the same overflow mid-bar reads as glass.
+    const INSET = 5;
+    const x = active.offsetLeft + INSET;
+    const w = active.offsetWidth - INSET * 2;
+    const moved = indicator.style.transform !== `translate3d(${x}px, 0, 0)`;
+
+    indicator.style.transform = `translate3d(${x}px, 0, 0)`;
+    indicator.style.width = `${w}px`;
+
     // The very first placement must not animate: growing from 0px at the left
     // edge reads as a stray element sliding in, not as a tab being selected.
     if (!bar.dataset.ready) {
       requestAnimationFrame(() => { bar.dataset.ready = '1'; });
+      return;
     }
+
+    // Glass with weight: it stretches along the way and settles on arrival.
+    if (moved) {
+      bar.classList.add('is-traveling');
+      clearTimeout(this._lensTimer);
+      this._lensTimer = setTimeout(() => bar.classList.remove('is-traveling'), 300);
+    }
+  }
+
+  /**
+   * Let the lens answer the finger. Pressing anywhere on the bar dips it,
+   * releasing lets it spring — the tab change then reads as the lens being
+   * thrown across rather than a class quietly swapping.
+   */
+  bindLensPressure() {
+    const bar = this.tabbar;
+    if (!bar) return;
+    const down = () => bar.classList.add('is-pressed');
+    const up = () => bar.classList.remove('is-pressed');
+    bar.addEventListener('pointerdown', down);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', up);
+    bar.addEventListener('pointerleave', up);
   }
 
   updateLangButtons(lang) {
@@ -327,15 +306,6 @@ class UI {
     if (found) {
       this.setActive(this.langBtns, found);
       this.moveIndicator(this.langSeg);
-    }
-    // Sync mobile lang seg
-    let mFound = null;
-    this.mobileLangBtns.forEach((btn) => {
-      if (btn.getAttribute('data-lang') === lang) mFound = btn;
-    });
-    if (mFound) {
-      this.setActive(this.mobileLangBtns, mFound);
-      this.moveIndicator(this.mobileLangSeg);
     }
   }
 
@@ -573,43 +543,6 @@ class UI {
     `;
   }
 
-  toggleMobileDrawer() {
-    if (this.mobileDrawer?.classList.contains('is-open')) {
-      this.closeMobileDrawer();
-    } else {
-      this.openMobileDrawer();
-    }
-  }
-
-  openMobileDrawer() {
-    this.mobileDrawer?.classList.add('is-open');
-    this.mobileOverlay?.classList.add('is-open');
-    this.burgerBtn?.setAttribute('aria-expanded', 'true');
-    this.burgerBtn?.classList.add('is-open');
-    // Sync active filter state
-    const active = [...this.mobileFilterBtns].find(b => b.getAttribute('data-filter') === this.currentFilter);
-    if (active) this.setActive(this.mobileFilterBtns, active);
-    // Sync active lang state
-    const currentLang = i18n?.currentLang || document.documentElement.getAttribute('lang') || 'tj';
-    const activeLang = [...this.mobileLangBtns].find(b => b.getAttribute('data-lang') === currentLang);
-    if (activeLang) this.setActive(this.mobileLangBtns, activeLang);
-    this.setActiveTab('more');
-    document.getElementById('tab-more')?.setAttribute('aria-expanded', 'true');
-    // Recalculate indicators after drawer becomes visible
-    requestAnimationFrame(() => {
-      this.moveIndicator(this.mobileSeg);
-      this.moveIndicator(this.mobileLangSeg);
-    });
-  }
-
-  closeMobileDrawer() {
-    this.mobileDrawer?.classList.remove('is-open');
-    this.mobileOverlay?.classList.remove('is-open');
-    this.burgerBtn?.setAttribute('aria-expanded', 'false');
-    this.burgerBtn?.classList.remove('is-open');
-    document.getElementById('tab-more')?.setAttribute('aria-expanded', 'false');
-    this.syncTabToMode();
-  }
 
   updateStats(stats) {
     // While the map shows parking only, the HUD counts bays. The 30s station
@@ -627,10 +560,6 @@ class UI {
     if (this.statsTotal) this.statsTotal.textContent = total;
     if (this.statsFree)  this.statsFree.textContent  = mid;
     if (this.statsBusy)  this.statsBusy.textContent  = right;
-    // Mirror in mobile drawer
-    if (this.mdTotal) this.mdTotal.textContent = total;
-    if (this.mdFree)  this.mdFree.textContent  = mid;
-    if (this.mdBusy)  this.mdBusy.textContent  = right;
   }
 
   /**

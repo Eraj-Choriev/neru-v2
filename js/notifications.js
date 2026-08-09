@@ -323,43 +323,33 @@ class StationNotifications {
     card.setAttribute('aria-live', 'assertive');
     card.dataset.stationId = station.id;
 
+    // Deliberately spare: a status line, the name, one line of facts, one
+    // action. The old card carried a logo, a coloured rail, an emoji and two
+    // competing buttons — five things shouting on a card that has about two
+    // seconds of attention. Tapping the card itself shows the station on the
+    // map, so the second button was never needed.
+    const meta = [
+      `${this._esc(d.value)} ${this._esc(i18n.t(d.unit))}`,
+      walkText ? this._esc(walkText) : '',
+      `${this._esc(freeCount)}/${this._esc(totalCount)} ${this._esc(i18n.t('available'))}`,
+    ].filter(Boolean).join('<span class="neru-nc-dot">·</span>');
+
     card.innerHTML = `
-      <div class="neru-nc-bar"></div>
+      <button class="neru-nc-dismiss" type="button" aria-label="Dismiss">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
       <div class="neru-nc-body">
-        <div class="neru-nc-logo" aria-hidden="true">
-          <img src="logo.png" alt="NŪR" />
-        </div>
-        <div class="neru-nc-text">
-          <div class="neru-nc-eyebrow">⚡ ${this._esc(i18n.t('notifTitle'))}</div>
-          <div class="neru-nc-title">${this._esc(station.name)}</div>
-          <div class="neru-nc-meta">
-            <span class="neru-nc-badge">
-              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 8v4l3 3"/>
-              </svg>
-              ${this._esc(d.value)} ${this._esc(i18n.t(d.unit))}${walkText ? ' · ' + this._esc(walkText) : ''}
-            </span>
-            <span class="neru-nc-connectors">${this._esc(freeCount)}/${this._esc(totalCount)} ${this._esc(i18n.t('available'))}</span>
-          </div>
-        </div>
+        <span class="neru-nc-eyebrow">
+          <span class="neru-nc-pip" aria-hidden="true"></span>${this._esc(i18n.t('notifTitle'))}
+        </span>
+        <span class="neru-nc-title">${this._esc(station.name)}</span>
+        <span class="neru-nc-meta">${meta}</span>
       </div>
       <div class="neru-nc-actions">
-        <button class="neru-nc-btn-map" type="button">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
-          ${this._esc(i18n.t('navigateTo'))}
-        </button>
         <button class="neru-nc-btn-route" type="button">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="3 12 5 10 9 14 15 8 19 12"/><path d="M3 18h18"/>
-          </svg>
           ${this._esc(i18n.t('routeLabel'))}
-        </button>
-        <button class="neru-nc-dismiss" type="button" aria-label="Dismiss">
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18"/>
-          </svg>
         </button>
       </div>
       <div class="neru-nc-progress">
@@ -367,9 +357,10 @@ class StationNotifications {
       </div>
     `;
 
-    // "Показать на карте" — flies to station and opens its popup with connector details
-    card.querySelector('.neru-nc-btn-map').addEventListener('click', () => {
-      this._log('log', `🗺️ "Show on map" clicked for "${station.name}"`);
+    // The card body is the "show on map" target — a whole card is an easier
+    // hit than a 32px button, and it frees the footer for the one real action.
+    card.querySelector('.neru-nc-body').addEventListener('click', () => {
+      this._log('log', `🗺️ Card body tapped — showing "${station.name}" on the map`);
       this._dismissCard(card);
       stationMap.openStationPopup(station.id);
     });
@@ -391,7 +382,7 @@ class StationNotifications {
     const timer = setTimeout(() => this._dismissCard(card), AUTO_DISMISS_MS);
     card._dismissTimer = timer;
 
-    this._log('log', `✅ In-app card shown for "${station.name}" — buttons: [Show on map] [Route] [×]`);
+    this._log('log', `✅ In-app card shown for "${station.name}" — body taps to map, footer routes`);
   }
 
   _dismissCard(card, immediate = false) {

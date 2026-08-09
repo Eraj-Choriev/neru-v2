@@ -8,24 +8,24 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v11';
+const CACHE = 'nur-shell-v12';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=10',
-  '/js/i18n.js?v=10',
-  '/js/api.js?v=10',
-  '/js/parking.js?v=10',
-  '/js/geolocation.js?v=10',
-  '/js/finder.js?v=10',
-  '/js/map.js?v=10',
-  '/js/ui.js?v=10',
-  '/js/notifications.js?v=10',
-  '/js/router.js?v=10',
-  '/js/analytics.js?v=10',
-  '/js/parking-session.js?v=10',
-  '/js/pwa.js?v=10',
-  '/js/app.js?v=10',
+  '/css/style.css?v=11',
+  '/js/i18n.js?v=11',
+  '/js/api.js?v=11',
+  '/js/parking.js?v=11',
+  '/js/geolocation.js?v=11',
+  '/js/finder.js?v=11',
+  '/js/map.js?v=11',
+  '/js/ui.js?v=11',
+  '/js/notifications.js?v=11',
+  '/js/router.js?v=11',
+  '/js/analytics.js?v=11',
+  '/js/parking-session.js?v=11',
+  '/js/pwa.js?v=11',
+  '/js/app.js?v=11',
   '/logo.png',
   '/manifest.webmanifest',
 ];

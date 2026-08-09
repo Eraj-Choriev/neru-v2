@@ -6164,12 +6164,16 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
 /* On a phone the cards slide down from under the header and must clear
    the notch; they keep out of the tab bar's way by staying up top. */
 @media (max-width: 768px) {
+  /* Clears the filter pill that now floats directly under the header */
   #neru-notif-stack {
-    top: calc(var(--header-total-h) + 10px);
+    top: calc(var(--header-total-h) + 62px);
     right: max(10px, env(safe-area-inset-right));
-    width: min(320px, calc(100vw - 20px));
+    left: max(10px, env(safe-area-inset-left));
+    width: auto;
+    max-width: none;
   }
-  .neru-nc { border-radius: 20px; }
+  body[data-mode="parking"] #neru-notif-stack { top: calc(var(--header-total-h) + 12px); }
+  .neru-nc { border-radius: 22px; }
 }
 
 /* ---- The last painted controls ----
@@ -6258,3 +6262,321 @@ body[data-mode="parking"] .tabbar-item--action .tabbar-icon {
     var(--edge-glass),
     0 16px 40px -18px rgba(13, 18, 32, 0.35);
 }
+
+/* ============================================================
+   PHONE CHROME — after the drawer
+   ------------------------------------------------------------
+   The "More" tab opened a sheet that only repeated the tabs next
+   to it: parking, analytics. Both are one tap away now, so the
+   sheet is gone. Its two remaining jobs move into the open:
+   language into the header, the charger filter onto the map.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Language: three letters in the header, always reachable */
+  #lang-seg { display: inline-flex; }
+  #lang-seg .seg-btn { padding: 5px 8px; font-size: 11px; }
+  .header-right { gap: 8px; }
+  .logo-img { max-width: 84px; }
+
+  /* The charger filter becomes a floating pill under the header rather
+     than a row buried in a sheet — it belongs to the map it filters. */
+  .header-center {
+    display: block;
+    position: fixed;
+    top: calc(var(--header-total-h) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    padding: 0;
+    z-index: 700;
+    pointer-events: none;
+  }
+  .header .segmented:not(.segmented-compact) {
+    display: inline-flex;
+    pointer-events: auto;
+  }
+  #filter-seg .seg-btn { padding: 7px 14px; font-size: 12px; }
+
+  /* Nothing to filter while the map shows parking */
+  body[data-mode="parking"] .header-center {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  .header-center {
+    transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+  }
+}
+
+/* ============================================================
+   LIQUID LENS — the tab bar's travelling indicator
+   ------------------------------------------------------------
+   Not a filled pill: a lens. It is taller than the bar so it
+   breaks the silhouette top and bottom, it refracts what is
+   already blurred behind the bar instead of adding its own
+   frost, and its rim splits into warm and cool fringes the way
+   a real lens edge does. That chromatic split is what makes the
+   border read as glass rather than as a stroke.
+
+   It also has weight: it stretches along the direction of
+   travel, squashes on landing, and dips under the finger.
+   ============================================================ */
+.tabbar { overflow: visible; }
+
+.tabbar-indicator {
+  /* Break the bar's silhouette top and bottom, the way a lens sitting on
+     glass would — but only by 5px, so the bar still reads as one shape. */
+  top: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+
+  /* Refraction, not frost — the bar behind is already blurred, so the
+     lens only bends and brightens what is there. */
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(2px) saturate(190%) brightness(1.22);
+  -webkit-backdrop-filter: blur(2px) saturate(190%) brightness(1.22);
+
+  /* The rim: specular top-left, shaded bottom-right, crisp containing ring */
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -1.5px 1px rgba(0, 0, 0, 0.30),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.30),
+    inset 3px 0 10px -6px rgba(255, 120, 220, 0.55),
+    inset -3px 0 10px -6px rgba(120, 230, 255, 0.55),
+    0 6px 18px -10px rgba(0, 0, 0, 0.6);
+
+  transform-origin: center;
+  will-change: transform, width;
+}
+
+/* Chromatic fringe — a hair of colour that only lives on the rim, laid
+   over the lens with screen blending so it tints light instead of paint. */
+.tabbar-indicator::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 90, 210, 0.55) 0%,
+    rgba(255, 90, 210, 0) 22%,
+    rgba(120, 255, 220, 0) 50%,
+    rgba(90, 220, 255, 0) 78%,
+    rgba(90, 220, 255, 0.55) 100%
+  );
+  -webkit-mask:
+    radial-gradient(closest-side, transparent 72%, #000 88%, #000 100%);
+  mask:
+    radial-gradient(closest-side, transparent 72%, #000 88%, #000 100%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* Mode tint rides underneath the lens rather than replacing it */
+.tabbar[data-tone="volt"] .tabbar-indicator { background: rgba(123, 255, 190, 0.13); }
+.tabbar[data-tone="cyan"] .tabbar-indicator { background: rgba(74, 208, 255, 0.13); }
+
+/* ---- Weight ----
+   Stretched along the direction of travel, then it settles. */
+.tabbar[data-ready] .tabbar-indicator {
+  transition:
+    transform 520ms var(--ease-spring),
+    width 520ms var(--ease-spring),
+    opacity 200ms var(--ease-out),
+    background 300ms var(--ease-out);
+}
+.tabbar.is-traveling .tabbar-indicator { transform: scale(1.06, 0.9); }
+
+/* Dips under the finger, and lets go when the finger does */
+.tabbar.is-pressed .tabbar-indicator { transform: scale(0.93, 0.93); }
+
+/* The label under the lens brightens, as if lit through it */
+.tabbar-item.is-active .tabbar-label { text-shadow: 0 0 12px rgba(255, 255, 255, 0.28); }
+
+:root[data-theme="light"] .tabbar-indicator {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(2px) saturate(170%) brightness(1.08);
+  -webkit-backdrop-filter: blur(2px) saturate(170%) brightness(1.08);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1.5px 1px rgba(13, 18, 32, 0.14),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.10),
+    inset 3px 0 10px -6px rgba(255, 90, 190, 0.40),
+    inset -3px 0 10px -6px rgba(60, 190, 255, 0.40),
+    0 4px 14px -8px rgba(13, 18, 32, 0.4);
+}
+:root[data-theme="light"] .tabbar[data-tone="volt"] .tabbar-indicator { background: rgba(14, 183, 128, 0.20); }
+:root[data-theme="light"] .tabbar[data-tone="cyan"] .tabbar-indicator { background: rgba(26, 156, 208, 0.20); }
+:root[data-theme="light"] .tabbar-item.is-active .tabbar-label { text-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar.is-traveling .tabbar-indicator,
+  .tabbar.is-pressed .tabbar-indicator { transform: none; }
+}
+
+/* ============================================================
+   NOTIFICATION CARD — premium, minimal
+   ------------------------------------------------------------
+   Reduced to what the card is for: something changed, here is
+   what, here is the one thing to do about it. No logo, no
+   coloured rail, no emoji, no second button. The only accent is
+   a single live pip beside the status line — colour spent once,
+   where it means "this just happened".
+
+   The body is the tap target for "show on map"; the footer
+   carries the single action. A whole card beats a 32px button.
+   ============================================================ */
+.neru-nc {
+  position: relative;
+  padding: 16px 18px 14px;
+  border-radius: 24px;
+  background: var(--mat-thick);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.09),
+    0 24px 60px -24px rgba(0, 0, 0, 0.8);
+}
+
+.neru-nc-bar,
+.neru-nc-logo,
+.neru-nc-icon,
+.neru-nc-badge,
+.neru-nc-connectors,
+.neru-nc-btn-map { display: none; }
+
+.neru-nc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.neru-nc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--f-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-3);
+  margin: 0;
+}
+
+/* The one spot of colour on the card */
+.neru-nc-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--volt-500);
+  box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.5);
+  animation: livePulse 2.4s var(--ease-out) infinite;
+  flex-shrink: 0;
+}
+
+.neru-nc-title {
+  font-family: var(--f-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.28;
+  color: var(--text-1);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.neru-nc-meta {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-3);
+  font-feature-settings: 'tnum' on;
+}
+.neru-nc-dot { opacity: 0.45; padding: 0 6px; }
+
+.neru-nc-actions {
+  display: block;
+  margin-top: 14px;
+  padding: 0;
+}
+
+.neru-nc-btn-route {
+  width: 100%;
+  height: 40px;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--f-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  background: rgba(123, 255, 190, 0.15);
+  color: var(--volt-400);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    inset 0 0 0 0.5px rgba(123, 255, 190, 0.30);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-spring);
+}
+.neru-nc-btn-route:hover { background: rgba(123, 255, 190, 0.24); }
+.neru-nc-btn-route:active { transform: scale(0.98); }
+
+/* Dismiss sits in the corner and stays out of the way until wanted */
+.neru-nc-dismiss {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+.neru-nc-dismiss:hover { opacity: 1; background: rgba(255, 255, 255, 0.10); }
+
+/* The countdown is information, not decoration — one hairline, no glow */
+.neru-nc-progress {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 1.5px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: transparent;
+}
+.neru-nc-progress-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.20);
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .neru-nc {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.08),
+    0 20px 50px -22px rgba(13, 18, 32, 0.4);
+}
+:root[data-theme="light"] .neru-nc-btn-route { color: var(--volt-700); }
+:root[data-theme="light"] .neru-nc-dismiss:hover { background: rgba(13, 18, 32, 0.06); }
+:root[data-theme="light"] .neru-nc-progress-fill { background: rgba(13, 18, 32, 0.18); }
+
+/* Title needs room now that the dismiss control overlaps the first line */
+.neru-nc-eyebrow { padding-right: 30px; }
