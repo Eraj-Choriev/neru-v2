@@ -197,6 +197,61 @@ class StationAnalytics {
   /** Re-render only while visible, so background polls stay cheap. */
   refresh() { if (this.isOpen()) this.render(); }
 
+  /**
+   * A standing picture of the network, not the rolling local history: these
+   * come straight off the current station list, so they read the same on a
+   * first visit as they do after a week of polling.
+   */
+  overall() {
+    const stations = stationAPI.getStations();
+    if (!stations.length) return null;
+
+    const t = (k) => i18n.t(k);
+    const conn = stations.reduce((n, s) => n + (s.totalConnectors || 0), 0);
+    const free = stations.reduce((n, s) => n + (s.freeConnectors || 0), 0);
+    const withFree = stations.filter((s) => s.hasAvailable).length;
+
+    const powered = stations.filter((s) => s.capacityKw > 0);
+    const avgKw = powered.length
+      ? powered.reduce((n, s) => n + s.capacityKw, 0) / powered.length
+      : 0;
+
+    // Charge level only means something on a connector that is charging.
+    const levels = stations.flatMap((s) => (s.connectors || [])
+      .filter((c) => c.isCharging && Number.isFinite(c.chargeLevel))
+      .map((c) => c.chargeLevel));
+    const avgLevel = levels.length
+      ? levels.reduce((a, b) => a + b, 0) / levels.length
+      : null;
+
+    return [
+      { v: stations.length, l: t('totalStations') },
+      { v: conn, l: t('anConnectors') },
+      { v: `${withFree}/${stations.length}`, l: t('anStationsWithFree') },
+      { v: (free / stations.length).toFixed(1), l: t('anAvgFreePerStation') },
+      { v: `${Math.round(avgKw)} ${t('kwUnit')}`, l: t('anAvgPower') },
+      ...(avgLevel === null ? [] : [{ v: `${Math.round(avgLevel)}%`, l: t('anAvgCharge') }]),
+    ];
+  }
+
+  /** The paid-parking scheme in numbers. Static by nature — the feed and the
+   *  operator's published rules do not move between sessions. */
+  parkingFacts() {
+    if (typeof parkingAPI === 'undefined') return null;
+    const st = parkingAPI.getStats();
+    if (!st.zones) return null;
+
+    const t = (k) => i18n.t(k);
+    return [
+      { v: st.zones, l: t('pkZonesLabel') },
+      { v: st.places, l: t('pkPlaces') },
+      { v: st.accessible, l: t('pkAccessible') },
+      { v: `${PARKING.TARIFF_TJS} ${t('pkPerHour')}`, l: t('anPkTariff') },
+      { v: `${PARKING.FREE_MINUTES} ${t('minSuffix')}`, l: t('anPkFree') },
+      { v: `${PARKING.PRR_TJS} ${t('pkSomoni')}`, l: t('anPkFine') },
+    ];
+  }
+
   render() {
     const body = document.getElementById('an-body');
     if (!body) return;
@@ -229,6 +284,8 @@ class StationAnalytics {
     const mostFree = this.ranked('free', 5);
     const mostBusy = this.ranked('busy', 5);
     const soon = this.freeingSoon(stationAPI.getStations(), 4);
+    const overall = this.overall();
+    const parking = this.parkingFacts();
 
     body.innerHTML = `
       <section class="an-sec">
@@ -241,6 +298,31 @@ class StationAnalytics {
             </div>`).join('')}
         </div>
       </section>
+
+      ${overall ? `
+      <section class="an-sec">
+        <h3 class="an-h">${esc(t('anOverall'))}<span class="an-sub">${esc(t('anOverallHint'))}</span></h3>
+        <div class="an-tiles">
+          ${overall.map((x) => `
+            <div class="an-tile">
+              <span class="an-tile-v">${esc(String(x.v))}</span>
+              <span class="an-tile-l">${esc(x.l)}</span>
+            </div>`).join('')}
+        </div>
+      </section>` : ''}
+
+      ${parking ? `
+      <section class="an-sec an-sec--parking">
+        <h3 class="an-h">${esc(t('anParking'))}<span class="an-sub">${esc(t('anParkingHint'))}</span></h3>
+        <div class="an-tiles">
+          ${parking.map((x) => `
+            <div class="an-tile">
+              <span class="an-tile-v">${esc(String(x.v))}</span>
+              <span class="an-tile-l">${esc(x.l)}</span>
+            </div>`).join('')}
+        </div>
+        <p class="an-note">${esc(t('anPkNote'))}</p>
+      </section>` : ''}
 
       <section class="an-sec">
         <h3 class="an-h">${esc(t('anTrend24'))}<span class="an-sub">${esc(t('anTrendHint'))}</span></h3>

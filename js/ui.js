@@ -270,7 +270,9 @@ class UI {
       const item = e.target.closest('.tabbar-item');
       if (!item) return;
       item.classList.add('is-pressing');
-      if (navigator.vibrate) {
+      // Only a real finger may buzz: Chrome logs an error for vibrate() on a
+      // synthetic event, and a programmatic tab change should not buzz anyway.
+      if (e.isTrusted && navigator.vibrate) {
         try { navigator.vibrate(10); } catch (_) {}
       }
     });

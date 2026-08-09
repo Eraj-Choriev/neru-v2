@@ -368,7 +368,7 @@ body {
    clears and the bell rings once. Everything else stays quiet.
    ============================================================ */
 .notif-switch {
-  --sw-h: 30px;
+  --sw-h: 34px;
   --sw-w: calc(var(--sw-h) * 1.8);
   --sw-pad: 3px;
   --sw-thumb: calc(var(--sw-h) - var(--sw-pad) * 2);
@@ -2606,222 +2606,36 @@ body.sidebar-open { overflow: hidden; }
    BURGER BUTTON & MOBILE DRAWER
    ============================================================ */
 
-.burger-btn {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-sm);
-  background: var(--glass-light);
-  border: 1px solid var(--line);
-  color: var(--text-2);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    background var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out);
-}
 
-.burger-btn:hover { background: var(--glass); color: var(--text-1); border-color: var(--line-strong); }
-.burger-btn:active { transform: scale(0.94); }
 
-.burger-btn.is-open {
-  background: rgba(123, 255, 190, 0.1);
-  border-color: var(--line-volt);
-  color: var(--volt-400);
-}
 
-.mobile-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(7, 9, 20, 0.6);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  z-index: 1400;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 280ms var(--ease-out), visibility 280ms;
-}
 
-.mobile-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
 
-.mobile-drawer {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1500;
-  background: var(--glass-strong);
-  backdrop-filter: blur(32px) saturate(160%);
-  -webkit-backdrop-filter: blur(32px) saturate(160%);
-  border-top: 1px solid var(--line-volt);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  padding: 0 20px 40px;
-  transform: translateY(100%);
-  pointer-events: none;
-  transition: transform 360ms var(--ease-spring);
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(123, 255, 190, 0.06);
-}
 
-.mobile-drawer.is-open {
-  transform: translateY(0);
-  pointer-events: auto;
-}
 
-.mobile-drawer-handle {
-  width: 40px;
-  height: 4px;
-  background: var(--line-strong);
-  border-radius: var(--r-pill);
-  margin: 14px auto 22px;
-}
 
-.mobile-drawer-stats {
-  display: flex;
-  align-items: center;
-  background: var(--glass-light);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 14px 0;
-  margin-bottom: 22px;
-}
 
-.mdstat-cell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
 
-.mdstat-sep {
-  width: 1px;
-  height: 32px;
-  background: var(--line);
-  flex-shrink: 0;
-}
 
-.mdstat-num {
-  font-family: var(--f-display);
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
 
-.mdstat-num.mdstat-accent { color: var(--volt-500); }
-.mdstat-num.mdstat-busy   { color: var(--coral-400); }
 
-.mdstat-lbl {
-  font-family: var(--f-mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-4);
-}
 
-.mobile-drawer-label {
-  font-family: var(--f-mono);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-4);
-  margin-bottom: 10px;
-}
 
-.mobile-seg {
-  width: 100%;
-  display: flex;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--line-strong);
-}
 
-.mobile-seg .seg-btn {
-  flex: 1;
-  justify-content: center;
-  text-align: center;
-  padding: 11px 12px;
-  font-size: 13px;
-  color: var(--text-2);
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-}
 
-.mobile-seg .seg-btn.is-active {
-  color: var(--text-1);
-}
 
-.mobile-seg .seg-indicator {
-  background: linear-gradient(180deg, rgba(123, 255, 190, 0.18), rgba(123, 255, 190, 0.06));
-  border-color: var(--line-volt);
-}
 
-:root[data-theme="light"] .mobile-seg {
-  background: rgba(13, 18, 32, 0.04);
-  border-color: rgba(13, 18, 32, 0.1);
-}
-:root[data-theme="light"] .mobile-seg .seg-btn { color: #5e6578; }
-:root[data-theme="light"] .mobile-seg .seg-btn.is-active { color: #0d1220; }
 
-.mobile-drawer-divider {
-  height: 1px;
-  background: var(--line);
-  margin: 20px 0;
-}
 
 /* Safe-area padding for iPhone home indicator */
-.mobile-drawer {
-  padding-bottom: max(40px, env(safe-area-inset-bottom, 40px));
-}
 
 @media (max-width: 768px) {
-  .burger-btn { display: flex; }
-  .mobile-drawer { display: block; }
-  .mobile-overlay { display: block; }
 }
 
 /* Light theme drawer */
-:root[data-theme="light"] .mobile-drawer {
-  background: rgba(255, 255, 255, 0.96);
-  border-top-color: rgba(14, 213, 143, 0.3);
-  box-shadow: 0 -8px 40px rgba(13, 18, 32, 0.15);
-}
 
-:root[data-theme="light"] .mobile-drawer-stats {
-  background: #f4f6fa;
-  border-color: rgba(13, 18, 32, 0.1);
-}
 
-:root[data-theme="light"] .mdstat-sep { background: rgba(13, 18, 32, 0.1); }
-:root[data-theme="light"] .mdstat-num { color: #0d1220; }
-:root[data-theme="light"] .mdstat-num.mdstat-accent { color: var(--volt-700); }
-:root[data-theme="light"] .mdstat-lbl { color: #8a91a3; }
-:root[data-theme="light"] .mobile-drawer-label { color: #8a91a3; }
-:root[data-theme="light"] .mobile-overlay { background: rgba(13, 18, 32, 0.4); }
 
-:root[data-theme="light"] .burger-btn {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(13, 18, 32, 0.1);
-  color: #3a4057;
-}
-:root[data-theme="light"] .burger-btn.is-open {
-  background: rgba(14, 213, 143, 0.1);
-  border-color: rgba(14, 213, 143, 0.35);
-  color: var(--volt-700);
-}
 
 /* ============================================================
    SIDEBAR & CARD ENHANCED ANIMATIONS
@@ -3145,10 +2959,10 @@ body.sidebar-open { overflow: hidden; }
   #lang-seg { display: none; }
   /* Tighten header-right gap */
   .header-right { gap: 8px; }
-  /* Notification switch shrinks but keeps its proportions */
-  .notif-switch { --sw-h: 26px; }
+  /* Notification switch is a primary control on the phone header, so it
+     keeps close to its desktop size rather than shrinking to a token. */
+  .notif-switch { --sw-h: 32px; }
   /* Burger size */
-  .burger-btn { width: 38px; height: 38px; }
   .sidebar {
     top: auto; bottom: 0;
     height: 86dvh;
@@ -4901,13 +4715,6 @@ body.sidebar-open .install-btn {
    surface, and giving it the dark glass material made every message
    render as an unreadable dark pill. */
 .route-panel,
-.mobile-drawer {
-  background: var(--mat-thick);
-  backdrop-filter: var(--mat-blur-reg);
-  -webkit-backdrop-filter: var(--mat-blur-reg);
-  border: 0.5px solid var(--hair-strong);
-  box-shadow: var(--mat-shadow), var(--edge-top);
-}
 
 .segmented {
   background: var(--mat-thin);
@@ -4998,22 +4805,6 @@ body.sidebar-open .install-btn {
 .an-trigger:focus-visible { outline: 2px solid var(--volt-500); outline-offset: 3px; }
 
 /* Drawer entry */
-.md-analytics {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%;
-  margin-bottom: 18px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: var(--mat-thin);
-  border: 0.5px solid var(--hair);
-  color: var(--text-1);
-  font-family: var(--f-body);
-  font-size: 14.5px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.md-analytics svg { color: var(--volt-500); flex: none; }
-.md-analytics-arrow { margin-left: auto; color: var(--text-3); }
 
 /* ---- Modal ---- */
 /* The `hidden` attribute's display:none lives in the UA stylesheet, so this
@@ -5235,7 +5026,6 @@ body.sidebar-open .install-btn {
   .an-trigger { display: none; }
 }
 @media (min-width: 769px) {
-  .md-analytics { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5288,15 +5078,6 @@ body.sidebar-open .install-btn {
 }
 .pk-trigger.is-active:hover { color: var(--cyan-400); }
 
-.md-parking svg { color: var(--cyan-400); }
-.md-parking-state {
-  font-family: var(--f-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-4);
-}
-.md-parking.is-active .md-parking-state { color: var(--cyan-400); }
 
 /* ---------- Zone popup ---------- */
 
@@ -5735,11 +5516,8 @@ body[data-mode="parking"] .stat-accent {
   text-shadow: 0 0 12px rgba(74, 208, 255, 0.4);
 }
 body[data-mode="parking"] .stat-busy,
-body[data-mode="parking"] .mdstat-busy { color: var(--text-1); }
 body[data-mode="parking"] .stat-live-dot { background: var(--cyan-400); }
-body[data-mode="parking"] .mdstat-accent { color: var(--cyan-400); }
 :root[data-theme="light"] body[data-mode="parking"] .stat-accent,
-:root[data-theme="light"] body[data-mode="parking"] .mdstat-accent { color: var(--cyan-500); }
 
 /* The find button hunts bays, not chargers, while parking is showing */
 body[data-mode="parking"] .fab {
@@ -5873,14 +5651,14 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    ============================================================ */
 @media (max-width: 768px) {
   :root {
-    /* 6px bar padding × 2 + 56px item */
-    --tabbar-h: 68px;
-    --tabbar-gap: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px));
+    /* Mirrors --nav-height and --nav-bottom-offset. Anything fixed to the
+       bottom of the map insets past this so nothing hides under the bar. */
+    --tabbar-h: var(--nav-height);
+    --tabbar-gap: calc(var(--nav-height) + var(--nav-bottom-offset) + env(safe-area-inset-bottom, 0px));
   }
 
   /* Their jobs moved into the bar */
   .fab,
-  .burger-btn { display: none; }
 
   /* ---- Header ----
      The logo was 104px tall inside a 66px header: it overflowed the
@@ -5888,14 +5666,16 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
      making everything read as "too high" once installed. Size it to the
      bar, then add the small breath below the status bar that iOS apps
      leave before their first row of content. */
-  :root { --header-h: 56px; }
+  :root { --header-h: 62px; }
   .header {
     height: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 6px);
     padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
-    padding-left: max(16px, env(safe-area-inset-left));
-    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
   }
-  .logo-img { height: 40px; width: auto; max-width: 108px; }
+  /* The wordmark is the only branding on the phone screen, so it gets the
+     room the filter pill gave back. */
+  .logo-img { height: 50px; width: auto; max-width: 128px; }
   .header-right { gap: 10px; }
 
   /* ---- Map controls clear the bar ---- */
@@ -5911,7 +5691,6 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   /* Sheets and cards stack on top of the bar, so they own the bottom
      inset themselves rather than floating above a gap. */
   .sidebar { padding-bottom: calc(var(--tabbar-gap) + 8px); }
-  .mobile-drawer { padding-bottom: calc(var(--tabbar-gap) + 12px); }
   .pk-session { bottom: calc(var(--tabbar-gap) + 10px); }
   .toast { bottom: calc(var(--tabbar-gap) + 14px); }
 
@@ -5920,10 +5699,12 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 }
 
 /* Very short phones (SE, landscape): give the map back its height */
+/* Short viewports (SE, landscape): give the map back some height by
+   shrinking the bar itself, so the inset token stays truthful. */
 @media (max-width: 768px) and (max-height: 620px) {
-  :root { --tabbar-h: 56px; }
-  .tabbar-item { min-height: 44px; padding: 5px 2px; }
-  .tabbar-label { font-size: 9.5px; }
+  :root { --nav-height: 60px; --nav-bottom-offset: 8px; --badge-size: 40px; }
+  .tabbar-badge { top: 6px; height: 28px; }
+  .tabbar-label { bottom: 7px; font-size: 10px; }
 }
 
 /* ============================================================
@@ -6048,17 +5829,6 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 :root[data-theme="light"] .calc-chip.is-active { color: var(--volt-700); }
 
 /* Drawer rows share the button edge instead of a flat hairline box */
-.md-analytics {
-  border: none;
-  box-shadow: var(--edge-glass);
-}
-.md-analytics:hover { background: rgba(255, 255, 255, 0.10); }
-.md-parking[aria-pressed="true"] {
-  background: var(--tint-cyan);
-  color: var(--cyan-400);
-  box-shadow: var(--edge-glass-lit);
-}
-:root[data-theme="light"] .md-parking[aria-pressed="true"] { color: var(--cyan-500); }
 
 
 /* A truncated station name hides the one fact the card exists to deliver.
@@ -6083,40 +5853,18 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    language into the header, the charger filter onto the map.
    ============================================================ */
 @media (max-width: 768px) {
-  /* Language: three letters in the header, always reachable */
-  #lang-seg { display: inline-flex; }
-  #lang-seg .seg-btn { padding: 5px 8px; font-size: 11px; }
-  .header-right { gap: 8px; }
-  .logo-img { max-width: 84px; }
+  /* Language: three letters in the header, always reachable. Sized so the
+     current one is legible at a glance — on the light capsule the old chip
+     gave no answer to "which language am I in?". */
+  #lang-seg { display: inline-flex; padding: 3px; }
+  #lang-seg .seg-btn { padding: 8px 12px; font-size: 12.5px; font-weight: 700; }
 
-  /* The charger filter becomes a floating pill under the header rather
-     than a row buried in a sheet — it belongs to the map it filters. */
-  .header-center {
-    display: block;
-    position: fixed;
-    top: calc(var(--header-total-h) + 10px);
-    left: 50%;
-    transform: translateX(-50%);
-    width: auto;
-    padding: 0;
-    z-index: 700;
-    pointer-events: none;
-  }
-  .header .segmented:not(.segmented-compact) {
-    display: inline-flex;
-    pointer-events: auto;
-  }
-  #filter-seg .seg-btn { padding: 7px 14px; font-size: 12px; }
+  .header-right { gap: 10px; }
 
-  /* Nothing to filter while the map shows parking */
-  body[data-mode="parking"] .header-center {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateX(-50%) translateY(-8px);
-  }
-  .header-center {
-    transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
-  }
+  /* The charger filter is gone from phones: on a map you scan rather than
+     query, a three-way filter earned a permanent strip of screen and almost
+     no taps. It stays in the desktop header, where it costs nothing. */
+  .header-center { display: none; }
 }
 
 
@@ -6300,13 +6048,13 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   --nav-bg: rgba(30, 30, 30, 0.65);
   --nav-blur: blur(24px) saturate(1.4);
   --nav-radius: 30px;
-  --nav-height: 66px;
-  --nav-bottom-offset: 18px;
+  --nav-height: 70px;
+  --nav-bottom-offset: 10px;
   --nav-border-color: rgba(255, 255, 255, 0.08);
   --nav-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 
   --tab-icon-size: 23px;
-  --tab-label-size: 10px;
+  --tab-label-size: 11px;
   --tab-color-inactive: rgba(255, 255, 255, 0.55);
   --tab-label-inactive: rgba(255, 255, 255, 0.45);
   /* The icon rides a saturated accent fill in both themes, so it stays white.
@@ -6318,9 +6066,9 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   /* A 54px badge cannot clear a label inside a 66px bar, so the badge is
      48px and lifts 14px: the same amount of glass is broken, and the row
      of labels stays on one baseline. */
-  --badge-size: 48px;
+  --badge-size: 46px;
   --badge-radius: 16px;
-  --badge-lift: -14px;
+  --badge-lift: -13px;
   --badge-bg: var(--volt-500);
   --badge-shadow: 0 4px 16px rgba(52, 211, 153, 0.35);
 
@@ -6380,16 +6128,18 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Badge and label are both pinned rather than stacked in flow. The badge
+   grows by 16px when it becomes active, and in a flex column that growth
+   pushed the label past the bar's bottom edge — the label vanished exactly
+   on the tab you most need to read. Pinned, nothing the badge does can move
+   the row of labels. */
 .tabbar-item {
   position: relative;
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 0 2px 9px;
+  display: block;
+  height: 100%;
+  padding: 0;
   border: none;
   background: none;
   color: var(--tab-color-inactive);
@@ -6401,9 +6151,12 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 
 /* ---- The badge: transparent slot when idle, raised accent tile when active ---- */
 .tabbar-badge {
-  position: relative;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  margin-left: calc(var(--badge-size) / -2);
   width: var(--badge-size);
-  height: 30px;              /* flow height — the tile grows past it, the row does not move */
+  height: 32px;              /* idle box — the tile grows out of it, the layout does not */
   display: grid;
   place-items: center;
   border-radius: var(--badge-radius);
@@ -6447,16 +6200,25 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 .tabbar-ic--solid { opacity: 0; }
 
 .tabbar-label {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 9px;
+  display: block;
+  text-align: center;
   font-family: var(--f-body);
   font-size: var(--tab-label-size);
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   color: var(--tab-label-inactive);
-  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* iOS inflates small text on some accessibility settings, which is what
+     made the label overflow the bar in the first place. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   transition: color 260ms ease;
 }
 
@@ -6474,7 +6236,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 }
 .tabbar-item.is-active .tabbar-ic--line  { opacity: 0; }
 .tabbar-item.is-active .tabbar-ic--solid { opacity: 1; }
-.tabbar-item.is-active .tabbar-label { color: var(--tab-label-active); font-weight: 600; }
+.tabbar-item.is-active .tabbar-label { color: var(--tab-label-active); font-weight: 700; }
 
 /* Parking owns the map while it is on, so its badge carries the map's accent */
 body[data-mode="parking"] {
@@ -6513,3 +6275,45 @@ body[data-mode="parking"] {
   .tabbar-item.is-active .tabbar-badge { transform: none; }
   .tabbar-item.is-active.is-pressing .tabbar-badge { transform: none; }
 }
+
+/* ---- Language switch: the active one has to answer at a glance ----
+   The shared segmented indicator is a pale wash, which on the light glass
+   capsule left all three letters looking the same. The current language
+   gets an accent fill and ink-strength text in both themes instead. */
+#lang-seg .seg-btn {
+  font-family: var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+#lang-seg .seg-btn.is-active { color: var(--volt-400); font-weight: 700; }
+#lang-seg .seg-indicator {
+  background: var(--tint-volt-hover);
+  box-shadow: var(--edge-glass-lit);
+}
+
+:root[data-theme="light"] #lang-seg .seg-btn { color: #5b6376; }
+:root[data-theme="light"] #lang-seg .seg-btn.is-active { color: #0d1220; }
+:root[data-theme="light"] #lang-seg .seg-indicator {
+  background: rgba(14, 183, 128, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(14, 183, 128, 0.45);
+}
+
+/* The parking block is the one section in Analytics that is not about
+   chargers, so its tiles carry the parking layer's accent. */
+.an-sec--parking .an-tile-v { color: var(--cyan-400); }
+.an-sec--parking .an-note { margin-top: 12px; }
+:root[data-theme="light"] .an-sec--parking .an-tile-v { color: var(--cyan-500); }
+
+/* ---- Parking card, asking state ----
+   Same card, two jobs: the question before a session, the meter during it.
+   Only one set of actions is ever present, and the meter stays hidden until
+   there is something to count. */
+.pk-ask-actions { display: none; }
+.pk-session.is-asking .pk-ask-actions { display: flex; }
+.pk-session.is-asking .pk-run-actions { display: none; }
+.pk-session.is-asking .pk-session-meter { display: none; }
+.pk-session.is-asking .pk-ask-actions .btn { flex: 1; }
+.pk-session.is-asking .pk-session-eyebrow { color: var(--cyan-400); }
+:root[data-theme="light"] .pk-session.is-asking .pk-session-eyebrow { color: var(--cyan-500); }

@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
 
   <!-- Favicon + PWA -->
   <link rel="icon" href="logo.png">
@@ -376,7 +376,11 @@
         </div>
       </div>
       <p class="pk-session-note" id="pk-note"></p>
-      <div class="pk-session-actions">
+      <div class="pk-session-actions pk-ask-actions">
+        <button class="btn btn-primary" id="pk-confirm" type="button">Запустить таймер</button>
+        <button class="btn btn-ghost" id="pk-decline" type="button">Не сейчас</button>
+      </div>
+      <div class="pk-session-actions pk-run-actions">
         <button class="btn btn-primary" id="pk-pay" type="button">Оплатить</button>
         <button class="btn btn-ghost" id="pk-rules" type="button">Правила</button>
         <button class="btn btn-ghost" id="pk-stop" type="button">Завершить</button>
@@ -410,19 +414,19 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=12"></script>
-  <script src="js/api.js?v=12"></script>
-  <script src="js/parking.js?v=12"></script>
-  <script src="js/geolocation.js?v=12"></script>
-  <script src="js/finder.js?v=12"></script>
-  <script src="js/map.js?v=12"></script>
-  <script src="js/ui.js?v=12"></script>
-  <script src="js/notifications.js?v=12"></script>
-  <script src="js/router.js?v=12"></script>
-  <script src="js/analytics.js?v=12"></script>
-  <script src="js/parking-session.js?v=12"></script>
-  <script src="js/pwa.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/i18n.js?v=13"></script>
+  <script src="js/api.js?v=13"></script>
+  <script src="js/parking.js?v=13"></script>
+  <script src="js/geolocation.js?v=13"></script>
+  <script src="js/finder.js?v=13"></script>
+  <script src="js/map.js?v=13"></script>
+  <script src="js/ui.js?v=13"></script>
+  <script src="js/notifications.js?v=13"></script>
+  <script src="js/router.js?v=13"></script>
+  <script src="js/analytics.js?v=13"></script>
+  <script src="js/parking-session.js?v=13"></script>
+  <script src="js/pwa.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "564d13df8dba417a9193fe33cef8e220"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>

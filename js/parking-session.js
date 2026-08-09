@@ -19,7 +19,7 @@ class ParkingSession {
     // proximity AND near-zero speed AND persistence.
     this.ENTER_M = 25;        // within this of the strip → candidate
     this.EXIT_M = 55;         // beyond this → candidate for leaving (hysteresis)
-    this.DWELL_MS = 45000;    // must hold the candidate state this long
+    this.DWELL_MS = 25000;    // must hold the candidate state this long
     this.LEAVE_MS = 60000;    // and this long to be considered gone
     this.MAX_SPEED_MS = 2.8;  // ~10 km/h — above this the car is still moving
     this.ACCURACY_MAX_M = 60; // ignore jittery fixes entirely
@@ -28,6 +28,7 @@ class ParkingSession {
     this.STORE_KEY = 'nur-parking-session-v1';
 
     this.session = null;      // { zoneId, startedAt, freeMode, warned:{} }
+    this._asking = null;      // zone awaiting the user's yes/no
     this._candidate = null;   // { zoneId, since }
     this._leavingSince = null;
     this._suppressedZoneId = null; // cancelled here — don't re-arm until we leave
@@ -57,11 +58,15 @@ class ParkingSession {
       pay: document.getElementById('pk-pay'),
       rules: document.getElementById('pk-rules'),
       stop: document.getElementById('pk-stop'),
+      confirm: document.getElementById('pk-confirm'),
+      decline: document.getElementById('pk-decline'),
       eyebrow: document.getElementById('pk-eyebrow'),
     };
   }
 
   _bindEvents() {
+    this._el.confirm?.addEventListener('click', () => this.acceptAsk());
+    this._el.decline?.addEventListener('click', () => this.declineAsk());
     this._el.undo?.addEventListener('click', () => this.cancel());
     this._el.stop?.addEventListener('click', () => this.end());
     this._el.pay?.addEventListener('click', () => parkingRules.open('pay'));
@@ -112,8 +117,50 @@ class ParkingSession {
 
     if (now - this._candidate.since >= this.DWELL_MS) {
       this._candidate = null;
-      this.start(nearest.zone, { auto: true });
+      this.ask(nearest.zone);
     }
+  }
+
+  /**
+   * Entering a paid strip asks before it bills. The previous build started
+   * the meter on its own and offered an undo, which is the wrong way round:
+   * a timer that begins without being asked for is a charge the user did not
+   * agree to, and the undo only helps the people who happen to be looking at
+   * the screen. Ask, and stay quiet until answered.
+   */
+  ask(zone) {
+    if (!zone || this.session || this._asking) return;
+
+    this._asking = zone;
+    this._render();
+
+    const paid = !this._isFreeNow(zone);
+    const title = i18n.t(paid ? 'pkNotifPaidTitle' : 'pkNotifFreeTitle');
+    const body = `${zone.address || zone.code} · ${i18n.t(paid ? 'pkNotifPaidBody' : 'pkNotifFreeBody')}`;
+    this._notify(title, body);
+    ui.showToast(title, 'info', 4000);
+  }
+
+  acceptAsk() {
+    const zone = this._asking;
+    if (!zone) return;
+    this._asking = null;
+    this.start(zone, { auto: false });
+  }
+
+  declineAsk() {
+    const zone = this._asking;
+    this._asking = null;
+    // Stay quiet in this zone until the car actually leaves it, or the ask
+    // would fire again on the very next GPS tick.
+    if (zone) this._suppressedZoneId = zone.id;
+    this._render();
+  }
+
+  /** Outside the published 07:00–22:00 window the strip costs nothing. */
+  _isFreeNow(zone) {
+    const sch = parseSchedule(zone.schedule);
+    return !!(sch && !sch.is24 && sch.isOpen === false);
   }
 
   /**
@@ -147,6 +194,7 @@ class ParkingSession {
 
   start(zone, { auto = false, startedAt = null } = {}) {
     if (!zone || this.session) return;
+    this._asking = null;
 
     // Outside the paid window the strip is free — run the card in an
     // informational mode instead of billing the user for nothing.
@@ -370,6 +418,32 @@ class ParkingSession {
   _render() {
     const card = this._el.card;
     if (!card) return;
+
+    if (!this.session && this._asking) {
+      const zone = this._asking;
+      const paid = !this._isFreeNow(zone);
+      card.classList.add('is-active', 'is-asking');
+      card.classList.toggle('is-free', !paid);
+      card.classList.remove('can-undo');
+
+      if (this._el.eyebrow) this._el.eyebrow.textContent = i18n.t('pkAskTitle');
+      if (this._el.zone) {
+        this._el.zone.textContent = zone.code
+          ? `${i18n.t('pkPaidZone')} · ${zone.code}`
+          : i18n.t('pkPaidZone');
+      }
+      if (this._el.addr) this._el.addr.textContent = zone.address || '';
+      if (this._el.note) {
+        this._el.note.textContent = paid
+          ? `${PARKING.TARIFF_TJS} ${i18n.t('pkPerHour')} · ${i18n.t('pkFreeMinutesNote')}`
+          : i18n.t('pkNotifFreeBody');
+      }
+      if (this._el.confirm) this._el.confirm.textContent = i18n.t('pkAskStart');
+      if (this._el.decline) this._el.decline.textContent = i18n.t('pkAskLater');
+      return;
+    }
+
+    card.classList.remove('is-asking');
 
     if (!this.session) {
       card.classList.remove('is-active', 'can-undo', 'is-free');
