@@ -4748,16 +4748,16 @@ body.sidebar-open .install-btn {
    The toast is deliberately NOT in this list: it is a semantic colour
    surface, and giving it the dark glass material made every message
    render as an unreadable dark pill. */
-.route-panel,
-
+/* The route panel is a card, so it keeps the card tier set earlier and is
+   not listed here — this rule was quietly downgrading it to the thin
+   material and putting the printed border back on it. */
 .segmented {
   background: var(--mat-thin);
-  border: 0.5px solid var(--hair);
+  border: none;
   backdrop-filter: var(--mat-blur-thin);
   -webkit-backdrop-filter: var(--mat-blur-thin);
-  box-shadow: var(--edge-top);
+  box-shadow: var(--edge-rim);
 }
-.seg-indicator { border: 0.5px solid var(--hair-strong); }
 
 /* Segmented is the most-tapped control: promote it once, so the sliding
    indicator animates on the compositor without repaint. */
@@ -5704,11 +5704,15 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
     /* Mirrors --nav-height and --nav-bottom-offset. Anything fixed to the
        bottom of the map insets past this so nothing hides under the bar. */
     --tabbar-h: var(--nav-height);
-    --tabbar-gap: calc(var(--nav-height) + var(--nav-bottom-offset) + env(safe-area-inset-bottom, 0px));
+    --tabbar-gap: calc(var(--nav-height) + var(--nav-bottom-inset));
   }
 
-  /* Their jobs moved into the bar */
-  .fab,
+  /* Find moved into the bar as its own tab. The rule that retired the
+     floating button had a comment between its selector and its block, so
+     `.fab,` swallowed the next selector instead of ending — the button kept
+     rendering, hidden behind the bar, and every tap in that strip hit it
+     rather than the map. */
+  .fab { display: none; }
 
   /* ---- Header ----
      The logo was 104px tall inside a 66px header: it overflowed the
@@ -5741,8 +5745,16 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   /* Sheets and cards stack on top of the bar, so they own the bottom
      inset themselves rather than floating above a gap. */
   .sidebar { padding-bottom: calc(var(--tabbar-gap) + 8px); }
+  .route-panel { bottom: calc(var(--tabbar-gap) + 10px); }
   .pk-session { bottom: calc(var(--tabbar-gap) + 10px); }
   .toast { bottom: calc(var(--tabbar-gap) + 14px); }
+
+  /* Both open at once: the parking card stacks on top of the route panel,
+     measured from the bar rather than from a fixed 160px that predates it. */
+  .route-panel.is-active ~ .pk-session.is-active {
+    bottom: calc(var(--tabbar-gap) + 78px);
+  }
+  .route-panel.is-active ~ .toast { bottom: calc(var(--tabbar-gap) + 82px); }
 
   /* Popups open above the bar, never behind it */
   .leaflet-popup { margin-bottom: 8px; }
@@ -6100,9 +6112,18 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 :root {
   --nav-bg: rgba(28, 30, 36, 0.56);
   --nav-blur: blur(30px) saturate(180%);
-  --nav-radius: 34px;
-  --nav-height: 68px;
+  --nav-radius: 36px;
+  --nav-height: 72px;
   --nav-bottom-offset: 10px;
+  /* Where the bar's bottom edge sits. Adding the full home-indicator inset
+     to a 10px gap floated the bar 44px off the bottom of an iPhone 11 in
+     standalone — iOS tab bars sit close to the indicator, not a finger's
+     width above it. Take the inset minus the indicator's own 16px zone,
+     and never less than the plain offset (phones without an inset). */
+  --nav-bottom-inset: max(
+    var(--nav-bottom-offset),
+    calc(env(safe-area-inset-bottom, 0px) - 16px)
+  );
   --nav-border-color: rgba(255, 255, 255, 0.10);
   --nav-shadow:
     0 14px 40px rgba(0, 0, 0, 0.42),
@@ -6121,11 +6142,21 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   --tab-color-active: var(--volt-500);
   --tab-label-active: var(--volt-500);
 
-  --badge-top: 11px;
+  /* Icon and label sit as one block with even air above and below it
+     inside the lens: 8px clear of the capsule's top edge, 8px clear of
+     its bottom. Change one of these three and the block goes lopsided. */
+  --badge-top: 13px;
+  --label-bottom: 15px;
 
   /* ---- The lens ---- */
-  --lens-h: 54px;
-  --lens-radius: 20px;
+  --lens-h: 58px;
+  /* Concentric corners, the way nested rounded rectangles have to be
+     drawn: the inner radius is the outer radius minus the gap between
+     them, so both curves share a centre. At 36px bar radius and a 7px
+     inset that lands on 29px — half the lens height, i.e. the lens is a
+     capsule inside a capsule. Derived rather than typed so it stays true
+     if the bar or the lens changes height. */
+  --lens-radius: calc(var(--nav-radius) - (var(--nav-height) - var(--lens-h)) / 2);
   --lens-fill: linear-gradient(
     158deg,
     rgba(255, 255, 255, 0.18) 0%,
@@ -6196,7 +6227,7 @@ body[data-mode="parking"] {
   transform: translateX(-50%);
   width: 92%;
   max-width: 460px;
-  bottom: calc(var(--nav-bottom-offset) + env(safe-area-inset-bottom, 0px));
+  bottom: var(--nav-bottom-inset);
   display: none; /* phones only */
   align-items: stretch;
   height: var(--nav-height);
@@ -6373,7 +6404,7 @@ body[data-mode="parking"] {
   touch-action: manipulation;
   transition: color 300ms ease;
 }
-.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -5px; border-radius: 22px; }
+.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -5px; border-radius: var(--lens-radius); }
 
 .tabbar-badge {
   position: absolute;
@@ -6403,7 +6434,7 @@ body[data-mode="parking"] {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 10px;
+  bottom: var(--label-bottom);
   display: block;
   width: max-content;
   max-width: calc(100% - 6px);
@@ -6457,15 +6488,15 @@ body[data-mode="parking"] {
    the later plain :root rule and silently does nothing. */
 @media (max-width: 768px) and (max-height: 620px) {
   :root {
-    --nav-height: 58px;
-    --nav-radius: 29px;
+    --nav-height: 62px;
+    --nav-radius: 31px;
     --nav-bottom-offset: 8px;
-    --badge-top: 7px;
-    --lens-h: 46px;
-    --lens-radius: 17px;
+    --badge-top: 10px;
+    --label-bottom: 12px;
+    --lens-h: 50px;
     --tab-icon-size: 21px;
   }
-  .tabbar-label { bottom: 7px; font-size: 10px; }
+  .tabbar-label { font-size: 10px; }
 }
 
 /* Transparency is a preference, not a requirement. HIG — Accessibility:

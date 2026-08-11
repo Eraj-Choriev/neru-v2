@@ -8,11 +8,11 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v16';
+const CACHE = 'nur-shell-v19';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=15',
+  '/css/style.css?v=18',
   '/js/i18n.js?v=15',
   '/js/api.js?v=15',
   '/js/parking.js?v=15',
