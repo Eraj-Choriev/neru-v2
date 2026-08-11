@@ -82,3 +82,61 @@ After normalization, every station has:
 
 - `index.html` — main map app; loads all `js/` modules (see load order above)
 - `analysis.html` — standalone analytics page. Fully self-contained: all logic lives in a single inline `<script>`; loads **no** `js/` modules and shares no state with `index.html`
+
+## Design System — Apple HIG for Web
+
+This project follows Apple Human Interface Guidelines adapted for web.
+Use the `apple-design` skill for all UI decisions.
+
+### Framework translation rules
+When the skill references iOS/mobile patterns, translate to web:
+- Safe areas → CSS `env(safe-area-inset-*)` + responsive breakpoints
+- Touch targets (44×44pt minimum) → `min-height: 44px` for buttons
+- Haptics → CSS transitions + subtle micro-animations
+- Native modals → dialog elements with backdrop blur
+- Tab bars → bottom nav on mobile / top nav on desktop
+- SF Pro → `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
+
+### Non-negotiable rules
+- Follow Apple's 8pt spacing grid (8, 16, 24, 32, 48, 64px)
+- Use system colors with light + dark mode variables from day one
+- Typography scale: 11 / 13 / 15 / 17 / 22 / 28 / 34 / 41
+- All interactive elements have hover + focus + active states
+- Corner radius follows Apple's continuous curve pattern
+- Animation duration: 200-400ms with cubic-bezier(0.4, 0, 0.2, 1)
+
+### Liquid Glass
+When user asks for glass/frosted effects → invoke the `liquid-glass.md`
+reference from the skill. Use CSS `backdrop-filter: blur() saturate()`
+with 0.6-0.8 opacity backgrounds.
+
+**The app already has one material system — extend it, never invent a
+second.** Everything glass in `css/style.css` comes from these tokens:
+
+| Token | Use |
+|-------|-----|
+| `--mat-thin` / `--mat-regular` / `--mat-thick` | surface fills; three tiers differ in **blur radius only**, saturation is 180% everywhere |
+| `--mat-blur-thin` (20px) / `--mat-blur-reg` (30px) / `--mat-blur-thick` (44px) | the matching `backdrop-filter` values — never write a raw `blur()` |
+| `--surface-panel` | the sidebar alone; large panes get opacity, not more blur |
+| `--edge-rim` / `--edge-rim-lit` + `--rim-shadow` / `--rim-shadow-sm` | how a pane is lit: bright top edge, shaded bottom, hairline ring. Panes use these **instead of `border`** |
+| `--edge-glass` / `--edge-glass-lit` | the same idea for filled/tinted *controls* (FAB, toasts, install) |
+| `--tint-volt` / `--tint-cyan` / `--tint-coral` | colour arrives as light through glass, never as paint |
+
+Both `:root` and `:root[data-theme="light"]` define every one of them —
+add light values in the same commit or the surface goes black on light.
+
+**Selection is a lens.** The tab bar (`.tabbar-lens`) and both segmented
+controls (`.seg-indicator`) share one moving piece of glass: a positioner
+element that JS translates, wrapping a `.lens-body` that carries the
+nested `backdrop-filter`, the rim, a specular sweep and a prism rim that
+fades in only while travelling. Motion is `--lens-travel` (560ms) on
+`--nav-spring`, with a `scale(1.10, 0.88)` stretch and `--lens-skew` set
+from the direction of travel. Adding a third selectable control means
+reusing `.lens-body` and calling the same JS, not writing a new indicator.
+
+### Workflow
+When user asks for UI work, follow this order:
+1. Consult SKILL.md for the review methodology
+2. Load relevant references from references/hig/ for the topic
+3. Generate web-appropriate code (React/Vue/vanilla HTML+CSS)
+4. Suggest a design review before shipping

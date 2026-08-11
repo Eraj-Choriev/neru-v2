@@ -29,10 +29,30 @@
   --mat-thin:    rgba(255, 255, 255, 0.055);
   --mat-regular: rgba(17, 22, 33, 0.58);
   --mat-thick:   rgba(9, 12, 20, 0.68);
+  --surface-panel: rgba(9, 12, 20, 0.90);
 
+  /* One saturation for the whole system. Three tiers differ in blur radius
+     only — a control that also boosts saturation harder than the card next
+     to it reads as a different material, not as a thinner one. */
   --mat-blur-thin:  blur(20px) saturate(180%);
-  --mat-blur-reg:   blur(34px) saturate(190%);
-  --mat-blur-thick: blur(48px) saturate(200%);
+  --mat-blur-reg:   blur(30px) saturate(180%);
+  --mat-blur-thick: blur(44px) saturate(180%);
+
+  /* ---- The rim ----
+     Every glass surface in the app is lit the same way: bright top edge,
+     the bottom falling into shadow, a hairline containing the pane. This is
+     the single recipe — controls, cards, sheets and the tab bar all take it
+     rather than each inventing a border. */
+  --edge-rim:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  --edge-rim-lit:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+  --rim-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.62);
+  --rim-shadow-sm: 0 8px 22px -12px rgba(0, 0, 0, 0.55);
 
   /* Hairline borders — 0.5px reads as a true hairline on retina */
   --hair: rgba(255, 255, 255, 0.10);
@@ -201,8 +221,8 @@ body {
 
   /* Glass morphism */
   background: rgba(10, 13, 22, 0.45);
-  backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
-  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
 
   /* Subtle top highlight + bottom separator */
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -286,12 +306,12 @@ body {
   align-items: center;
   gap: 14px;
   padding: 8px 16px;
-  border: 1px solid var(--line);
+  border: none;
   border-radius: var(--r-pill);
-  background: var(--glass-strong);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  box-shadow: var(--sh-1);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
   animation: headerIn 700ms 200ms var(--ease-out) both;
 }
 
@@ -514,14 +534,12 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 4px;
-  background: rgba(10, 13, 22, 0.45);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: none;
   border-radius: var(--r-pill);
-  box-shadow:
-    0 4px 16px -4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
 }
 
 .seg-indicator {
@@ -531,16 +549,12 @@ body {
   left: 0;
   width: 0;
   transform: translate3d(0, 0, 0);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--line-strong);
+  border: none;
   border-radius: var(--r-pill);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* Same travel as the tab bar's lens: one selection motion for the app. */
   transition:
-    transform 380ms var(--ease-spring),
-    width 380ms var(--ease-spring),
-    background 260ms var(--ease-out);
+    transform var(--lens-travel, 560ms) var(--nav-spring, cubic-bezier(0.34, 1.42, 0.42, 1)),
+    width var(--lens-travel, 560ms) var(--nav-spring, cubic-bezier(0.34, 1.42, 0.42, 1));
   z-index: 0;
   pointer-events: none;
 }
@@ -610,15 +624,15 @@ body {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  background: var(--glass-strong);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: none;
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
   color: var(--text-2);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: var(--sh-2);
+  box-shadow: var(--edge-rim), var(--rim-shadow);
   transition:
     transform 280ms var(--ease-spring),
     background var(--t-base) var(--ease-out),
@@ -811,10 +825,12 @@ body {
 .leaflet-control-zoom { margin: 14px !important; border-radius: var(--r-md); overflow: hidden; }
 
 .leaflet-control-zoom a {
-  background: var(--glass-strong) !important;
-  backdrop-filter: blur(12px);
+  background: var(--mat-regular) !important;
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
   color: var(--text-2) !important;
-  border-color: var(--line) !important;
+  border-color: transparent !important;
+  box-shadow: var(--edge-rim);
   width: 36px !important;
   height: 36px !important;
   line-height: 36px !important;
@@ -1042,9 +1058,9 @@ body {
   background: var(--mat-regular);
   backdrop-filter: var(--mat-blur-reg);
   -webkit-backdrop-filter: var(--mat-blur-reg);
-  border: 0.5px solid var(--hair-strong);
+  border: none;
   border-radius: 22px;
-  box-shadow: var(--mat-shadow), var(--edge-top), var(--edge-ring);
+  box-shadow: var(--edge-rim), var(--rim-shadow);
   color: var(--text-1);
   padding: 0;
   overflow: hidden;
@@ -1618,7 +1634,8 @@ body {
   inset: 0;
   z-index: 1100;
   background: rgba(4, 6, 12, 0.6);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--t-base) var(--ease-out), visibility var(--t-base);
@@ -1630,14 +1647,19 @@ body {
   top: 0; right: 0; bottom: 0;
   width: var(--sidebar-w);
   max-width: 100vw;
-  background: var(--ink-900);
-  border-left: 1px solid var(--line);
+  /* The panel is the app's largest glass surface, and HIG's rule for large
+     elements is more opacity, not more blur: a 440px pane at card density
+     lets a cluster of markers read straight through a list of addresses. */
+  background: var(--surface-panel);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
+  border-left: none;
   z-index: 1200;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
   transition: transform 480ms var(--ease-spring);
-  box-shadow: -32px 0 80px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--edge-rim), -32px 0 80px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 
@@ -2015,8 +2037,8 @@ body.sidebar-open { overflow: hidden; }
   background:
     radial-gradient(600px 600px at 50% 50%, rgba(123, 255, 190, 0.04), transparent 70%),
     rgba(4, 6, 12, 0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
   opacity: 0;
   visibility: hidden;
   transition: opacity 320ms var(--ease-out), visibility 320ms;
@@ -2246,14 +2268,14 @@ body.sidebar-open { overflow: hidden; }
   position: relative;
   overflow: hidden;
   border-radius: var(--r-lg);
-  background: var(--glass-strong);
-  border: 1px solid var(--line-volt);
+  background: var(--mat-thick);
+  border: none;
   box-shadow:
     0 0 0 1px rgba(123, 255, 190, 0.08),
     0 20px 60px -12px rgba(0, 0, 0, 0.7),
     0 0 40px -20px var(--volt-glow);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
 
   /* entry animation */
   animation: nc-enter 520ms var(--ease-spring) both;
@@ -2834,14 +2856,14 @@ body.sidebar-open { overflow: hidden; }
   align-items: center;
   gap: 12px;
   padding: 8px 8px 8px 14px;
-  background: var(--glass-strong);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid var(--line-volt);
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  border: none;
   border-radius: var(--r-pill);
   box-shadow:
-    var(--sh-2),
-    0 0 0 1px var(--line-volt),
+    var(--edge-rim),
+    var(--rim-shadow),
     0 8px 40px -10px var(--volt-glow);
   white-space: nowrap;
 }
@@ -3064,6 +3086,18 @@ body.sidebar-open { overflow: hidden; }
   --tint-cyan:       rgba(26, 156, 208, 0.20);
   --tint-cyan-hover: rgba(26, 156, 208, 0.34);
   --tint-coral:      rgba(217, 56, 56, 0.16);
+
+  /* The rim, inverted: on a light backdrop the shaded bottom edge and the
+     ink hairline carry the pane — a white highlight on white is nothing. */
+  --edge-rim:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.07);
+  --edge-rim-lit:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(13, 18, 32, 0.08),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.11);
+  --rim-shadow: 0 14px 40px -16px rgba(13, 18, 32, 0.22);
+  --rim-shadow-sm: 0 8px 22px -12px rgba(13, 18, 32, 0.18);
 
   /* Shadows: softer, tinted */
   --sh-1: 0 2px 8px rgba(13, 18, 32, 0.08);
@@ -3712,14 +3746,14 @@ body.sidebar-open { overflow: hidden; }
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  background: var(--glass-strong);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: none;
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
   color: var(--text-2);
   display: grid;
   place-items: center;
-  box-shadow: var(--sh-2);
+  box-shadow: var(--edge-rim), var(--rim-shadow);
   cursor: pointer;
   transition:
     transform 280ms var(--ease-spring),
@@ -3738,8 +3772,8 @@ body.sidebar-open { overflow: hidden; }
   inset: 0;
   z-index: 1700;
   background: rgba(4, 6, 12, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -4197,8 +4231,8 @@ body.sidebar-open { overflow: hidden; }
   display: grid; place-items: center;
   padding: 20px;
   background: rgba(4, 6, 12, 0.62);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
   animation: iosHintFade 300ms var(--ease-out) both;
 }
 @keyframes iosHintFade { from { opacity: 0; } to { opacity: 1; } }
@@ -4310,8 +4344,8 @@ body.sidebar-open { overflow: hidden; }
   background:
     radial-gradient(720px 480px at 50% 34%, rgba(123, 255, 190, 0.06), transparent 68%),
     rgba(4, 6, 12, 0.86);
-  backdrop-filter: blur(26px) saturate(140%);
-  -webkit-backdrop-filter: blur(26px) saturate(140%);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--t-base) var(--ease-out), visibility var(--t-base);
@@ -4739,6 +4773,7 @@ body.sidebar-open .install-btn {
   --mat-thin:    rgba(13, 18, 32, 0.045);
   --mat-regular: rgba(255, 255, 255, 0.72);
   --mat-thick:   rgba(255, 255, 255, 0.78);
+  --surface-panel: rgba(255, 255, 255, 0.92);
   --hair: rgba(13, 18, 32, 0.09);
   --hair-strong: rgba(13, 18, 32, 0.14);
   --edge-top: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -4822,8 +4857,8 @@ body.sidebar-open .install-btn {
   overscroll-behavior: contain;
   padding: calc(18px + var(--safe-top)) 16px calc(18px + var(--safe-bottom));
   background: rgba(4, 6, 12, 0.62);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: var(--mat-blur-thick);
+  -webkit-backdrop-filter: var(--mat-blur-thick);
   opacity: 0;
   transition: opacity var(--t-base) var(--ease-out);
 }
@@ -4839,8 +4874,8 @@ body.sidebar-open .install-btn {
   background: var(--mat-regular);
   backdrop-filter: var(--mat-blur-reg);
   -webkit-backdrop-filter: var(--mat-blur-reg);
-  border: 0.5px solid var(--hair-strong);
-  box-shadow: var(--mat-shadow), var(--edge-top), var(--edge-ring);
+  border: none;
+  box-shadow: var(--edge-rim), var(--rim-shadow);
   transform: translateY(16px) scale(0.97);
   opacity: 0;
   transition: transform var(--t-slow) var(--ease-spring), opacity var(--t-base) var(--ease-out);
@@ -5145,9 +5180,9 @@ body.sidebar-open .install-btn {
   background: var(--mat-thick);
   backdrop-filter: var(--mat-blur-reg);
   -webkit-backdrop-filter: var(--mat-blur-reg);
-  border: 0.5px solid rgba(74, 208, 255, 0.3);
+  border: none;
   border-radius: var(--r-lg);
-  box-shadow: var(--mat-shadow), var(--edge-top), 0 8px 40px -12px rgba(74, 208, 255, 0.35);
+  box-shadow: var(--edge-rim), var(--rim-shadow), 0 8px 40px -12px rgba(74, 208, 255, 0.35);
 }
 
 .pk-session.is-active {
@@ -5482,14 +5517,29 @@ body.sidebar-open .install-btn {
 
 .seg-indicator {
   border: none;
-  background: rgba(255, 255, 255, 0.13);
-  box-shadow: var(--edge-glass-lit);
+  background: none;
+  box-shadow: none;
 }
-:root[data-theme="light"] .seg-indicator { background: rgba(255, 255, 255, 0.9); }
 
+/* Tone variants colour the glass rather than replace it: the tint rides on
+   top of the same lens, so a selected segment and a selected tab are the
+   same object seen twice. */
 .segmented[data-indicator-tone="volt"] .seg-indicator {
-  background: var(--tint-volt-hover);
-  box-shadow: var(--edge-glass-lit), 0 6px 18px -10px var(--volt-glow);
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(123, 255, 190, 0.34) 0%,
+    rgba(123, 255, 190, 0.18) 46%,
+    rgba(123, 255, 190, 0.28) 100%
+  );
+  --lens-drop: 0 6px 18px -10px var(--volt-glow);
+}
+:root[data-theme="light"] .segmented[data-indicator-tone="volt"] .seg-indicator {
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(14, 183, 128, 0.38) 0%,
+    rgba(14, 183, 128, 0.22) 46%,
+    rgba(14, 183, 128, 0.32) 100%
+  );
 }
 
 /* The charger filter has nothing to act on while the map shows parking
@@ -5696,15 +5746,6 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 
   /* Popups open above the bar, never behind it */
   .leaflet-popup { margin-bottom: 8px; }
-}
-
-/* Very short phones (SE, landscape): give the map back its height */
-/* Short viewports (SE, landscape): give the map back some height by
-   shrinking the bar itself, so the inset token stays truthful. */
-@media (max-width: 768px) and (max-height: 620px) {
-  :root { --nav-height: 60px; --nav-bottom-offset: 8px; --badge-size: 40px; }
-  .tabbar-badge { top: 6px; height: 28px; }
-  .tabbar-label { bottom: 7px; font-size: 10px; }
 }
 
 /* ============================================================
@@ -6035,58 +6076,117 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 .neru-nc-eyebrow { padding-right: 30px; }
 
 /* ============================================================
-   BOTTOM TAB BAR — frosted capsule, pressed-through active tab
+   BOTTOM TAB BAR — Liquid Glass
    ------------------------------------------------------------
-   The active tab is not marked by a ring travelling behind the
-   labels; it is pushed up out of the glass. A filled accent
-   squircle rises above the bar's top edge, a soft radial lens
-   sits behind it as the dent it came through, and the label
-   stays down on the bottom edge where the row still reads as a
-   row. Everything else in the bar is one weight, one colour.
+   One frosted capsule floating over the map (the functional
+   layer), and a single glass lens that slides between tabs
+   instead of a tile per tab. The lens carries its own
+   backdrop-filter on top of the bar's, so it re-focuses what the
+   bar has already blurred — that second refraction is the whole
+   effect, and it is why the lens is a separate element rather
+   than a background on the item.
+
+   Selection is carried by foreground colour on the icon and
+   label. HIG — Liquid Glass > Color: colour the foreground for
+   selected navigation items and keep background colour for the
+   one primary action in a context; a filled tile per tab spends
+   that emphasis on navigation.
+
+   Motion: the lens stretches along its direction of travel and
+   settles (spring), and its rim throws a faint prism only while
+   it moves — glass disperses when it is moving through light,
+   not when it is sitting still.
    ============================================================ */
 :root {
-  --nav-bg: rgba(30, 30, 30, 0.65);
-  --nav-blur: blur(24px) saturate(1.4);
-  --nav-radius: 30px;
-  --nav-height: 70px;
+  --nav-bg: rgba(28, 30, 36, 0.56);
+  --nav-blur: blur(30px) saturate(180%);
+  --nav-radius: 34px;
+  --nav-height: 68px;
   --nav-bottom-offset: 10px;
-  --nav-border-color: rgba(255, 255, 255, 0.08);
-  --nav-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --nav-border-color: rgba(255, 255, 255, 0.10);
+  --nav-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.42),
+    0 2px 10px rgba(0, 0, 0, 0.24);
+  /* The rim lights are what make a flat rgba() read as a slab of
+     glass rather than as grey paint: bright top edge, faint bottom. */
+  --nav-rim:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.05);
 
   --tab-icon-size: 23px;
   --tab-label-size: 11px;
-  --tab-color-inactive: rgba(255, 255, 255, 0.55);
-  --tab-label-inactive: rgba(255, 255, 255, 0.45);
-  /* The icon rides a saturated accent fill in both themes, so it stays white.
-     The label sits on the bar itself and has to follow the theme — white on
-     a white capsule is not a label. */
-  --tab-icon-on-badge: #ffffff;
-  --tab-label-active: #ffffff;
+  --tab-color-inactive: rgba(255, 255, 255, 0.60);
+  --tab-label-inactive: rgba(255, 255, 255, 0.52);
+  --tab-color-active: var(--volt-500);
+  --tab-label-active: var(--volt-500);
 
-  /* A 54px badge cannot clear a label inside a 66px bar, so the badge is
-     48px and lifts 14px: the same amount of glass is broken, and the row
-     of labels stays on one baseline. */
-  --badge-size: 46px;
-  --badge-radius: 16px;
-  --badge-lift: -13px;
-  --badge-bg: var(--volt-500);
-  --badge-shadow: 0 4px 16px rgba(52, 211, 153, 0.35);
+  --badge-top: 11px;
 
-  --lens-size: 68px;
+  /* ---- The lens ---- */
+  --lens-h: 54px;
+  --lens-radius: 20px;
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.07) 44%,
+    rgba(255, 255, 255, 0.13) 100%
+  );
+  --lens-blur: blur(7px) saturate(150%) brightness(1.14);
+  --lens-rim-top: rgba(255, 255, 255, 0.45);
+  --lens-rim-bottom: rgba(255, 255, 255, 0.12);
+  --lens-ring: rgba(255, 255, 255, 0.16);
+  --lens-drop: 0 8px 20px -12px rgba(0, 0, 0, 0.65);
+  --lens-sweep: rgba(255, 255, 255, 0.28);
 
-  --nav-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --nav-spring: cubic-bezier(0.34, 1.42, 0.42, 1);
   --nav-duration: 380ms;
+  --lens-travel: 560ms;
 }
 
 :root[data-theme="light"] {
-  --nav-bg: rgba(252, 253, 255, 0.72);
-  --nav-border-color: rgba(13, 18, 32, 0.07);
-  --nav-shadow: 0 8px 32px rgba(13, 18, 32, 0.18);
-  --tab-color-inactive: rgba(13, 18, 32, 0.52);
-  --tab-label-inactive: rgba(13, 18, 32, 0.45);
-  --badge-bg: var(--volt-600);
-  --badge-shadow: 0 4px 16px rgba(14, 183, 128, 0.32);
-  --tab-label-active: #0d1220;
+  --nav-bg: rgba(252, 253, 255, 0.66);
+  --nav-border-color: rgba(13, 18, 32, 0.08);
+  --nav-shadow:
+    0 12px 34px rgba(13, 18, 32, 0.16),
+    0 2px 8px rgba(13, 18, 32, 0.10);
+  --nav-rim:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.05);
+
+  --tab-color-inactive: rgba(13, 18, 32, 0.55);
+  --tab-label-inactive: rgba(13, 18, 32, 0.50);
+  /* Mint on white glass is a pastel, not a state. The light theme
+     takes the accent down to where an 11px label still clears
+     4.5:1 (HIG — Accessibility: text under 18pt needs 4.5:1). */
+  --tab-color-active: #06795a;
+  --tab-label-active: #06795a;
+
+  /* White glass on white glass is invisible, so the light lens is
+     brighter than its bar and rings itself in ink instead. */
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.66) 46%,
+    rgba(255, 255, 255, 0.86) 100%
+  );
+  --lens-blur: blur(7px) saturate(140%) brightness(1.03);
+  --lens-rim-top: rgba(255, 255, 255, 0.95);
+  --lens-rim-bottom: rgba(255, 255, 255, 0.5);
+  --lens-ring: rgba(13, 18, 32, 0.07);
+  --lens-drop: 0 6px 16px -10px rgba(13, 18, 32, 0.4);
+  --lens-sweep: rgba(255, 255, 255, 0.75);
+}
+
+/* Parking owns the map while it is on, so the selected tab takes
+   the map's accent with it. */
+body[data-mode="parking"] {
+  --tab-color-active: #6fd8ff;
+  --tab-label-active: #6fd8ff;
+}
+:root[data-theme="light"] body[data-mode="parking"] {
+  --tab-color-active: #0a6c96;
+  --tab-label-active: #0a6c96;
 }
 
 .tabbar {
@@ -6100,13 +6200,15 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   display: none; /* phones only */
   align-items: stretch;
   height: var(--nav-height);
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: var(--nav-radius);
   background: var(--nav-bg);
   border: 1px solid var(--nav-border-color);
-  box-shadow: var(--nav-shadow);
-  /* The badge rises past the top edge, so nothing here may clip */
-  overflow: visible;
+  box-shadow: var(--nav-shadow), var(--nav-rim);
+  /* The lens is clipped to the capsule, so it can never ride out
+     over the rounded corners while it travels. */
+  overflow: hidden;
+  isolation: isolate;
   animation: tabbarIn 600ms 260ms var(--nav-spring) both;
 }
 
@@ -6128,13 +6230,136 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Badge and label are both pinned rather than stacked in flow. The badge
-   grows by 16px when it becomes active, and in a flex column that growth
-   pushed the label past the bar's bottom edge — the label vanished exactly
-   on the tab you most need to read. Pinned, nothing the badge does can move
-   the row of labels. */
+/* ---- The lens ----
+   Two elements on purpose: the outer one is the positioner that JS
+   drives (translate + width, both transitioned), the inner one is
+   the glass and owns the squash. Keeping them apart means the
+   stretch animation can never fight the travel transition over the
+   same transform property. */
+.tabbar-lens {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: var(--lens-h);
+  width: var(--lens-w, 84px);
+  margin-top: calc(var(--lens-h) / -2);
+  border-radius: var(--lens-radius);
+  transform: translate3d(var(--lens-x, 0px), 0, 0);
+  transition:
+    transform var(--lens-travel) var(--nav-spring),
+    width var(--lens-travel) var(--nav-spring),
+    opacity 240ms ease;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform, width;
+}
+/* Measured and placed — fade it in. Before that it would flash at x=0. */
+.tabbar.is-lens-ready .tabbar-lens { opacity: 1; }
+/* First placement, and any re-measure after a resize, must not travel. */
+.tabbar-lens.is-instant { transition: opacity 240ms ease; }
+
+.lens-body {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--lens-fill);
+  box-shadow:
+    inset 0 1px 0 var(--lens-rim-top),
+    inset 0 -1px 0 var(--lens-rim-bottom),
+    inset 0 0 0 0.5px var(--lens-ring),
+    var(--lens-drop);
+  overflow: hidden;
+  transform-origin: center;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .lens-body {
+    /* Nested backdrop-filter: this samples the bar's already-blurred
+       backdrop, which is what gives the lens a second, tighter
+       refraction instead of just a lighter patch of the same glass. */
+    backdrop-filter: var(--lens-blur);
+    -webkit-backdrop-filter: var(--lens-blur);
+  }
+}
+
+/* Specular sweep — a highlight crosses the glass while it travels. */
+.lens-body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    104deg,
+    transparent 20%,
+    var(--lens-sweep) 46%,
+    transparent 72%
+  );
+  opacity: 0;
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+
+/* Prism rim — dispersion at the leading and trailing edge, on only
+   while the lens is moving. A ring, not a fill: the mask cuts the
+   1.5px border out of the gradient. */
+.lens-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from 200deg,
+    rgba(0, 224, 255, 0.85) 0%,
+    rgba(122, 255, 214, 0) 18%,
+    rgba(255, 122, 220, 0.75) 46%,
+    rgba(255, 255, 255, 0) 64%,
+    rgba(0, 224, 255, 0.85) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  filter: blur(0.6px);
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+/* ---- Travel: stretch along the direction of motion, then settle ----
+   --lens-skew is set to ±5deg by JS from the sign of the move, so the
+   glass leans the way it is going. */
+.is-traveling > .lens-body {
+  animation: lensStretch var(--lens-travel) var(--nav-spring);
+}
+.is-traveling > .lens-body::before {
+  animation: lensSweep var(--lens-travel) cubic-bezier(0.32, 0, 0.2, 1);
+}
+.is-traveling > .lens-body::after { opacity: 0.55; }
+
+@keyframes lensStretch {
+  0%   { transform: scale(1, 1) skewX(0deg); }
+  32%  { transform: scale(1.10, 0.88) skewX(var(--lens-skew, 0deg)); }
+  62%  { transform: scale(0.97, 1.04) skewX(calc(var(--lens-skew, 0deg) * -0.3)); }
+  100% { transform: scale(1, 1) skewX(0deg); }
+}
+@keyframes lensSweep {
+  0%   { opacity: 0;   transform: translateX(-130%); }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0;   transform: translateX(130%); }
+}
+
+/* ---- Items ----
+   Badge and label are both pinned rather than stacked in flow, so
+   nothing the icon does can move the row of labels. */
 .tabbar-item {
   position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   display: block;
@@ -6146,65 +6371,42 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition: color 300ms ease;
 }
-.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -4px; border-radius: 20px; }
+.tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -5px; border-radius: 22px; }
 
-/* ---- The badge: transparent slot when idle, raised accent tile when active ---- */
 .tabbar-badge {
   position: absolute;
-  top: 8px;
+  top: var(--badge-top);
   left: 50%;
-  margin-left: calc(var(--badge-size) / -2);
-  width: var(--badge-size);
-  height: 32px;              /* idle box — the tile grows out of it, the layout does not */
+  width: 44px;
+  height: 26px;
+  margin-left: -22px;
   display: grid;
   place-items: center;
-  border-radius: var(--badge-radius);
   will-change: transform;
-  transition:
-    transform var(--nav-duration) var(--nav-spring),
-    height var(--nav-duration) var(--nav-spring),
-    background 300ms ease,
-    box-shadow 300ms ease;
-}
-
-/* The dent the badge came through */
-.tabbar-badge::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  width: var(--lens-size);
-  height: var(--lens-size);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(255, 255, 255, 0.04) 50%,
-    transparent 70%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 260ms ease, transform var(--nav-duration) var(--nav-spring);
-  pointer-events: none;
+  transition: transform var(--nav-duration) var(--nav-spring);
 }
 
 .tabbar-ic {
   grid-area: 1 / 1;
   width: var(--tab-icon-size);
   height: var(--tab-icon-size);
-  transition: opacity 200ms ease;
+  transition: opacity 220ms ease, transform 220ms ease;
 }
-.tabbar-ic--solid { opacity: 0; }
+.tabbar-ic--solid { opacity: 0; transform: scale(0.86); }
 
+/* Sized to its own text, not to the slot: the lens measures this element to
+   decide how wide to be, so a label pinned left-to-right would hand it the
+   whole cell every time. max-width keeps the ellipsis for long translations. */
 .tabbar-label {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  bottom: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
   display: block;
+  width: max-content;
+  max-width: calc(100% - 6px);
   text-align: center;
   font-family: var(--f-body);
   font-size: var(--tab-label-size);
@@ -6219,45 +6421,26 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
      made the label overflow the bar in the first place. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  transition: color 260ms ease;
+  transition: color 300ms ease, font-weight 200ms ease;
 }
 
-/* ---- Active ---- */
-.tabbar-item.is-active .tabbar-badge {
-  height: var(--badge-size);
-  transform: translateY(var(--badge-lift));
-  background: var(--badge-bg);
-  box-shadow: var(--badge-shadow);
-  color: var(--tab-icon-on-badge);
-}
-.tabbar-item.is-active .tabbar-badge::before {
-  opacity: 1;
-  transform: scale(1);
-}
-.tabbar-item.is-active .tabbar-ic--line  { opacity: 0; }
-.tabbar-item.is-active .tabbar-ic--solid { opacity: 1; }
+/* ---- Active: foreground colour, plus the icon swapping to its solid cut ---- */
+.tabbar-item.is-active { color: var(--tab-color-active); }
+.tabbar-item.is-active .tabbar-ic--line  { opacity: 0; transform: scale(1.08); }
+.tabbar-item.is-active .tabbar-ic--solid { opacity: 1; transform: scale(1); }
 .tabbar-item.is-active .tabbar-label { color: var(--tab-label-active); font-weight: 700; }
 
-/* Parking owns the map while it is on, so its badge carries the map's accent */
-body[data-mode="parking"] {
-  --badge-bg: var(--cyan-500);
-  --badge-shadow: 0 4px 16px rgba(74, 208, 255, 0.35);
-}
-
 /* ---- Press ---- */
-.tabbar-item.is-pressing .tabbar-badge { transform: scale(0.92); }
-.tabbar-item.is-active.is-pressing .tabbar-badge {
-  transform: translateY(var(--badge-lift)) scale(0.92);
-}
+.tabbar-item.is-pressing .tabbar-badge { transform: scale(0.88); }
 
-/* ---- Landing squash, so a tab change is felt and not just seen ---- */
+/* ---- Landing pop on the icon, so the change is felt and not just seen ---- */
 .tabbar-item.is-landing .tabbar-badge {
   animation: badgeLand var(--nav-duration) var(--nav-spring);
 }
 @keyframes badgeLand {
-  0%   { transform: translateY(0) scale(0.85); }
-  60%  { transform: translateY(var(--badge-lift)) scale(1.05); }
-  100% { transform: translateY(var(--badge-lift)) scale(1); }
+  0%   { transform: scale(0.82); }
+  55%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 /* The bar is a phone control. This has to live with the rules above rather
@@ -6267,13 +6450,55 @@ body[data-mode="parking"] {
   .tabbar { display: flex; }
 }
 
+/* Short viewports (SE, landscape): give the map back some height by
+   shrinking the bar itself, so the inset token stays truthful. This has to
+   sit after the tab bar's own :root block — a media query adds no
+   specificity, so an earlier override of the same custom property loses to
+   the later plain :root rule and silently does nothing. */
+@media (max-width: 768px) and (max-height: 620px) {
+  :root {
+    --nav-height: 58px;
+    --nav-radius: 29px;
+    --nav-bottom-offset: 8px;
+    --badge-top: 7px;
+    --lens-h: 46px;
+    --lens-radius: 17px;
+    --tab-icon-size: 21px;
+  }
+  .tabbar-label { bottom: 7px; font-size: 10px; }
+}
+
+/* Transparency is a preference, not a requirement. HIG — Accessibility:
+   honour reduced transparency by replacing the material with a solid
+   surface rather than by thinning it. */
+@media (prefers-reduced-transparency: reduce) {
+  .tabbar {
+    background: rgba(22, 24, 30, 0.98);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :root[data-theme="light"] .tabbar { background: rgba(250, 251, 253, 0.99); }
+  .lens-body {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :root[data-theme="light"] .lens-body { background: rgba(13, 18, 32, 0.07); }
+  .lens-body::before,
+  .lens-body::after { display: none; }
+}
+
+/* Reduced motion keeps the lens — it is the selection, not an effect —
+   and takes away the travel, the stretch and the prism. */
 @media (prefers-reduced-motion: reduce) {
   .tabbar { animation: none; }
-  .tabbar-badge,
-  .tabbar-badge::before { transition-duration: 1ms; }
+  .tabbar-lens { transition: opacity 1ms linear; }
+  .is-traveling > .lens-body,
+  .is-traveling > .lens-body::before { animation: none; }
+  .is-traveling > .lens-body::after { opacity: 0; }
+  .tabbar-badge { transition-duration: 1ms; }
   .tabbar-item.is-landing .tabbar-badge { animation: none; }
-  .tabbar-item.is-active .tabbar-badge { transform: none; }
-  .tabbar-item.is-active.is-pressing .tabbar-badge { transform: none; }
+  .tabbar-item.is-pressing .tabbar-badge { transform: none; }
 }
 
 /* ---- Language switch: the active one has to answer at a glance ----
@@ -6287,17 +6512,25 @@ body[data-mode="parking"] {
 }
 #lang-seg .seg-btn.is-active { color: var(--volt-400); font-weight: 700; }
 #lang-seg .seg-indicator {
-  background: var(--tint-volt-hover);
-  box-shadow: var(--edge-glass-lit);
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(123, 255, 190, 0.36) 0%,
+    rgba(123, 255, 190, 0.20) 46%,
+    rgba(123, 255, 190, 0.30) 100%
+  );
+  --lens-drop: 0 6px 16px -10px var(--volt-glow);
 }
 
 :root[data-theme="light"] #lang-seg .seg-btn { color: #5b6376; }
 :root[data-theme="light"] #lang-seg .seg-btn.is-active { color: #0d1220; }
 :root[data-theme="light"] #lang-seg .seg-indicator {
-  background: rgba(14, 183, 128, 0.30);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 0 0 0.5px rgba(14, 183, 128, 0.45);
+  --lens-fill: linear-gradient(
+    158deg,
+    rgba(14, 183, 128, 0.40) 0%,
+    rgba(14, 183, 128, 0.24) 46%,
+    rgba(14, 183, 128, 0.34) 100%
+  );
+  --lens-ring: rgba(14, 183, 128, 0.42);
 }
 
 /* The parking block is the one section in Analytics that is not about
@@ -6317,3 +6550,272 @@ body[data-mode="parking"] {
 .pk-session.is-asking .pk-ask-actions .btn { flex: 1; }
 .pk-session.is-asking .pk-session-eyebrow { color: var(--cyan-400); }
 :root[data-theme="light"] .pk-session.is-asking .pk-session-eyebrow { color: var(--cyan-500); }
+
+
+/* ============================================================
+   HEADER ISLANDS — three glass tokens instead of a wall
+   ------------------------------------------------------------
+   The header was a full-bleed bar: 76px of frosted panel across
+   the top of a map app, which is 76px of Dushanbe nobody can
+   see. It is now an empty track carrying three fixed capsules —
+   brand, filter, tools — floating on the map the way the tab bar
+   floats at the bottom. Same material, so phone and desktop read
+   as one system.
+
+   The tools capsule is the point of the exercise: five separate
+   controls became one object. What does that is the hairline
+   dividers — grouping by rule rather than by gap — and stripping
+   every nested control of its own glass. A pane inside a pane
+   just looks like a mistake, and costs a second blur.
+   ============================================================ */
+:root {
+  --isle-h: 50px;
+  --isle-ctl: 38px;          /* every control inside an island is this tall */
+  --isle-pad: 6px;
+  /* Dense enough to read against a cluster marker. At 0.52 the map won:
+     a bright badge sitting under the filter punched straight through the
+     blur and took the labels with it. */
+  --isle-bg: rgba(14, 18, 28, 0.74);
+  --isle-blur: blur(30px) saturate(190%);
+  --isle-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.10);
+  --isle-shadow: 0 12px 34px -14px rgba(0, 0, 0, 0.65);
+  --isle-hair: rgba(255, 255, 255, 0.13);
+  /* Hover fill for nested controls — never a second backdrop-filter */
+  --isle-slot-hover: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme="light"] {
+  --isle-bg: rgba(255, 255, 255, 0.82);
+  --isle-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.08);
+  --isle-shadow: 0 12px 34px -14px rgba(13, 18, 32, 0.22);
+  --isle-hair: rgba(13, 18, 32, 0.14);
+  --isle-slot-hover: rgba(13, 18, 32, 0.09);
+}
+
+/* ---- The track ----
+   A 76px transparent strip across the top would swallow every map drag
+   that started up there, so the track itself takes no pointer events and
+   the islands hand them back. */
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+/* Pinned to their tracks. Phones hide the filter, and without an explicit
+   column the tools capsule auto-places into the vacated middle track — it
+   stops sitting flush to the right edge and the trailing track collapses to
+   a couple of pixels. */
+.header-left   { grid-column: 1; justify-self: start; }
+.header-center { grid-column: 2; justify-self: center; padding: 0; }
+.header-right  { grid-column: 3; justify-self: end; }
+
+.isle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--isle-h);
+  padding: 0 var(--isle-pad);
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--isle-bg);
+  backdrop-filter: var(--isle-blur);
+  -webkit-backdrop-filter: var(--isle-blur);
+  box-shadow: var(--isle-edge), var(--isle-shadow);
+  pointer-events: auto;
+}
+
+/* ---- Brand island ----
+   logo.png is a 1536×1024 canvas holding a 790×230 wordmark, so a quarter
+   of its width and better than a third of its height are empty. Scale from
+   the wordmark's own box and pull the dead margin back, or the pill ends up
+   hugging the transparent canvas instead of the letters. */
+.logo.isle {
+  padding: 0 22px;
+  overflow: hidden;
+  gap: 0;
+  --brand-cap: 21px;
+  --brand-unit: calc(var(--brand-cap) / 230);
+}
+.logo-img {
+  height: calc(1024 * var(--brand-unit));
+  width: calc(1536 * var(--brand-unit));
+  max-width: none;
+  margin-left: calc(-380 * var(--brand-unit));
+  margin-right: calc(-366 * var(--brand-unit));
+  /* The wordmark sits a hair above the canvas centre */
+  transform: translateY(1.5px);
+}
+
+/* ---- Filter island: the segmented control is the island ---- */
+.segmented.isle {
+  padding: 0 var(--isle-pad);
+  background: var(--isle-bg);
+  backdrop-filter: var(--isle-blur);
+  -webkit-backdrop-filter: var(--isle-blur);
+  box-shadow: var(--isle-edge), var(--isle-shadow);
+}
+.segmented.isle .seg-btn {
+  display: inline-flex;
+  align-items: center;
+  height: var(--isle-ctl);
+  padding: 0 18px;
+  font-size: 13px;
+}
+.segmented.isle .seg-indicator { top: var(--isle-pad); bottom: var(--isle-pad); }
+
+/* ---- Tools island ---- */
+.isle-tools { gap: 6px; }
+
+.isle-rule {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: var(--isle-hair);
+}
+
+/* Flatten everything nested: no surface of its own, no blur, no shadow,
+   one shared height. The icons sit straight on the capsule and the hairlines
+   do the grouping — a chip behind every control just draws boxes inside a
+   box, and leaves nothing for the two coloured controls to stand out from. */
+.isle-tools .segmented,
+.isle-tools .an-trigger,
+.isle-tools .notif-switch {
+  height: var(--isle-ctl);
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.isle-tools .an-trigger { width: var(--isle-ctl); }
+.isle-tools .an-trigger:hover {
+  background: var(--isle-slot-hover);
+  box-shadow: none;
+  transform: none;
+}
+.isle-tools .segmented { padding: 0; }
+.isle-tools .segmented .seg-btn {
+  display: inline-flex;
+  align-items: center;
+  height: var(--isle-ctl);
+  padding: 0 13px;
+}
+.isle-tools .seg-indicator { top: 0; bottom: 0; }
+
+/* Flattening wipes the state colours, so put them back at a specificity
+   that clears the rules above. These are the only colour in the capsule. */
+.isle-tools .pk-trigger.is-active {
+  background: var(--tint-cyan);
+  color: var(--cyan-400);
+  box-shadow: none;
+}
+:root[data-theme="light"] .isle-tools .pk-trigger.is-active { color: var(--cyan-500); }
+.isle-tools .notif-switch:not(.is-active) { background: var(--tint-coral); }
+.isle-tools .notif-switch:not(.is-active):hover { background: rgba(255, 107, 107, 0.24); }
+.isle-tools .notif-switch.is-active {
+  background: var(--tint-volt-hover);
+  box-shadow: 0 0 18px -6px var(--volt-glow);
+}
+.isle-tools .notif-switch { --sw-h: var(--isle-ctl); }
+
+/* The theme switch rides the end of the capsule as its one filled element,
+   sized off the same control height (its shell is 5.625em tall). */
+.isle-tools .droid-toggle { --toggle-size: calc(var(--isle-ctl) / 5.625); }
+
+/* ---- Phones: same three islands, smaller ---- */
+@media (max-width: 768px) {
+  :root { --isle-h: 42px; --isle-ctl: 32px; --isle-pad: 5px; }
+  /* Two islands and 347px of room: the gap is track spacing the islands
+     cannot spare, and justify-self already holds them apart. */
+  .header { gap: 8px; }
+  .logo.isle { padding: 0 14px; --brand-cap: 17px; }
+  .isle-tools { gap: 4px; }
+  .isle-rule { height: 18px; margin: 0 1px; }
+  .isle-tools .segmented .seg-btn { padding: 0 9px; font-size: 12px; }
+
+  /* The status bar sits on bare map once the bar is gone. A short scrim
+     keeps the clock and battery legible without rebuilding the wall. */
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: calc(env(safe-area-inset-top, 0px) + 10px);
+    background: linear-gradient(to bottom, rgba(4, 6, 12, 0.55), transparent);
+    pointer-events: none;
+  }
+  :root[data-theme="light"] .header::before {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.7), transparent);
+  }
+}
+
+/* The phone override for the language pill is written with an id, so it
+   outranks every `.isle-tools …` rule above no matter the order. Restate it
+   at id strength or the buttons keep their old 38px box inside a 32px slot. */
+@media (max-width: 768px) {
+  .isle-tools #lang-seg { padding: 0; }
+  .isle-tools #lang-seg .seg-btn {
+    height: var(--isle-ctl);
+    padding: 0 9px;
+    font-size: 12px;
+  }
+}
+
+/* The map was padded down to clear the old header bar, which now just leaves
+   a strip of empty page above it. Islands float, so the map runs full-bleed
+   to the top edge and they sit on it. */
+#map { padding-top: 0; }
+
+/* Parking and analytics both carry `.an-trigger`, which phones hide because
+   those jobs moved into the tab bar. That leaves the two hairlines with
+   nothing between them, so the group they were separating goes too. */
+@media (max-width: 768px) {
+  .isle-tools > .isle-rule:first-of-type { display: none; }
+}
+
+/* ---- Narrow desktop / tablet ----
+   The three islands need 852px to sit side by side, so between the phone
+   breakpoint and ~1024 they tighten rather than one of them being dropped.
+   Losing the charger filter here would be the easy fix and the wrong one:
+   this is the width where a laptop user is most likely to be filtering. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root { --isle-h: 44px; --isle-ctl: 34px; --isle-pad: 5px; }
+  .header { gap: 12px; }
+  .logo.isle { padding: 0 16px; --brand-cap: 18px; }
+  .segmented.isle .seg-btn { padding: 0 12px; font-size: 12.5px; }
+  .isle-tools { gap: 4px; }
+  .isle-tools .segmented .seg-btn { padding: 0 10px; }
+  .isle-rule { margin: 0 2px; height: 20px; }
+}
+
+/* ---- Small phones ----
+   At 360 the two islands plus the empty centre track's two gaps run past the
+   header padding and the capsule ends up flush against the bezel. Everything
+   in the capsule is still needed, so the row shrinks rather than sheds. */
+@media (max-width: 400px) {
+  :root { --isle-h: 40px; --isle-ctl: 30px; }
+  .header { gap: 6px; }
+  .logo.isle { padding: 0 12px; --brand-cap: 15px; }
+  .isle-tools .segmented .seg-btn,
+  .isle-tools #lang-seg .seg-btn { padding: 0 7px; font-size: 11.5px; }
+  .isle-rule { height: 16px; }
+}
+
+/* The brand island is a link and had only the UA ring, which the pill's
+   overflow made hard to read. */
+.logo.isle:focus-visible {
+  outline: 2px solid var(--volt-500);
+  outline-offset: 3px;
+}

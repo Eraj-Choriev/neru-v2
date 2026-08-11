@@ -75,16 +75,20 @@ class UI {
       this.themeToggle.checked = (this.getTheme() === 'dark');
     }
     i18n.updateDOM();
-    // Position the segmented indicators once fonts/layout settle
+    // Position the segmented indicators and the tab lens once fonts/layout settle
     requestAnimationFrame(() => {
       this.moveIndicator(this.filterSeg);
       this.moveIndicator(this.langSeg);
+      this.moveTabLens({ instant: true });
     });
-    // Language change re-flows widths — re-measure after DOM updates
+    this.watchTabLens();
+    // Language change re-flows widths — re-measure after DOM updates. The tab
+    // lens is sized off its label, so a new language resizes it too.
     window.addEventListener('langchange', () => {
       requestAnimationFrame(() => {
         this.moveIndicator(this.filterSeg);
         this.moveIndicator(this.langSeg);
+        this.moveTabLens({ instant: true });
       });
     });
   }
@@ -110,6 +114,7 @@ class UI {
     this.statsBusy = document.getElementById('stat-busy');
 
     this.tabbar = document.getElementById('tabbar');
+    this.tabLens = document.getElementById('tab-lens');
   }
 
   getTheme() {
@@ -208,14 +213,36 @@ class UI {
     activeBtn.classList.add('is-active');
   }
 
+  /**
+   * Slide a segmented control's lens onto its active button.
+   *
+   * Same glass and the same travel as the tab bar's lens — it stretches the
+   * way it is going and its rim disperses while it moves. Two selections in
+   * one app should not move in two different ways.
+   */
   moveIndicator(segEl) {
     if (!segEl) return;
     const indicator = segEl.querySelector('.seg-indicator');
     const active = segEl.querySelector('.seg-btn.is-active');
     if (!indicator || !active) return;
+
     const { offsetLeft, offsetWidth } = active;
+    const prev = this._segX instanceof Map ? this._segX.get(segEl) : undefined;
+    if (!(this._segX instanceof Map)) this._segX = new Map();
+
+    if (prev !== undefined && offsetLeft !== prev) {
+      indicator.style.setProperty('--lens-skew', offsetLeft > prev ? '4deg' : '-4deg');
+      indicator.classList.remove('is-traveling');
+      void indicator.offsetWidth;
+      indicator.classList.add('is-traveling');
+      clearTimeout(this._segTimers?.get(segEl));
+      if (!this._segTimers) this._segTimers = new Map();
+      this._segTimers.set(segEl, setTimeout(() => indicator.classList.remove('is-traveling'), 600));
+    }
+
     indicator.style.transform = `translate3d(${offsetLeft}px, 0, 0)`;
     indicator.style.width = `${offsetWidth}px`;
+    this._segX.set(segEl, offsetLeft);
   }
 
   /**
@@ -248,6 +275,88 @@ class UI {
         item.removeAttribute('aria-current');
       }
     });
+
+    this.moveTabLens();
+  }
+
+  /**
+   * Slide the glass lens onto the active tab.
+   *
+   * The lens is one element for the whole bar rather than a background per
+   * item, because a moving piece of glass is the selection: it stretches the
+   * way it travels and disperses at its rim while it does. CSS owns both —
+   * this only supplies the geometry, the direction of travel, and the flag
+   * that turns the stretch on for the length of one move.
+   *
+   * `instant` places it without travel: first paint, a resize, a rotation.
+   * Animating from wherever the lens happened to sit before a re-measure is
+   * a slide the user never asked for.
+   */
+  moveTabLens({ instant = false } = {}) {
+    const bar = this.tabbar;
+    const lens = this.tabLens;
+    if (!bar || !lens) return;
+
+    const item = bar.querySelector('.tabbar-item.is-active');
+    // The bar is display:none on desktop, so everything measures 0. Bail and
+    // let the ResizeObserver place it if the viewport ever narrows.
+    if (!item || !bar.offsetWidth) return;
+
+    // One capsule size for every tab, taken from the widest label in the bar.
+    // Sizing each tab to its own label made the lens shrink on "Find" and
+    // stretch on "Analytics" — the same object appearing to change size as it
+    // travels. It still stops short of the slot edge, so the bar never reads
+    // as four filled cells.
+    const labels = [...bar.querySelectorAll('.tabbar-label')];
+    const content = labels.reduce((max, el) => Math.max(max, el.offsetWidth), 44);
+    const width = Math.round(
+      Math.min(item.offsetWidth - 8, Math.max(58, content + 22))
+    );
+    const x = Math.round(item.offsetLeft + (item.offsetWidth - width) / 2);
+    const first = this._lensX === undefined;
+    const moved = !first && x !== this._lensX;
+
+    if (instant || first) {
+      lens.classList.add('is-instant');
+      // Force the placement to land before transitions come back on,
+      // otherwise the class removal below is coalesced into the same frame
+      // and the lens animates anyway.
+      lens.style.setProperty('--lens-w', `${width}px`);
+      lens.style.setProperty('--lens-x', `${x}px`);
+      void lens.offsetWidth;
+      lens.classList.remove('is-instant');
+    } else {
+      if (moved) {
+        lens.style.setProperty('--lens-skew', x > this._lensX ? '5deg' : '-5deg');
+        // Restart the stretch even on a rapid second tap: drop the class,
+        // flush, add it back.
+        lens.classList.remove('is-traveling');
+        void lens.offsetWidth;
+        lens.classList.add('is-traveling');
+        clearTimeout(this._lensTimer);
+        this._lensTimer = setTimeout(() => lens.classList.remove('is-traveling'), 600);
+      }
+      lens.style.setProperty('--lens-w', `${width}px`);
+      lens.style.setProperty('--lens-x', `${x}px`);
+    }
+
+    this._lensX = x;
+    bar.classList.add('is-lens-ready');
+  }
+
+  /** Keep the lens on its tab through rotation, resize and desktop→phone. */
+  watchTabLens() {
+    const bar = this.tabbar;
+    if (!bar) return;
+
+    const replace = () => this.moveTabLens({ instant: true });
+    window.addEventListener('resize', replace);
+    window.addEventListener('orientationchange', replace);
+    if (window.ResizeObserver) {
+      // Also fires when the media query flips the bar from none to flex,
+      // which is the one case a resize listener alone measures too early.
+      new ResizeObserver(replace).observe(bar);
+    }
   }
 
   /** Return the raised badge to whichever map layer is showing. */

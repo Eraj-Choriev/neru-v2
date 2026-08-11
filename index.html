@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=15">
 
   <!-- Favicon + PWA -->
   <link rel="icon" href="logo.png">
@@ -45,14 +45,14 @@
     <!-- ===== Header ===== -->
     <header class="header" role="banner">
       <div class="header-left">
-        <a href="#" class="logo" aria-label="NŪR — Home">
+        <a href="#" class="isle logo" aria-label="NŪR — Home">
           <img src="logo.png" alt="NŪR" class="logo-img">
         </a>
       </div>
 
       <div class="header-center">
-        <div class="segmented" id="filter-seg" role="tablist" aria-label="Filter">
-          <span class="seg-indicator" aria-hidden="true"></span>
+        <div class="segmented isle" id="filter-seg" role="tablist" aria-label="Filter">
+          <span class="seg-indicator" aria-hidden="true"><span class="lens-body"></span></span>
           <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
           <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
           <button class="seg-btn filter-btn" data-filter="120w" role="tab" data-i18n="filterFast">Тезкор</button>
@@ -60,12 +60,18 @@
       </div>
 
       <div class="header-right">
+       <!-- One capsule, not six floating controls. Groups are separated by
+            hairlines rather than gaps, which is what makes the row read as a
+            single object; the theme switch rides the end as the accent. -->
+       <div class="isle isle-tools">
         <div class="segmented segmented-compact" id="lang-seg" role="tablist" aria-label="Language">
-          <span class="seg-indicator" aria-hidden="true"></span>
+          <span class="seg-indicator" aria-hidden="true"><span class="lens-body"></span></span>
           <button class="seg-btn lang-btn is-active" data-lang="tj" role="tab">TJ</button>
           <button class="seg-btn lang-btn" data-lang="ru" role="tab">RU</button>
           <button class="seg-btn lang-btn" data-lang="en" role="tab">EN</button>
         </div>
+
+        <span class="isle-rule" aria-hidden="true"></span>
 
         <button class="an-trigger pk-trigger" id="pk-toggle" aria-label="Parking zones" aria-pressed="false" data-i18n-title="pkShowZones" title="Парковочные зоны">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -79,6 +85,8 @@
             <path d="M4 19V10"/><path d="M10 19V5"/><path d="M16 19v-6"/><path d="M22 19H2"/>
           </svg>
         </button>
+
+        <span class="isle-rule" aria-hidden="true"></span>
 
         <button class="notif-switch" id="notif-toggle" role="switch" aria-checked="false"
                 aria-label="Toggle notifications" title="Enable notifications">
@@ -128,6 +136,7 @@
             </div>
           </div>
         </label>
+       </div>
       </div>
     </header>
 
@@ -311,6 +320,10 @@
          middle, a panel and an overflow — the same five slots an iOS app
          would use. Desktop keeps the header controls and never shows this. -->
     <nav class="tabbar" id="tabbar" aria-label="Main">
+      <!-- One glass lens for the whole bar. JS measures the active item and
+           slides it; the squash and prism live in CSS. -->
+      <span class="tabbar-lens" id="tab-lens" aria-hidden="true"><span class="lens-body"></span></span>
+
       <button class="tabbar-item is-active" id="tab-ev" data-tab="ev" aria-current="page">
         <span class="tabbar-badge" aria-hidden="true">
           <svg class="tabbar-ic tabbar-ic--line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -414,19 +427,19 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=13"></script>
-  <script src="js/api.js?v=13"></script>
-  <script src="js/parking.js?v=13"></script>
-  <script src="js/geolocation.js?v=13"></script>
-  <script src="js/finder.js?v=13"></script>
-  <script src="js/map.js?v=13"></script>
-  <script src="js/ui.js?v=13"></script>
-  <script src="js/notifications.js?v=13"></script>
-  <script src="js/router.js?v=13"></script>
-  <script src="js/analytics.js?v=13"></script>
-  <script src="js/parking-session.js?v=13"></script>
-  <script src="js/pwa.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/i18n.js?v=15"></script>
+  <script src="js/api.js?v=15"></script>
+  <script src="js/parking.js?v=15"></script>
+  <script src="js/geolocation.js?v=15"></script>
+  <script src="js/finder.js?v=15"></script>
+  <script src="js/map.js?v=15"></script>
+  <script src="js/ui.js?v=15"></script>
+  <script src="js/notifications.js?v=15"></script>
+  <script src="js/router.js?v=15"></script>
+  <script src="js/analytics.js?v=15"></script>
+  <script src="js/parking-session.js?v=15"></script>
+  <script src="js/pwa.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "564d13df8dba417a9193fe33cef8e220"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
