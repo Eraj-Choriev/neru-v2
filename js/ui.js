@@ -545,10 +545,12 @@ class UI {
                 <span class="conn-state conn-state--charging">${esc(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
                 ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
-              <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
-                <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+              <div class="conn-gauge">
+                <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
+                  <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+                </div>
+                <span class="conn-pct ${tone}">${level}<i>%</i></span>
               </div>
-              <span class="conn-sub">${esc(i18n.t('chargeLabel'))} ${level}%</span>
             </div>
           </div>`;
       }
@@ -620,6 +622,7 @@ class UI {
         </div>
 
         ${waitBannerHtml}
+        ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
 
         <div class="conn-list">${connRows}</div>
 

@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-  <link rel="stylesheet" href="css/style.css?v=18">
+  <link rel="stylesheet" href="css/style.css?v=22">
 
   <!-- Favicon + PWA -->
   <link rel="icon" href="logo.png">
@@ -101,40 +101,21 @@
           </span>
         </button>
 
-        <!-- Theme switch: a droid rolling from day into night.
-             Adapted from Uiverse.io by Galahhad, recoloured to the NŪR palette. -->
-        <label class="droid-toggle" title="Toggle theme" aria-label="Toggle theme">
-          <input class="droid-toggle__checkbox" type="checkbox" id="theme-toggle">
-          <div class="droid-toggle__container">
-            <div class="droid-toggle__scenery" aria-hidden="true">
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="droid-toggle__star"></div>
-              <div class="sun-main"></div>
-              <div class="sun-far"></div>
-              <div class="moon-lg"></div>
-              <div class="moon-md"></div>
-              <div class="moon-sm"></div>
-              <div class="droid-toggle__cloud"></div>
-              <div class="droid-toggle__cloud"></div>
-              <div class="droid-toggle__cloud"></div>
-            </div>
-            <div class="droid" aria-hidden="true">
-              <div class="droid__head-container">
-                <div class="droid__antenna"></div>
-                <div class="droid__antenna"></div>
-                <div class="droid__head"></div>
-              </div>
-              <div class="droid__body"></div>
-            </div>
-            <div class="droid__clip" aria-hidden="true">
-              <div class="droid__shadow"></div>
-            </div>
-          </div>
+        <!-- Theme switch: day and night in one capsule.
+             Adapted from Uiverse.io by JustCode14, recoloured to this
+             palette and rebuilt so the moon is a sliding disc rather than an
+             animated box-shadow. Checked = night, matching ui.js. -->
+        <label class="theme-switch" title="Toggle theme">
+          <input type="checkbox" id="theme-toggle" aria-label="Toggle theme">
+          <span class="sw-track" aria-hidden="true">
+            <span class="sw-star sw-star--1"></span>
+            <span class="sw-star sw-star--2"></span>
+            <span class="sw-star sw-star--3"></span>
+            <svg class="sw-cloud" viewBox="0 0 16 10" aria-hidden="true">
+              <path d="M4.4 9.6C2 9.6.5 8.2.5 6.4.5 4.9 1.6 3.7 3.1 3.4 3.5 1.6 5 .4 6.9.4c1.6 0 3 .9 3.6 2.3.3-.1.6-.2 1-.2 1.6 0 2.9 1.3 3 2.9 1.1.3 1.9 1.2 1.9 2.3 0 1.3-1.1 2.3-2.5 2.3H4.4z"/>
+            </svg>
+            <span class="sw-knob"></span>
+          </span>
         </label>
        </div>
       </div>
@@ -427,19 +408,19 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=15"></script>
-  <script src="js/api.js?v=15"></script>
-  <script src="js/parking.js?v=15"></script>
-  <script src="js/geolocation.js?v=15"></script>
-  <script src="js/finder.js?v=15"></script>
-  <script src="js/map.js?v=15"></script>
-  <script src="js/ui.js?v=15"></script>
-  <script src="js/notifications.js?v=15"></script>
-  <script src="js/router.js?v=15"></script>
-  <script src="js/analytics.js?v=15"></script>
-  <script src="js/parking-session.js?v=15"></script>
-  <script src="js/pwa.js?v=15"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="js/i18n.js?v=21"></script>
+  <script src="js/api.js?v=21"></script>
+  <script src="js/parking.js?v=21"></script>
+  <script src="js/geolocation.js?v=21"></script>
+  <script src="js/finder.js?v=21"></script>
+  <script src="js/map.js?v=21"></script>
+  <script src="js/ui.js?v=21"></script>
+  <script src="js/notifications.js?v=21"></script>
+  <script src="js/router.js?v=21"></script>
+  <script src="js/analytics.js?v=21"></script>
+  <script src="js/parking-session.js?v=21"></script>
+  <script src="js/pwa.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "564d13df8dba417a9193fe33cef8e220"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>

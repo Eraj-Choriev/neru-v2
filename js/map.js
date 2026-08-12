@@ -29,7 +29,15 @@ class StationMap {
     return L.tileLayer(url, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd',
-      maxZoom: 19
+      // CARTO serves this style up to z20, verified against the @2x endpoint.
+      // Stopping at 19 meant the last step in was Leaflet upscaling a z19
+      // tile rather than fetching real z20 detail.
+      //
+      // Retina is deliberately NOT handled with `detectRetina`: Leaflet fills
+      // {r} with '@2x' from Browser.retina on its own, so the option would
+      // request four times the tiles for the same picture.
+      maxZoom: 20,
+      maxNativeZoom: 20
     });
   }
 
@@ -607,10 +615,12 @@ class StationMap {
                 <span class="conn-state conn-state--charging">${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
                 ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
-              <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
-                <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+              <div class="conn-gauge">
+                <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
+                  <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+                </div>
+                <span class="conn-pct ${tone}">${level}<i>%</i></span>
               </div>
-              <span class="conn-sub">${escHtml(i18n.t('chargeLabel'))} ${level}%</span>
             </div>
           </div>`;
       }
@@ -651,6 +661,7 @@ class StationMap {
 
         ${scheduleRow}
         ${waitBannerHtml}
+        ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
         <div class="conn-list">${connRows}</div>
 
         <div class="popup-actions">

@@ -114,6 +114,12 @@ const translations = {
     anSubtitle: 'Аз рӯи мушоҳидаи дастгоҳи шумо',
     anCollecting: 'Маълумот ҷамъ мешавад',
     anCollectingHint: 'Барномаро кушода нигоҳ доред — таҳлил ҳар 30 сония нав мешавад.',
+
+    // History on a station card — written from what this device has seen
+    histUsuallyFree: 'Одатан озод',
+    histSometimesBusy: 'Гоҳо банд мешавад',
+    histOftenBusy: 'Аксаран банд',
+    histBusyWindow: 'серодамтарин {from}–{to}',
     anNow: 'Ҳозир',
     anFreeConn: 'Пайвасткунакҳои озод',
     anBusyConn: 'Банд',
@@ -414,6 +420,12 @@ const translations = {
     anSubtitle: 'По наблюдениям с вашего устройства',
     anCollecting: 'Собираем данные',
     anCollectingHint: 'Держите приложение открытым — аналитика обновляется каждые 30 секунд.',
+
+    // History on a station card — written from what this device has seen
+    histUsuallyFree: 'Обычно свободна',
+    histSometimesBusy: 'Иногда занята',
+    histOftenBusy: 'Часто занята',
+    histBusyWindow: 'плотнее всего {from}–{to}',
     anNow: 'Сейчас',
     anFreeConn: 'Свободных коннекторов',
     anBusyConn: 'Занято',
@@ -714,6 +726,12 @@ const translations = {
     anSubtitle: 'From what this device has observed',
     anCollecting: 'Collecting data',
     anCollectingHint: 'Keep the app open — analytics update every 30 seconds.',
+
+    // History on a station card — written from what this device has seen
+    histUsuallyFree: 'Usually free',
+    histSometimesBusy: 'Sometimes busy',
+    histOftenBusy: 'Often busy',
+    histBusyWindow: 'busiest {from}–{to}',
     anNow: 'Right now',
     anFreeConn: 'Free connectors',
     anBusyConn: 'In use',

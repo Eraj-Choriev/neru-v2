@@ -193,15 +193,19 @@ body {
   box-sizing: border-box;
 }
 
-/* scanline vignette overlay for map (subtle) */
+/* Vignette over the map.
+   It used to be a 55% multiply starting at the halfway point, which on an
+   already-dark basemap crushed the street labels toward black everywhere
+   except dead centre — the map read as soft rather than as dark. Now it
+   starts further out, carries less weight, and does not multiply: on a
+   near-black tile multiply has almost nothing left to take. */
 .map-vignette {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 2;
   background:
-    radial-gradient(ellipse at center, transparent 55%, rgba(4, 6, 12, 0.55) 100%);
-  mix-blend-mode: multiply;
+    radial-gradient(ellipse at center, transparent 72%, rgba(4, 6, 12, 0.34) 100%);
 }
 
 /* ============================================================
@@ -1441,23 +1445,79 @@ body {
   white-space: nowrap;
 }
 
+/* Meter and number on one line. The number used to sit under the bar as a
+   10.5px grey caption reading "Charge 59%" — the one fact a waiting driver
+   opens the card for, set in the quietest type on the screen. It now shares
+   the bar's line at the size of a value, and the word is gone: a filled
+   meter does not need to be told it is a charge level. Screen readers still
+   get the label from the progressbar's aria-label. */
+.conn-gauge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* The meter width is the real charge level, so it always agrees with the
-   number printed beneath it. */
+   number beside it. */
 .conn-meter {
   position: relative;
-  height: 5px;
+  flex: 1;
+  min-width: 0;
+  height: 8px;
   border-radius: var(--r-pill);
   background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
 
 .conn-meter-fill {
+  position: relative;
   display: block;
   height: 100%;
   border-radius: inherit;
   transform-origin: left center;
   animation: meterIn 640ms var(--ease-out) both;
+  /* Lit from above like every other filled surface in the app */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
+
+/* The leading edge glows, so the eye lands on where the fill ends — which
+   is the reading — instead of scanning the whole bar for it. */
+.conn-meter-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 100%);
+  pointer-events: none;
+}
+
+/* The reading itself: value-sized, tabular, tinted by the same tone as the
+   bar so number and colour say one thing. The percent sign is set smaller
+   and dimmer — it is a unit, not part of the number. */
+.conn-pct {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum' on;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.conn-pct i {
+  font-style: normal;
+  font-size: 0.7em;
+  font-weight: 700;
+  opacity: 0.55;
+  margin-left: 1px;
+}
+.conn-pct.tone-high { color: var(--volt-500); }
+.conn-pct.tone-mid  { color: var(--amber-400); }
+.conn-pct.tone-low  { color: var(--coral-400); }
 
 @keyframes meterIn {
   from { transform: scaleX(0); }
@@ -1477,15 +1537,6 @@ body {
 .conn-meter-fill.tone-low {
   background: linear-gradient(90deg, #c94444, var(--coral-500));
   box-shadow: 0 0 10px rgba(255, 107, 107, 0.35);
-}
-
-.conn-sub {
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--text-3);
-  letter-spacing: 0.02em;
-  font-feature-settings: 'tnum' on;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1541,6 +1592,36 @@ body {
 
 .wait-banner--no-eta .wait-text {
   color: var(--text-3);
+}
+
+/* ---- What this device has seen ----
+   The one line in a station card that is not from the feed: it is the
+   local history speaking. It stays a line of text rather than a banner —
+   the wait banner above it is the urgent thing, and two boxed rows in a
+   row would compete. No border, no fill, just an icon and quiet type.
+   Shown in the sidebar card and the map popup from the same helper. */
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -2px 0 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-3);
+}
+
+.hist-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  opacity: 0.75;
+}
+
+.hist-text {
+  min-width: 0;
+  /* Two clauses joined by a middot; on a narrow popup the second wraps
+     under the first rather than being cut. */
+  overflow-wrap: anywhere;
 }
 
 /* ============================================================
@@ -3138,11 +3219,10 @@ body.sidebar-open { overflow: hidden; }
   box-shadow: 0 16px 40px -12px rgba(13, 18, 32, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-/* Scanline vignette — lighten it so the map isn't darkened */
+/* On light the vignette is barely there to begin with — same treatment. */
 :root[data-theme="light"] .map-vignette {
   background:
-    radial-gradient(ellipse at center, transparent 60%, rgba(13, 18, 32, 0.08) 100%);
-  mix-blend-mode: multiply;
+    radial-gradient(ellipse at center, transparent 74%, rgba(13, 18, 32, 0.06) 100%);
 }
 
 /* Leaflet surface & user-dot border for light map */
@@ -3260,479 +3340,197 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .open-now::before { background: var(--volt-700); }
 
 /* ============================================================
-   THEME SWITCH — NŪR droid
-   Adapted from Uiverse.io by Galahhad (BB-8 toggle), recoloured to
-   this palette: the droid's markings carry our volt mint, the night
-   sky uses the app's ink tones, and the second sun is our amber.
-   Legacy -o-/-webkit-gradient fallbacks from the source were dropped;
-   the standard declarations already override them everywhere.
+   THEME SWITCH — day and night in a capsule
+   ------------------------------------------------------------
+   Adapted from Uiverse.io by JustCode14. The source is a blue-sky
+   toggle with a #00a6ff track and a #ffcf48 sun; neither colour
+   exists in this app, and cyan already means "parking" on the map,
+   so day is warm here instead: an amber dawn against the app's own
+   ink for night. Mint shows up once, in the stars.
+
+   Two things were rebuilt rather than restyled:
+
+   1. The source draws its moon with `box-shadow: inset 8px -4px`
+      and animates that shadow into the sun. Animating a box-shadow
+      repaints the layer on every frame. Here the crescent is a
+      second disc that slides across the knob — transform only, so
+      the whole switch animates on the compositor.
+   2. `transition: 0.4s` and `all 0.4s` in the source transition
+      every property including background and shadow. Each property
+      here is listed on purpose.
+
+   Checked is NIGHT, because ui.js keeps the checkbox in step with
+   the dark theme ("on = night"). The daylight state is unchecked.
    ============================================================ */
-.droid-toggle {
-  --toggle-size: 7px;
-  --toggle-width: 10.625em;
-  --toggle-height: 5.625em;
-  --droid-diameter: 4.375em;
-  --toggle-offset: calc((var(--toggle-height) - var(--droid-diameter)) / 2);
-  --radius: 99em;
-  --transition: 0.4s;
-
-  /* Night on top, day on the bottom; the container slides between them. */
-  --toggle-bg: linear-gradient(#0a1220, #04060c 35%, #6f9db8 50% 70%, #c9dde8) no-repeat;
-  --droid-accent: #0ed58f;     /* volt-700 — reads cleanly on the white shell */
-  --droid-bg: #fff;
-  --ground: #39465a;
+.theme-switch {
+  /* Everything scales off this: the isle sets it to the shared
+     control height, so the switch always matches its neighbours. */
+  --sw-h: 38px;
+  --sw-w: calc(var(--sw-h) * 1.82);
+  --sw-pad: calc(var(--sw-h) * 0.16);
+  --sw-knob: calc(var(--sw-h) - var(--sw-pad) * 2);
+  --sw-travel: calc(var(--sw-w) - var(--sw-knob) - var(--sw-pad) * 2);
+  --sw-ease: cubic-bezier(0.32, 0.9, 0.35, 1.08);
+  --sw-t: 420ms;
 
   position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
+  display: inline-block;
+  flex: none;
+  width: var(--sw-w);
+  height: var(--sw-h);
+  border-radius: var(--r-pill);
   cursor: pointer;
-  font-size: var(--toggle-size);
-  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.droid-toggle,
-.droid-toggle *,
-.droid-toggle *::before,
-.droid-toggle *::after { box-sizing: border-box; }
-
-/* Kept in the layout (not display:none) so it stays keyboard-reachable. */
-.droid-toggle__checkbox {
+/* The checkbox stays in the layout for the keyboard and for screen
+   readers; it is only visually replaced. */
+.theme-switch input {
   position: absolute;
-  width: 1px;
-  height: 1px;
   opacity: 0;
-  margin: 0;
-  pointer-events: none;
-}
-
-.droid-toggle__container {
-  width: var(--toggle-width);
-  height: var(--toggle-height);
-  background: var(--toggle-bg);
-  background-size: 100% 11.25em;
-  background-position-y: -5.625em;
-  border-radius: var(--radius);
-  position: relative;
-  transition: var(--transition);
-  box-shadow: var(--edge-top), 0 4px 14px -6px rgba(0, 0, 0, 0.5);
-}
-
-.droid-toggle__checkbox:focus-visible + .droid-toggle__container {
-  outline: 2px solid var(--volt-500);
-  outline-offset: 3px;
-}
-
-/* ---- Droid ---- */
-.droid {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: absolute;
-  top: calc(var(--toggle-offset) - 1.688em + 0.188em);
-  left: var(--toggle-offset);
-  transition: var(--transition);
-  z-index: 2;
-}
-
-.droid__head-container {
-  position: relative;
-  transition: var(--transition);
-  z-index: 2;
-  transform-origin: 1.25em 3.75em;
-}
-
-.droid__head {
-  overflow: hidden;
-  margin-bottom: -0.188em;
-  width: 2.5em;
-  height: 1.688em;
-  background:
-    linear-gradient(
-      transparent 0.063em,
-      dimgray 0.063em 0.313em,
-      transparent 0.313em 0.375em,
-      var(--droid-accent) 0.375em 0.5em,
-      transparent 0.5em 1.313em,
-      silver 1.313em 1.438em,
-      transparent 1.438em
-    ),
-    linear-gradient(45deg, transparent 0.188em, var(--droid-bg) 0.188em 1.25em, transparent 1.25em),
-    linear-gradient(-45deg, transparent 0.188em, var(--droid-bg) 0.188em 1.25em, transparent 1.25em),
-    linear-gradient(var(--droid-bg) 1.25em, transparent 1.25em);
-  border-radius: var(--radius) var(--radius) 0 0;
-  position: relative;
-  z-index: 1;
-  filter: drop-shadow(0 0.063em 0.125em gray);
-}
-
-/* Eye */
-.droid__head::before {
-  content: "";
-  position: absolute;
-  width: 0.563em;
-  height: 0.563em;
-  background:
-    radial-gradient(0.125em circle at 0.25em 0.375em, var(--volt-500), transparent),
-    radial-gradient(0.063em circle at 0.375em 0.188em, var(--droid-bg) 50%, transparent 100%),
-    linear-gradient(45deg, #000 0.188em, dimgray 0.313em 0.375em, #000 0.5em);
-  border-radius: var(--radius);
-  top: 0.413em;
-  left: 50%;
-  transform: translate(-50%);
-  box-shadow:
-    0 0 0 0.089em lightgray,
-    0.563em 0.281em 0 -0.148em,
-    0.563em 0.281em 0 -0.1em var(--droid-bg),
-    0.563em 0.281em 0 -0.063em;
-  z-index: 1;
-  transition: var(--transition);
-}
-
-/* Banded trim around the head */
-.droid__head::after {
-  content: "";
-  position: absolute;
-  bottom: 0.375em;
-  left: 0;
-  width: 100%;
-  height: 0.188em;
-  background: linear-gradient(
-    to right,
-    var(--droid-accent) 0.125em,
-    transparent 0.125em 0.188em,
-    var(--droid-accent) 0.188em 0.313em,
-    transparent 0.313em 0.375em,
-    var(--droid-accent) 0.375em 0.938em,
-    transparent 0.938em 1em,
-    var(--droid-accent) 1em 1.125em,
-    transparent 1.125em 1.875em,
-    var(--droid-accent) 1.875em 2em,
-    transparent 2em 2.063em,
-    var(--droid-accent) 2.063em 2.25em,
-    transparent 2.25em 2.313em,
-    var(--droid-accent) 2.313em 2.375em,
-    transparent 2.375em 2.438em,
-    var(--droid-accent) 2.438em
-  );
-  transition: var(--transition);
-}
-
-.droid__antenna {
-  position: absolute;
-  transform: translateY(-90%);
-  width: 0.059em;
-  border-radius: var(--radius) var(--radius) 0 0;
-  transition: var(--transition);
-}
-
-.droid__antenna:nth-child(1) {
-  height: 0.938em;
-  right: 0.938em;
-  background: linear-gradient(#000 0.188em, silver 0.188em);
-}
-
-.droid__antenna:nth-child(2) {
-  height: 0.375em;
-  left: 50%;
-  transform: translate(-50%, -90%);
-  background: silver;
-}
-
-.droid__body {
-  width: 4.375em;
-  height: 4.375em;
-  border-radius: var(--radius);
-  position: relative;
-  overflow: hidden;
-  transition: var(--transition);
-  z-index: 1;
-  transform: rotate(45deg);
-  background:
-    linear-gradient(-90deg, var(--droid-bg) 4%, var(--droid-accent) 4% 10%, transparent 10% 90%, var(--droid-accent) 90% 96%, var(--droid-bg) 96%),
-    linear-gradient(var(--droid-bg) 4%, var(--droid-accent) 4% 10%, transparent 10% 90%, var(--droid-accent) 90% 96%, var(--droid-bg) 96%),
-    linear-gradient(to right, transparent 2.156em, silver 2.156em 2.219em, transparent 2.188em),
-    linear-gradient(transparent 2.156em, silver 2.156em 2.219em, transparent 2.188em);
-  background-color: var(--droid-bg);
-}
-
-.droid__body::after {
-  content: "";
-  bottom: 1.5em;
-  left: 0.563em;
-  position: absolute;
-  width: 0.188em;
-  height: 0.188em;
-  background: rgb(236, 236, 236);
-  color: rgb(236, 236, 236);
-  border-radius: 50%;
-  box-shadow:
-    0.875em 0.938em, 0 -1.25em, 0.875em -2.125em, 2.125em -2.125em,
-    3.063em -1.25em, 3.063em 0, 2.125em 0.938em;
-}
-
-.droid__body::before {
-  content: "";
-  width: 2.625em;
-  height: 2.625em;
-  position: absolute;
-  border-radius: 50%;
-  overflow: hidden;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border: 0.313em solid var(--droid-accent);
-  background:
-    radial-gradient(1em circle at center, rgb(236, 236, 236) 50%, transparent 51%),
-    radial-gradient(1.25em circle at center, var(--droid-bg) 50%, transparent 51%),
-    linear-gradient(-90deg, transparent 42%, var(--droid-accent) 42% 58%, transparent 58%),
-    linear-gradient(var(--droid-bg) 42%, var(--droid-accent) 42% 58%, var(--droid-bg) 58%);
-}
-
-.droid__clip {
-  position: absolute;
-  border-radius: inherit;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.droid__shadow {
-  width: var(--droid-diameter);
-  height: 20%;
-  border-radius: 50%;
-  background: #10151f;
-  box-shadow: 0.313em 0 3.125em #10151f;
-  opacity: 0.3;
-  position: absolute;
-  bottom: 0;
-  left: calc(var(--toggle-offset) - 0.938em);
-  transition: var(--transition);
-  transform: skew(-70deg);
-  z-index: 1;
-}
-
-/* ---- Sky ---- */
-.droid-toggle__scenery {
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  margin: 0;
+  cursor: pointer;
+}
+
+.sw-track {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   overflow: hidden;
-  position: relative;
-  border-radius: inherit;
+  /* Day: a warm low sun. Night is painted by the checked rule below. */
+  background: linear-gradient(180deg, #ffe3ad 0%, #ffc978 100%);
+  box-shadow: var(--edge-glass);
+  transition: background var(--sw-t) ease;
+  pointer-events: none;
 }
 
-/* Horizon line the droid rolls along */
-.droid-toggle__scenery::before {
-  content: "";
+/* ---- The knob: sun by day, crescent by night ---- */
+.sw-knob {
   position: absolute;
-  width: 100%;
-  height: 30%;
-  bottom: 0;
-  background: var(--ground);
-  z-index: 1;
-}
-
-.droid-toggle__cloud {
-  z-index: 1;
-  position: absolute;
+  top: var(--sw-pad);
+  left: var(--sw-pad);
+  width: var(--sw-knob);
+  height: var(--sw-knob);
   border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fffaf0 0%, #ffd37a 55%, #ffab3d 100%);
+  box-shadow:
+    0 0 calc(var(--sw-h) * 0.3) rgba(255, 180, 72, 0.55),
+    inset 0 -1px 2px rgba(160, 90, 0, 0.25);
+  overflow: hidden;
+  will-change: transform;
+  transition:
+    transform var(--sw-t) var(--sw-ease),
+    background var(--sw-t) ease,
+    box-shadow var(--sw-t) ease;
 }
 
-.droid-toggle__cloud:nth-last-child(1) {
-  width: 0.875em;
-  height: 0.625em;
-  filter: blur(0.125em) drop-shadow(0.313em 0.313em #ffffffae)
-    drop-shadow(-0.625em 0 #fff) drop-shadow(-0.938em -0.125em #fff);
-  right: 1.875em;
-  top: 2.813em;
-  background: #ffffffae;
-  transition: var(--transition);
-}
-
-.droid-toggle__cloud:nth-last-child(2) {
-  top: 0.625em;
-  right: 4.375em;
-  width: 0.875em;
-  height: 0.375em;
-  background: #dfdedeae;
-  filter: blur(0.125em) drop-shadow(-0.313em -0.188em #e0dfdfae)
-    drop-shadow(-0.625em -0.188em #bbbbbbae) drop-shadow(-1em 0.063em #cfcfcfae);
-  transition: 0.6s;
-}
-
-.droid-toggle__cloud:nth-last-child(3) {
-  top: 1.25em;
-  right: 0.938em;
-  width: 0.875em;
-  height: 0.375em;
-  background: #ffffffae;
-  filter: blur(0.125em) drop-shadow(0.438em 0.188em #ffffffae)
-    drop-shadow(-0.625em 0.313em #ffffffae);
-  transition: 0.8s;
-}
-
-/* Moons rise with the night */
-.moon-lg,
-.moon-md,
-.moon-sm {
+/* The crescent: a disc of night sky that bites a curve out of the
+   knob. By day it has to be gone, not merely nudged — at 60% offset a
+   dark sickle still crossed the sun — so it parks clear of the disc
+   and fades out on the way. Its colour is the night sky's own, so the
+   bite reads as sky showing through rather than as a black shape. */
+.sw-knob::after {
+  content: '';
   position: absolute;
-  border-radius: var(--radius);
-  background: linear-gradient(#eef1f7, #57657a);
-  top: 100%;
+  inset: 0;
+  border-radius: 50%;
+  background: #131b30;
+  opacity: 0;
+  transform: translate(86%, -34%) scale(0.95);
+  transition:
+    transform var(--sw-t) var(--sw-ease),
+    opacity 220ms ease;
 }
 
-.moon-lg {
-  left: 0.938em;
-  width: 1.875em;
-  height: 1.875em;
-  box-shadow: 0 0 0.188em #ffffff52, 0 0 0.188em #6e8ea24b;
-  transition: var(--transition);
-}
-
-.moon-lg::before,
-.moon-lg::after {
-  content: "";
+/* ---- Sky detail ---- */
+.sw-star {
   position: absolute;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0.063em rgb(140, 162, 169);
-  background: rgb(184, 196, 200);
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: var(--volt-400);
+  box-shadow: 0 0 4px rgba(156, 255, 207, 0.8);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 260ms ease,
+    transform var(--sw-t) var(--sw-ease);
 }
+.sw-star--1 { left: 26%; top: 28%; }
+.sw-star--2 { left: 40%; top: 62%; }
+.sw-star--3 { left: 55%; top: 36%; width: 2px; height: 2px; }
 
-.moon-lg::before { left: 0.313em; top: 0.313em; width: 0.438em; height: 0.438em; }
-.moon-lg::after  { left: 1.25em;  top: 0.75em;  width: 0.25em;  height: 0.25em; }
-
-.moon-md {
-  left: 3.438em;
-  width: 0.625em;
-  height: 0.625em;
-  box-shadow: 0 0 0.125em #ffffff52, 0 0 0.125em #6e8ea24b;
-  transition: 0.6s;
-}
-
-.moon-sm {
-  left: 4.375em;
-  width: 0.5em;
-  height: 0.5em;
-  box-shadow: 0 0 0.125em #ffffff52, 0 0 0.125em #6e8ea24b;
-  transition: 0.8s;
-}
-
-/* Twin suns — the second one borrows the app's amber */
-.sun-main,
-.sun-far {
+.sw-cloud {
   position: absolute;
-  width: 1.25em;
-  height: 1.25em;
-  border-radius: var(--radius);
+  right: 12%;
+  bottom: 14%;
+  width: 42%;
+  fill: rgba(255, 255, 255, 0.92);
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 260ms ease,
+    transform var(--sw-t) var(--sw-ease);
 }
 
-.sun-main {
-  background: #fffaf0;
-  right: 3.125em;
-  top: 0.625em;
-  box-shadow: 0 0 0.438em #fdf4e1;
-  transition: var(--transition);
+/* ---- Night ---- */
+.theme-switch input:checked ~ .sw-track {
+  background: linear-gradient(180deg, #16203a 0%, #080d18 100%);
+}
+.theme-switch input:checked ~ .sw-track .sw-knob {
+  transform: translateX(var(--sw-travel));
+  background: radial-gradient(circle at 38% 34%, #ffffff 0%, #dfe6f2 60%, #b9c4d8 100%);
+  box-shadow:
+    0 0 calc(var(--sw-h) * 0.26) rgba(210, 225, 255, 0.45),
+    inset 0 -1px 2px rgba(20, 30, 60, 0.28);
+}
+.theme-switch input:checked ~ .sw-track .sw-knob::after {
+  opacity: 1;
+  transform: translate(30%, -28%) scale(0.94);
+}
+.theme-switch input:checked ~ .sw-track .sw-star {
+  opacity: 1;
+  transform: scale(1);
+}
+.theme-switch input:checked ~ .sw-track .sw-cloud {
+  opacity: 0;
+  transform: translateY(60%);
 }
 
-.sun-far {
-  background: linear-gradient(var(--amber-400), var(--amber-500));
-  right: 1.25em;
-  top: 2.188em;
-  box-shadow: 0 0 0.438em rgba(255, 211, 122, 0.35), 0 0 0.438em rgba(255, 182, 72, 0.3);
-  transition: 0.7s;
+/* Stars twinkle only at night, and only two of them — three blinking
+   dots in a 38px control is a nervous tic, not atmosphere. */
+.theme-switch input:checked ~ .sw-track .sw-star--1 { animation: swTwinkle 3.2s 600ms ease-in-out infinite; }
+.theme-switch input:checked ~ .sw-track .sw-star--3 { animation: swTwinkle 4.1s 1.4s ease-in-out infinite; }
+@keyframes swTwinkle {
+  0%, 92%, 100% { opacity: 1; }
+  96%           { opacity: 0.35; }
 }
 
-/* Stars carry a faint volt glow */
-.droid-toggle__star {
-  position: absolute;
-  width: 0.063em;
-  height: 0.063em;
-  background: #fff;
-  border-radius: var(--radius);
-  filter: drop-shadow(0 0 0.075em var(--volt-500));
-  color: #fff;
-  top: 100%;
+/* ---- States ---- */
+.theme-switch:active .sw-knob { transform: scale(0.92); }
+.theme-switch input:checked ~ .sw-track .sw-knob:active,
+.theme-switch input:checked:active ~ .sw-track .sw-knob {
+  transform: translateX(var(--sw-travel)) scale(0.92);
+}
+.theme-switch input:focus-visible ~ .sw-track {
+  box-shadow: var(--edge-glass), 0 0 0 2px var(--volt-500);
 }
 
-.droid-toggle__star:nth-child(1) {
-  left: 3.75em;
-  box-shadow: 1.25em 0.938em, -1.25em 2.5em, 0 1.25em, 1.875em 0.625em, -3.125em 1.875em, 1.25em 2.813em;
-  transition: 0.2s;
+/* On light glass the day track would vanish into the capsule, so it
+   keeps a defined edge rather than a brighter fill. */
+:root[data-theme="light"] .sw-track {
+  box-shadow: inset 0 0 0 0.5px rgba(13, 18, 32, 0.12);
 }
-.droid-toggle__star:nth-child(2) {
-  left: 4.688em;
-  box-shadow: 0.625em 0, 0 0.625em, -0.625em -0.625em, 0.625em 0.938em, -3.125em 1.25em, 1.25em -1.563em;
-  transition: 0.3s;
-}
-.droid-toggle__star:nth-child(3) {
-  left: 5.313em;
-  box-shadow: -0.625em -0.625em, -2.188em 1.25em, -2.188em 0, -3.75em -0.625em, -3.125em -0.625em, -2.5em -0.313em, 0.75em -0.625em;
-  transition: var(--transition);
-}
-.droid-toggle__star:nth-child(4) { left: 1.875em; width: 0.125em; height: 0.125em; transition: 0.5s; }
-.droid-toggle__star:nth-child(5) { left: 5em;     width: 0.125em; height: 0.125em; transition: 0.6s; }
-.droid-toggle__star:nth-child(6) { left: 2.5em;   width: 0.125em; height: 0.125em; transition: 0.7s; }
-.droid-toggle__star:nth-child(7) { left: 3.438em; width: 0.125em; height: 0.125em; transition: 0.8s; }
-
-/* ---- Checked = night ---- */
-.droid-toggle__checkbox:checked + .droid-toggle__container { background-position-y: 0; }
-
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(1) { top: 0.625em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(2) { top: 1.875em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(3) { top: 1.25em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(4) { top: 3.438em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(5) { top: 3.438em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(6) { top: 0.313em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__star:nth-child(7) { top: 1.875em; }
-
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid-toggle__cloud { right: -100%; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .moon-lg { top: 0.938em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .moon-md { top: 2.5em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .moon-sm { top: 2.75em; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .sun-main { top: 100%; }
-.droid-toggle__checkbox:checked + .droid-toggle__container .sun-far  { top: 100%; }
-
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid {
-  left: calc(100% - var(--droid-diameter) - var(--toggle-offset));
-}
-
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid__shadow {
-  left: calc(100% - var(--droid-diameter) - var(--toggle-offset) + 0.938em);
-  transform: skew(70deg);
-}
-
-.droid-toggle__checkbox:checked + .droid-toggle__container .droid__body { transform: rotate(225deg); }
-
-/* ---- Hover / press ---- */
-.droid-toggle__checkbox:hover + .droid-toggle__container .droid__head::before { left: 100%; }
-.droid-toggle__checkbox:not(:checked):hover + .droid-toggle__container .droid__antenna:nth-child(1) { right: 1.5em; }
-.droid-toggle__checkbox:hover + .droid-toggle__container .droid__antenna:nth-child(2) { left: 0.938em; }
-.droid-toggle__checkbox:hover + .droid-toggle__container .droid__head::after { background-position: 1.375em 0; }
-
-.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__head::before { left: 0; }
-.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__antenna:nth-child(2) { left: calc(100% - 0.938em); }
-.droid-toggle__checkbox:checked:hover + .droid-toggle__container .droid__head::after { background-position: -1.375em 0; }
-
-.droid-toggle__checkbox:active + .droid-toggle__container .droid__head-container { transform: rotate(25deg); }
-.droid-toggle__checkbox:checked:active + .droid-toggle__container .droid__head-container { transform: rotate(-25deg); }
-
-.droid:hover .droid__head::before,
-.droid:hover .droid__antenna:nth-child(2) { left: 50% !important; }
-.droid:hover .droid__antenna:nth-child(1) { right: 0.938em !important; }
-.droid:hover .droid__head::after { background-position: 0 0 !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .droid-toggle *,
-  .droid-toggle *::before,
-  .droid-toggle *::after { transition-duration: 1ms !important; }
-}
-
-/* Slightly smaller on phones, where the header is shorter */
-@media (max-width: 768px) {
-  .droid-toggle { --toggle-size: 6px; }
-}
-@media (max-width: 400px) {
-  .droid-toggle { --toggle-size: 5.2px; }
+  .theme-switch .sw-track,
+  .theme-switch .sw-knob,
+  .theme-switch .sw-knob::after,
+  .theme-switch .sw-star,
+  .theme-switch .sw-cloud { transition-duration: 1ms; }
+  .theme-switch input:checked ~ .sw-track .sw-star { animation: none; }
 }
 
 /* ============================================================
@@ -4786,8 +4584,15 @@ body.sidebar-open .install-btn {
 :root[data-theme="light"] .conn { background: rgba(13, 18, 32, 0.04); }
 :root[data-theme="light"] .conn--free { background: rgba(14, 183, 128, 0.08); }
 :root[data-theme="light"] .conn-meter { background: rgba(13, 18, 32, 0.10); }
+/* On light glass the accents lighten, so the reading takes the darker end
+   of each ramp to stay legible at 15px. */
+:root[data-theme="light"] .conn-pct.tone-high { color: var(--volt-700); }
+:root[data-theme="light"] .conn-pct.tone-mid  { color: var(--amber-500); }
+:root[data-theme="light"] .conn-pct.tone-low  { color: var(--coral-500); }
+:root[data-theme="light"] .conn-meter-fill::after {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.7) 100%);
+}
 :root[data-theme="light"] .conn-id  { color: #8a91a3; }
-:root[data-theme="light"] .conn-sub { color: #6b7286; }
 :root[data-theme="light"] .conn-freein { color: #0d1220; }
 :root[data-theme="light"] .conn-state { color: var(--volt-700); }
 :root[data-theme="light"] .neru-popup .leaflet-popup-close-button {
@@ -6762,9 +6567,11 @@ body[data-mode="parking"] {
 }
 .isle-tools .notif-switch { --sw-h: var(--isle-ctl); }
 
-/* The theme switch rides the end of the capsule as its one filled element,
-   sized off the same control height (its shell is 5.625em tall). */
-.isle-tools .droid-toggle { --toggle-size: calc(var(--isle-ctl) / 5.625); }
+/* The theme switch rides the end of the capsule as its one filled element.
+   It takes the shared control height and derives everything else from it,
+   so it lines up with the language pill and the icon buttons at every
+   breakpoint without a second set of numbers. */
+.isle-tools .theme-switch { --sw-h: var(--isle-ctl); }
 
 /* ---- Phones: same three islands, smaller ---- */
 @media (max-width: 768px) {

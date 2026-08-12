@@ -14,6 +14,12 @@ class StationAnalytics {
     this.BUCKET_MS = 5 * 60 * 1000;  // one trend point per 5 minutes
     this.MAX_TREND = 288;            // 24 hours of them
     this.MIN_SAMPLES = 3;            // below this a per-station rate is noise
+    // A rate printed on a card is a claim to a driver about to drive there,
+    // so it needs more evidence than a row in a ranking list: ~20 minutes of
+    // polling for the rate, and six separate hours for a claim about time.
+    this.CARD_MIN_SAMPLES = 40;
+    this.CARD_MIN_HOUR_SAMPLES = 20;
+    this.CARD_MIN_HOURS = 6;
     this.data = this._load();
     this.lastRecordedAt = null;
   }
@@ -164,6 +170,91 @@ class StationAnalytics {
     }
     out.sort((a, b) => a.mins - b.mins);
     return out.slice(0, limit);
+  }
+
+  /**
+   * What the history says about one station, or null when it does not yet
+   * say anything worth printing.
+   *
+   * Two claims, gated separately, because they need different amounts of
+   * evidence. "Free in N% of observations" only needs enough polls to stop
+   * being a coin flip. "Usually busy 18:00–20:00" is a claim about the clock,
+   * so it needs samples spread across the clock — six hours of them, twenty
+   * polls each. Below either threshold the corresponding field is null and
+   * the card prints nothing rather than a number the data cannot support.
+   */
+  stationInsight(id) {
+    const r = this.data.st?.[id];
+    if (!r || !r.c) return null;
+
+    const rate = r.c >= this.CARD_MIN_SAMPLES ? r.f / r.c : null;
+
+    // Hours with enough polls to compare against each other.
+    const hours = Object.entries(r.h || {})
+      .map(([h, [samples, freeSamples]]) => ({ hour: +h, samples, rate: freeSamples / samples }))
+      .filter((x) => x.samples >= this.CARD_MIN_HOUR_SAMPLES)
+      .sort((a, b) => a.hour - b.hour);
+
+    let busy = null;
+    if (rate !== null && hours.length >= this.CARD_MIN_HOURS) {
+      // Hours the station is meaningfully tighter than its own average. An
+      // absolute cut-off would flag every hour of a busy station and none of
+      // a quiet one; relative to itself, "busy for this station" is the
+      // thing a driver can act on.
+      const cut = rate * 0.75;
+      const tight = hours.filter((x) => x.rate <= cut);
+      if (tight.length) {
+        // Longest consecutive run, so the answer is a window and not a list.
+        let best = null, run = [tight[0]];
+        for (let i = 1; i <= tight.length; i++) {
+          const prev = tight[i - 1], cur = tight[i];
+          if (cur && cur.hour === prev.hour + 1) { run.push(cur); continue; }
+          if (!best || run.length > best.length) best = run;
+          if (cur) run = [cur];
+        }
+        if (best) busy = { from: best[0].hour, to: (best[best.length - 1].hour + 1) % 24 };
+      }
+    }
+
+    const nowHour = new Date().getHours();
+    const atNow = hours.find((x) => x.hour === nowHour) || null;
+
+    return { rate, samples: r.c, hours: hours.length, busy, atNow };
+  }
+
+  /**
+   * The history row shown on a station card and in its map popup. One
+   * function for both, so the two never drift — the wait banner is already
+   * written out twice and the second copy is where bugs live.
+   */
+  stationHistoryHtml(id) {
+    const insight = this.stationInsight(id);
+    if (!insight || insight.rate === null) return '';
+
+    const t = (k) => i18n.t(k);
+
+    // A percentage was the wrong unit here. "Free in 100% of observations"
+    // names our sampling method, not the station, and the number invites a
+    // precision the history does not have — 100% of forty polls is not a
+    // promise. The card says what the driver would say: usually free,
+    // sometimes busy, often busy.
+    const band = insight.rate >= 0.85 ? 'histUsuallyFree'
+      : insight.rate >= 0.45 ? 'histSometimesBusy'
+      : 'histOftenBusy';
+    const parts = [t(band)];
+
+    if (insight.busy) {
+      const hh = (h) => `${String(h).padStart(2, '0')}:00`;
+      parts.push(t('histBusyWindow')
+        .replace('{from}', hh(insight.busy.from))
+        .replace('{to}', hh(insight.busy.to)));
+    }
+
+    return `
+      <p class="hist-row">
+        <svg class="hist-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>
+        <span class="hist-text">${esc(parts.join(' · '))}</span>
+      </p>`;
   }
 
   // ---- panel -------------------------------------------------------
