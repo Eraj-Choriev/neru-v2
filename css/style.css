@@ -6912,3 +6912,49 @@ body[data-mode="parking"] {
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .tabbar-search { background: #f0f2f4; }
 }
+
+/* Colored Default / White Active — clayharmon/webgl-liquid-glass.
+   Scope the darker material to the dock: the application remains light. */
+:root[data-theme="light"] .tabbar-dock {
+  --mat-regular: rgba(30, 38, 72, .78);
+  --mat-thick: rgba(42, 50, 87, .94);
+  --tab-color-inactive: #b8baff;
+  --tab-label-inactive: #b8baff;
+  --tab-color-active: #fff;
+  --tab-label-active: #fff;
+  --edge-rim: inset 0 1px 1px rgba(255,255,255,.25), inset 0 0 0 1px rgba(255,255,255,.14);
+}
+:root[data-theme="light"] .tabbar-dock .tabbar {
+  background: var(--mat-regular);
+  touch-action: none;
+  user-select: none;
+}
+:root[data-theme="light"] .tabbar-dock .lens-body {
+  background: rgba(255,255,255,.12);
+  backdrop-filter: var(--mat-blur-thin);
+  -webkit-backdrop-filter: var(--mat-blur-thin);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.35), inset 0 -1px 1px rgba(255,255,255,.14), 0 4px 16px rgba(0,0,0,.1);
+}
+.tabbar-glass-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 1; pointer-events: none; border-radius: inherit;
+}
+.tabbar-dock .tabbar-item { z-index: 2; }
+.tabbar-dock .tabbar-search { color: #b8baff; }
+.tabbar-dock .tabbar-search:focus-visible { outline-color: #7479d9; }
+.tabbar-dock .tabbar-item.is-active .tabbar-ic--solid { opacity: 0; }
+.tabbar-dock .tabbar-item.is-active .tabbar-ic--line { opacity: 1; }
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme="light"] .tabbar-dock .tabbar,
+  .tabbar-dock .tabbar-search { background: #262e50; }
+  :root[data-theme="light"] .tabbar-dock .lens-body { background: #414b70; backdrop-filter: none; }
+  .tabbar-glass-canvas { display: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="light"] .tabbar-dock .tabbar,
+  .tabbar-dock .tabbar-search { background: #262e50; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar-dock .tabbar .tabbar-lens,
+  .tabbar-dock .tabbar .lens-body { transition: none !important; animation: none !important; }
+}
