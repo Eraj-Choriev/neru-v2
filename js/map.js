@@ -23,21 +23,12 @@ class StationMap {
   }
 
   _buildTileLayer(theme) {
-    const url = theme === 'light'
-      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    return L.tileLayer(url, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      // CARTO serves this style up to z20, verified against the @2x endpoint.
-      // Stopping at 19 meant the last step in was Leaflet upscaling a z19
-      // tile rather than fetching real z20 detail.
-      //
-      // Retina is deliberately NOT handled with `detectRetina`: Leaflet fills
-      // {r} with '@2x' from Browser.retina on its own, so the option would
-      // request four times the tiles for the same picture.
+    // Standard OSM tiles need no token. Respect provider attribution and
+    // browser HTTP caching; do not prefetch or offer offline tile downloads.
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 20,
-      maxNativeZoom: 20
+      maxNativeZoom: 19
     });
   }
 
@@ -543,11 +534,11 @@ class StationMap {
     // Status indicator
     const free = station.freeConnectors;
     const total = station.totalConnectors;
-    const dotCls = free === total ? 'status-all-free' : free > 0 ? 'status-partial' : 'status-busy';
-    const dotLabel = free === total
+    const dotCls = total > 0 && free === total ? 'status-all-free' : free > 0 ? 'status-partial' : 'status-busy';
+    const dotLabel = total > 0 && free === total
       ? escHtml(i18n.t('freeNow'))
       : free > 0
-        ? `${free}/${total} · ${escHtml(i18n.t('soonFree'))}`
+        ? `${free}/${total} · ${escHtml(i18n.t('available'))}`
         : escHtml(i18n.t('busy'));
 
     // Address only if different from station name

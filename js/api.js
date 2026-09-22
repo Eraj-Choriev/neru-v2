@@ -5,7 +5,6 @@
 const API_URL = 'https://api.parking.dc.tj/api/v1/getMarkerPower';
 const CORS_PROXIES = [
   '', // Direct first
-  'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
 ];
 
@@ -17,31 +16,29 @@ class StationAPI {
     this.workingProxy = null;
   }
 
-  async fetchStations() {
+  fetchStations(options) {
+    // Concurrent callers await the same snapshot instead of stale data.
+    if (this._pending) return this._pending;
+    this._pending = this._fetchStations(options).finally(() => { this._pending = null; });
+    return this._pending;
+  }
+
+  async _fetchStations() {
     if (this.isLoading) return this.stations;
     this.isLoading = true;
 
     try {
       let data = null;
 
-      // If we found a working proxy before, try it first
-      if (this.workingProxy !== null) {
-        data = await this._tryFetch(this.workingProxy);
+      const candidates = [...new Set([this.workingProxy, ...CORS_PROXIES])]
+        .filter(proxy => proxy !== null);
+      for (const proxy of candidates) {
+        data = await this._tryFetch(proxy);
+        if (data) { this.workingProxy = proxy; break; }
       }
 
-      // If no data yet, try all proxies
-      if (!data) {
-        for (const proxy of CORS_PROXIES) {
-          data = await this._tryFetch(proxy);
-          if (data) {
-            this.workingProxy = proxy;
-            break;
-          }
-        }
-      }
-
-      if (data && data.code === '200' && Array.isArray(data.powers)) {
-        this.stations = data.powers.map(s => this.normalizeStation(s));
+      if (data && Number(data.code) === 200 && Array.isArray(data.powers)) {
+        this.stations = data.powers.map(s => this.normalizeStation(s)).filter(Boolean);
         this.lastFetch = new Date();
         console.log(`✅ Loaded ${this.stations.length} stations`);
         window.dispatchEvent(new CustomEvent('stationsLoaded', { 
@@ -69,26 +66,31 @@ class StationAPI {
         signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
-      clearTimeout(timeout);
       if (!response.ok) return null;
-      return await response.json();
+      const data = await response.json();
+      return Number(data?.code) === 200 && Array.isArray(data.powers) ? data : null;
     } catch (e) {
-      clearTimeout(timeout);
       console.warn(`Proxy "${proxy || 'direct'}" failed:`, e.message);
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
   normalizeStation(raw) {
+    if (!raw || typeof raw !== 'object' || raw.id == null) return null;
+    const lat = Number.parseFloat(raw.marker1), lng = Number.parseFloat(raw.marker2);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 ||
+        Math.abs(lng) > 180 || (lat === 0 && lng === 0)) return null;
     // The API reports three states, not two: "Start charging" is a session
     // that has just begun, which means the longest wait of all — treating it
     // as plain "occupied" hid that from anyone looking for a free plug.
-    const connectors = (raw.connectors_info || []).map(c => {
-      const status = (c.status || '').trim().toLowerCase();
+    const connectors = (Array.isArray(raw.connectors_info) ? raw.connectors_info : []).filter(c => c && typeof c === 'object').map(c => {
+      const status = String(c.status || '').trim().toLowerCase();
       return {
         id: c.connector_id,
         status: c.status || 'Unknown',
-        chargeLevel: parseFloat(c.charging_level) || 0,
+        chargeLevel: Math.max(0, Math.min(100, parseFloat(c.charging_level) || 0)),
         color: c.color || null,
         isAvailable: status === 'available',
         isCharging: status === 'charging',
@@ -103,8 +105,8 @@ class StationAPI {
       id: raw.id,
       name: raw.name || `Station #${raw.id}`,
       address: raw.address || '',
-      lat: parseFloat(raw.marker1) || 0,
-      lng: parseFloat(raw.marker2) || 0,
+      lat,
+      lng,
       totalPlaces: parseInt(raw.all_place) || 0,
       zoneName: raw.zone_name || '',
       schedule: raw.work_schedule || '',
@@ -139,7 +141,7 @@ class StationAPI {
   }
 
   getStationById(id) {
-    return this.stations.find(s => s.id === id);
+    return this.stations.find(s => String(s.id) === String(id));
   }
 
   getStats() {

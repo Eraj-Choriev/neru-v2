@@ -13,7 +13,6 @@ const PARKING_URL = 'https://api.parking.dc.tj/api/v1/getMarkerParking';
 // public CORS relays.
 const PARKING_PROXIES = [
   '', // direct
-  'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
 ];
 
@@ -50,7 +49,14 @@ class ParkingAPI {
 
   // ── Fetching ──────────────────────────────────────────────────────────────
 
-  async fetchZones({ force = false } = {}) {
+  fetchZones(options) {
+    // Concurrent callers await the same snapshot instead of stale data.
+    if (this._pending) return this._pending;
+    this._pending = this._fetchZones(options).finally(() => { this._pending = null; });
+    return this._pending;
+  }
+
+  async _fetchZones({ force = false } = {}) {
     if (this.zones.length && !force) return this.zones;
     if (this.isLoading) return this.zones;
 
@@ -70,14 +76,11 @@ class ParkingAPI {
     try {
       let data = null;
 
-      if (this.workingProxy !== null) {
-        data = await this._tryFetch(this.workingProxy);
-      }
-      if (!data) {
-        for (const proxy of PARKING_PROXIES) {
-          data = await this._tryFetch(proxy);
-          if (data) { this.workingProxy = proxy; break; }
-        }
+      const candidates = [...new Set([this.workingProxy, ...PARKING_PROXIES])]
+        .filter(proxy => proxy !== null);
+      for (const proxy of candidates) {
+        data = await this._tryFetch(proxy);
+        if (data) { this.workingProxy = proxy; break; }
       }
 
       // This endpoint returns code as a NUMBER (200), while getMarkerPower
@@ -126,12 +129,13 @@ class ParkingAPI {
         signal: controller.signal,
         headers: { Accept: 'application/json' },
       });
-      clearTimeout(timeout);
       if (!response.ok) return null;
-      return await response.json();
+      const data = await response.json();
+      return Number(data?.code) === 200 && Array.isArray(data.parks) ? data : null;
     } catch (e) {
-      clearTimeout(timeout);
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

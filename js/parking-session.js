@@ -531,7 +531,7 @@ class ParkingRules {
     if (!modal) return;
     modal.classList.remove('is-open');
     document.body.classList.remove('an-open');
-    setTimeout(() => { modal.hidden = true; }, 260);
+    setTimeout(() => { if (!modal.classList.contains('is-open')) modal.hidden = true; }, 260);
   }
 
   isOpen() {

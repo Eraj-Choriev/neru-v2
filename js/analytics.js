@@ -266,6 +266,7 @@ class StationAnalytics {
     requestAnimationFrame(() => modal.classList.add('is-open'));
     document.body.classList.add('an-open');
     this.render();
+    clearInterval(this._timer);
     this._timer = setInterval(() => this._tickCountdown(), 1000);
     document.getElementById('an-close')?.focus();
   }
@@ -276,7 +277,7 @@ class StationAnalytics {
     modal.classList.remove('is-open');
     document.body.classList.remove('an-open');
     clearInterval(this._timer);
-    setTimeout(() => { modal.hidden = true; }, 260);
+    setTimeout(() => { if (!modal.classList.contains('is-open')) modal.hidden = true; }, 260);
   }
 
   isOpen() {

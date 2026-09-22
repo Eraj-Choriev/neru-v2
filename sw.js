@@ -8,24 +8,24 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v23';
+const CACHE = 'nur-shell-v28';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=22',
-  '/js/i18n.js?v=21',
-  '/js/api.js?v=21',
-  '/js/parking.js?v=21',
-  '/js/geolocation.js?v=21',
-  '/js/finder.js?v=21',
-  '/js/map.js?v=21',
-  '/js/ui.js?v=21',
-  '/js/notifications.js?v=21',
-  '/js/router.js?v=21',
-  '/js/analytics.js?v=21',
-  '/js/parking-session.js?v=21',
-  '/js/pwa.js?v=21',
-  '/js/app.js?v=21',
+  '/css/style.css?v=28',
+  '/js/i18n.js?v=28',
+  '/js/api.js?v=28',
+  '/js/parking.js?v=28',
+  '/js/geolocation.js?v=28',
+  '/js/finder.js?v=28',
+  '/js/map.js?v=28',
+  '/js/ui.js?v=28',
+  '/js/notifications.js?v=28',
+  '/js/router.js?v=28',
+  '/js/analytics.js?v=28',
+  '/js/parking-session.js?v=28',
+  '/js/pwa.js?v=28',
+  '/js/app.js?v=28',
   '/logo.png',
   '/manifest.webmanifest',
 ];
@@ -74,7 +74,8 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('allorigins.win') ||
     url.hostname.includes('router.project-osrm.org') ||
     url.hostname.includes('cloudflareinsights.com') ||
-    url.hostname.includes('basemaps.cartocdn.com');
+    url.hostname.includes('basemaps.cartocdn.com') ||
+    url.hostname === 'tile.openstreetmap.org';
 
   if (networkOnly) return;
 

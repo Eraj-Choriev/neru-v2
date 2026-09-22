@@ -3172,13 +3172,15 @@ body.sidebar-open { overflow: hidden; }
      ink hairline carry the pane — a white highlight on white is nothing. */
   --edge-rim:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 0 0 0.5px rgba(13, 18, 32, 0.07);
+    inset 0 -1px 0 rgba(13, 18, 32, 0.06),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.14);
   --edge-rim-lit:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(13, 18, 32, 0.08),
-    inset 0 0 0 0.5px rgba(13, 18, 32, 0.11);
-  --rim-shadow: 0 14px 40px -16px rgba(13, 18, 32, 0.22);
-  --rim-shadow-sm: 0 8px 22px -12px rgba(13, 18, 32, 0.18);
+    inset 0 -1px 0 rgba(13, 18, 32, 0.10),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.18);
+  /* Elevation on light is carried by shadow, not by glow */
+  --rim-shadow: 0 16px 40px -14px rgba(13, 18, 32, 0.30);
+  --rim-shadow-sm: 0 10px 24px -12px rgba(13, 18, 32, 0.24);
 
   /* Shadows: softer, tinted */
   --sh-1: 0 2px 8px rgba(13, 18, 32, 0.08);
@@ -3362,177 +3364,6 @@ body.sidebar-open { overflow: hidden; }
    Checked is NIGHT, because ui.js keeps the checkbox in step with
    the dark theme ("on = night"). The daylight state is unchecked.
    ============================================================ */
-.theme-switch {
-  /* Everything scales off this: the isle sets it to the shared
-     control height, so the switch always matches its neighbours. */
-  --sw-h: 38px;
-  --sw-w: calc(var(--sw-h) * 1.82);
-  --sw-pad: calc(var(--sw-h) * 0.16);
-  --sw-knob: calc(var(--sw-h) - var(--sw-pad) * 2);
-  --sw-travel: calc(var(--sw-w) - var(--sw-knob) - var(--sw-pad) * 2);
-  --sw-ease: cubic-bezier(0.32, 0.9, 0.35, 1.08);
-  --sw-t: 420ms;
-
-  position: relative;
-  display: inline-block;
-  flex: none;
-  width: var(--sw-w);
-  height: var(--sw-h);
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* The checkbox stays in the layout for the keyboard and for screen
-   readers; it is only visually replaced. */
-.theme-switch input {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  cursor: pointer;
-}
-
-.sw-track {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden;
-  /* Day: a warm low sun. Night is painted by the checked rule below. */
-  background: linear-gradient(180deg, #ffe3ad 0%, #ffc978 100%);
-  box-shadow: var(--edge-glass);
-  transition: background var(--sw-t) ease;
-  pointer-events: none;
-}
-
-/* ---- The knob: sun by day, crescent by night ---- */
-.sw-knob {
-  position: absolute;
-  top: var(--sw-pad);
-  left: var(--sw-pad);
-  width: var(--sw-knob);
-  height: var(--sw-knob);
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #fffaf0 0%, #ffd37a 55%, #ffab3d 100%);
-  box-shadow:
-    0 0 calc(var(--sw-h) * 0.3) rgba(255, 180, 72, 0.55),
-    inset 0 -1px 2px rgba(160, 90, 0, 0.25);
-  overflow: hidden;
-  will-change: transform;
-  transition:
-    transform var(--sw-t) var(--sw-ease),
-    background var(--sw-t) ease,
-    box-shadow var(--sw-t) ease;
-}
-
-/* The crescent: a disc of night sky that bites a curve out of the
-   knob. By day it has to be gone, not merely nudged — at 60% offset a
-   dark sickle still crossed the sun — so it parks clear of the disc
-   and fades out on the way. Its colour is the night sky's own, so the
-   bite reads as sky showing through rather than as a black shape. */
-.sw-knob::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: #131b30;
-  opacity: 0;
-  transform: translate(86%, -34%) scale(0.95);
-  transition:
-    transform var(--sw-t) var(--sw-ease),
-    opacity 220ms ease;
-}
-
-/* ---- Sky detail ---- */
-.sw-star {
-  position: absolute;
-  width: 2.5px;
-  height: 2.5px;
-  border-radius: 50%;
-  background: var(--volt-400);
-  box-shadow: 0 0 4px rgba(156, 255, 207, 0.8);
-  opacity: 0;
-  transform: scale(0.4);
-  transition:
-    opacity 260ms ease,
-    transform var(--sw-t) var(--sw-ease);
-}
-.sw-star--1 { left: 26%; top: 28%; }
-.sw-star--2 { left: 40%; top: 62%; }
-.sw-star--3 { left: 55%; top: 36%; width: 2px; height: 2px; }
-
-.sw-cloud {
-  position: absolute;
-  right: 12%;
-  bottom: 14%;
-  width: 42%;
-  fill: rgba(255, 255, 255, 0.92);
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 260ms ease,
-    transform var(--sw-t) var(--sw-ease);
-}
-
-/* ---- Night ---- */
-.theme-switch input:checked ~ .sw-track {
-  background: linear-gradient(180deg, #16203a 0%, #080d18 100%);
-}
-.theme-switch input:checked ~ .sw-track .sw-knob {
-  transform: translateX(var(--sw-travel));
-  background: radial-gradient(circle at 38% 34%, #ffffff 0%, #dfe6f2 60%, #b9c4d8 100%);
-  box-shadow:
-    0 0 calc(var(--sw-h) * 0.26) rgba(210, 225, 255, 0.45),
-    inset 0 -1px 2px rgba(20, 30, 60, 0.28);
-}
-.theme-switch input:checked ~ .sw-track .sw-knob::after {
-  opacity: 1;
-  transform: translate(30%, -28%) scale(0.94);
-}
-.theme-switch input:checked ~ .sw-track .sw-star {
-  opacity: 1;
-  transform: scale(1);
-}
-.theme-switch input:checked ~ .sw-track .sw-cloud {
-  opacity: 0;
-  transform: translateY(60%);
-}
-
-/* Stars twinkle only at night, and only two of them — three blinking
-   dots in a 38px control is a nervous tic, not atmosphere. */
-.theme-switch input:checked ~ .sw-track .sw-star--1 { animation: swTwinkle 3.2s 600ms ease-in-out infinite; }
-.theme-switch input:checked ~ .sw-track .sw-star--3 { animation: swTwinkle 4.1s 1.4s ease-in-out infinite; }
-@keyframes swTwinkle {
-  0%, 92%, 100% { opacity: 1; }
-  96%           { opacity: 0.35; }
-}
-
-/* ---- States ---- */
-.theme-switch:active .sw-knob { transform: scale(0.92); }
-.theme-switch input:checked ~ .sw-track .sw-knob:active,
-.theme-switch input:checked:active ~ .sw-track .sw-knob {
-  transform: translateX(var(--sw-travel)) scale(0.92);
-}
-.theme-switch input:focus-visible ~ .sw-track {
-  box-shadow: var(--edge-glass), 0 0 0 2px var(--volt-500);
-}
-
-/* On light glass the day track would vanish into the capsule, so it
-   keeps a defined edge rather than a brighter fill. */
-:root[data-theme="light"] .sw-track {
-  box-shadow: inset 0 0 0 0.5px rgba(13, 18, 32, 0.12);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .theme-switch .sw-track,
-  .theme-switch .sw-knob,
-  .theme-switch .sw-knob::after,
-  .theme-switch .sw-star,
-  .theme-switch .sw-cloud { transition-duration: 1ms; }
-  .theme-switch input:checked ~ .sw-track .sw-star { animation: none; }
-}
-
 /* ============================================================
    CALCULATOR FAB + PANEL
    ============================================================ */
@@ -4569,9 +4400,21 @@ body.sidebar-open .install-btn {
    ============================================================ */
 :root[data-theme="light"] {
   --mat-thin:    rgba(13, 18, 32, 0.045);
-  --mat-regular: rgba(255, 255, 255, 0.72);
-  --mat-thick:   rgba(255, 255, 255, 0.78);
-  --surface-panel: rgba(255, 255, 255, 0.92);
+  /* Light glass was flat white: at 0.72 over a near-white basemap there was
+     nothing left to see through, so the blur had nothing to reveal and the
+     pane read as paint. Thinner fills put the map back underneath. */
+  --mat-regular: rgba(255, 255, 255, 0.55);
+  --mat-thick:   rgba(255, 255, 255, 0.66);
+  --surface-panel: rgba(255, 255, 255, 0.86);
+
+  /* The other half of the fix, and the one that actually makes a light pane
+     read as glass: the material dims what is behind it. On dark backdrops
+     the fill alone separates the pane from the map; on a bright one both
+     are white, so only a luminance difference reads as a separate plane.
+     HIG — Liquid Glass: bright underlying content needs a dimming layer. */
+  --mat-blur-thin:  blur(20px) saturate(180%) brightness(0.96);
+  --mat-blur-reg:   blur(30px) saturate(180%) brightness(0.94);
+  --mat-blur-thick: blur(44px) saturate(180%) brightness(0.93);
   --hair: rgba(13, 18, 32, 0.09);
   --hair-strong: rgba(13, 18, 32, 0.14);
   --edge-top: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -5916,7 +5759,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    ============================================================ */
 :root {
   --nav-bg: rgba(28, 30, 36, 0.56);
-  --nav-blur: blur(30px) saturate(180%);
+  --nav-blur: var(--mat-blur-reg);
   --nav-radius: 36px;
   --nav-height: 72px;
   --nav-bottom-offset: 10px;
@@ -5950,8 +5793,30 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   /* Icon and label sit as one block with even air above and below it
      inside the lens: 8px clear of the capsule's top edge, 8px clear of
      its bottom. Change one of these three and the block goes lopsided. */
-  --badge-top: 13px;
+  --badge-size: 40px;
+  --badge-top: 5px;
   --label-bottom: 15px;
+
+  /* ---- The raised badge ----
+     The selected tab carries a filled squircle that lifts out of the bar.
+     The lens says where selection is; the badge says it loudly enough to
+     read at a glance, which colour-on-glass alone did not.
+
+     --badge-lift is chosen against the geometry above: at 5px top and a
+     40px box the lifted badge breaks the bar's top edge by 3px and still
+     leaves 7px of air over the label. Change --badge-top or --badge-size
+     and this has to be re-checked or the badge lands on the label. */
+  --badge-lift: -8px;
+  --badge-radius: 13px;
+  /* Mint is a light accent, so the icon on it is ink, not white — white on
+     #7bffbe is about 1.2:1 and would disappear. HIG — Accessibility:
+     non-text contrast needs 3:1, this pair is ~8:1. */
+  --badge-fill: linear-gradient(145deg, var(--volt-500) 0%, var(--volt-700) 100%);
+  --badge-ink: #05231a;
+  --badge-spec: rgba(255, 255, 255, 0.34);
+  --badge-shadow:
+    0 6px 20px rgba(123, 255, 190, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.28);
 
   /* ---- The lens ---- */
   --lens-h: 58px;
@@ -5981,22 +5846,33 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 }
 
 :root[data-theme="light"] {
-  --nav-bg: rgba(252, 253, 255, 0.66);
-  --nav-border-color: rgba(13, 18, 32, 0.08);
+  --nav-bg: rgba(255, 255, 255, 0.46);
+  --nav-border-color: rgba(13, 18, 32, 0.10);
   --nav-shadow:
-    0 12px 34px rgba(13, 18, 32, 0.16),
-    0 2px 8px rgba(13, 18, 32, 0.10);
+    0 16px 38px rgba(13, 18, 32, 0.20),
+    0 2px 8px rgba(13, 18, 32, 0.12);
   --nav-rim:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 0 0 0.5px rgba(13, 18, 32, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(13, 18, 32, 0.05),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.13);
 
-  --tab-color-inactive: rgba(13, 18, 32, 0.55);
-  --tab-label-inactive: rgba(13, 18, 32, 0.50);
+  --tab-color-inactive: rgba(13, 18, 32, 0.62);
+  --tab-label-inactive: rgba(13, 18, 32, 0.60);
   /* Mint on white glass is a pastel, not a state. The light theme
      takes the accent down to where an 11px label still clears
      4.5:1 (HIG — Accessibility: text under 18pt needs 4.5:1). */
   --tab-color-active: #06795a;
   --tab-label-active: #06795a;
+
+  /* On white the fill has to go dark instead, so the badge reads as a
+     solid object and not as a pastel sticker. Inverted pair: white icon
+     on deep green, ~3.9:1 at the light end of the gradient. */
+  --badge-fill: linear-gradient(145deg, #0aa073 0%, #05684e 100%);
+  --badge-ink: #ffffff;
+  --badge-spec: rgba(255, 255, 255, 0.30);
+  --badge-shadow:
+    0 6px 20px rgba(6, 121, 90, 0.22),
+    0 2px 6px rgba(13, 18, 32, 0.18);
 
   /* White glass on white glass is invisible, so the light lens is
      brighter than its bar and rings itself in ink instead. */
@@ -6009,8 +5885,8 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
   --lens-blur: blur(7px) saturate(140%) brightness(1.03);
   --lens-rim-top: rgba(255, 255, 255, 0.95);
   --lens-rim-bottom: rgba(255, 255, 255, 0.5);
-  --lens-ring: rgba(13, 18, 32, 0.07);
-  --lens-drop: 0 6px 16px -10px rgba(13, 18, 32, 0.4);
+  --lens-ring: rgba(13, 18, 32, 0.16);
+  --lens-drop: 0 8px 18px -10px rgba(13, 18, 32, 0.45);
   --lens-sweep: rgba(255, 255, 255, 0.75);
 }
 
@@ -6019,10 +5895,20 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 body[data-mode="parking"] {
   --tab-color-active: #6fd8ff;
   --tab-label-active: #6fd8ff;
+  --badge-fill: linear-gradient(145deg, var(--cyan-400) 0%, #12a7e0 100%);
+  --badge-ink: #04222f;
+  --badge-shadow:
+    0 6px 20px rgba(125, 225, 255, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.28);
 }
 :root[data-theme="light"] body[data-mode="parking"] {
   --tab-color-active: #0a6c96;
   --tab-label-active: #0a6c96;
+  --badge-fill: linear-gradient(145deg, #0e8fc0 0%, #085f85 100%);
+  --badge-ink: #ffffff;
+  --badge-shadow:
+    0 6px 20px rgba(10, 108, 150, 0.22),
+    0 2px 6px rgba(13, 18, 32, 0.18);
 }
 
 .tabbar {
@@ -6041,9 +5927,11 @@ body[data-mode="parking"] {
   background: var(--nav-bg);
   border: 1px solid var(--nav-border-color);
   box-shadow: var(--nav-shadow), var(--nav-rim);
-  /* The lens is clipped to the capsule, so it can never ride out
-     over the rounded corners while it travels. */
-  overflow: hidden;
+  /* The lens is kept off the rounded corners by clamping its travel in JS,
+     not by clipping — held, it swells past the bar's top and bottom edges
+     and its prism spills a few pixels outside. Clipping would cut exactly
+     the part that reads as glass. */
+  overflow: visible;
   isolation: isolate;
   animation: tabbarIn 600ms 260ms var(--nav-spring) both;
 }
@@ -6107,6 +5995,7 @@ body[data-mode="parking"] {
     var(--lens-drop);
   overflow: hidden;
   transform-origin: center;
+  transition: transform 200ms var(--nav-spring), box-shadow 200ms ease;
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -6178,6 +6067,74 @@ body[data-mode="parking"] {
 }
 .is-traveling > .lens-body::after { opacity: 0.55; }
 
+/* ---- Held: the lens under a finger ----
+   Dragging drops the travel transition (JS writes --lens-x every frame), so
+   only the body animates here. It swells, its rim disperses harder, and the
+   sweep parks in the middle as a standing highlight rather than crossing. */
+.tabbar-lens.is-dragging {
+  transition: none;
+  /* Stays under the items: the raised badge is the selection, and glass
+     drawn over it would read as the badge sinking rather than rising. */
+  z-index: 0;
+}
+.tabbar-lens.is-dragging .lens-body {
+  transform: scale(1.07, 1.2) skewX(var(--lens-skew, 0deg));
+  box-shadow:
+    inset 0 1px 0 var(--lens-rim-top),
+    inset 0 -1px 0 var(--lens-rim-bottom),
+    inset 0 0 0 0.5px var(--lens-ring),
+    0 10px 26px -10px rgba(0, 0, 0, 0.6);
+}
+.tabbar-lens.is-dragging .lens-body::after {
+  opacity: 0.9;
+  filter: blur(1.1px);
+}
+.tabbar-lens.is-dragging .lens-body::before {
+  opacity: 0.5;
+  transform: translateX(0);
+}
+
+/* What the lens is over gets bigger, which is the part of a real glass lens
+   we can actually reproduce: a backdrop-filter cannot magnify, but the tab
+   underneath can meet it halfway. Smaller swell than before the badge
+   existed — a filled 42px square growing 16% is a lurch, not a magnification. */
+.tabbar-item.is-under-lens { z-index: 2; }
+.tabbar-item.is-under-lens .tabbar-badge { --badge-s: 1.08; }
+.tabbar-item.is-under-lens .tabbar-label {
+  transform: translateX(-50%) scale(1.08);
+  color: var(--tab-label-active);
+}
+
+/* ---- Carrying: the badge rides with the finger ----
+   While the lens is being dragged the filled badge belongs to whatever tab
+   the lens is currently over, not to the tab the app is still on. Leaving
+   it behind made the drag look like it was moving an empty pane of glass,
+   and showing both at once asked which of two tabs was selected.
+
+   These have to come after the .is-active rules above: equal specificity,
+   so source order is what decides. */
+.tabbar.is-carrying .tabbar-item.is-active .tabbar-badge {
+  --badge-y: 0px;
+  color: var(--tab-color-active);
+}
+.tabbar.is-carrying .tabbar-item.is-active .tabbar-badge::before {
+  opacity: 0;
+  transform: scale(0.72);
+}
+.tabbar.is-carrying .tabbar-item.is-active .tabbar-label { font-weight: 600; }
+
+.tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-badge {
+  --badge-y: var(--badge-lift);
+  color: var(--badge-ink);
+}
+.tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-badge::before {
+  opacity: 1;
+  transform: scale(1);
+}
+.tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-ic--line  { opacity: 0; transform: scale(1.08); }
+.tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-ic--solid { opacity: 1; transform: scale(1); }
+.tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-label { font-weight: 700; }
+
 @keyframes lensStretch {
   0%   { transform: scale(1, 1) skewX(0deg); }
   32%  { transform: scale(1.10, 0.88) skewX(var(--lens-skew, 0deg)); }
@@ -6211,20 +6168,57 @@ body[data-mode="parking"] {
 }
 .tabbar-item:focus-visible { outline: 2px solid var(--volt-500); outline-offset: -5px; border-radius: var(--lens-radius); }
 
+/* The badge is a stacking context of its own (positioned + z-index) so the
+   fill can sit behind the icon. Without that the absolutely positioned
+   ::before would paint over the in-flow SVGs and swallow them. */
 .tabbar-badge {
   position: absolute;
+  z-index: 0;
   top: var(--badge-top);
   left: 50%;
-  width: 44px;
-  height: 26px;
-  margin-left: -22px;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  margin-left: calc(var(--badge-size) / -2);
   display: grid;
   place-items: center;
+  color: inherit;
   will-change: transform;
-  transition: transform var(--nav-duration) var(--nav-spring);
+  /* Lift and scale are carried in separate custom properties and composed
+     here, so press, landing and the under-lens swell can each set their own
+     without one of them silently dropping the lift. */
+  --badge-y: 0px;
+  --badge-s: 1;
+  transform: translateY(var(--badge-y)) scale(var(--badge-s));
+  transition:
+    transform var(--nav-duration) cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 220ms ease;
+}
+
+/* The fill. Off by default and scaled down, so selection arrives as an
+   object growing into place rather than as a colour switch. The offset
+   radial is the specular: light lands high and left, the way it does on a
+   real convex surface, never dead centre. */
+.tabbar-badge::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: var(--badge-radius);
+  background:
+    radial-gradient(circle at 38% 26%, var(--badge-spec) 0%, rgba(255, 255, 255, 0) 58%),
+    var(--badge-fill);
+  box-shadow: var(--badge-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  opacity: 0;
+  transform: scale(0.72);
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    transform var(--nav-duration) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .tabbar-ic {
+  position: relative;
+  z-index: 1;
   grid-area: 1 / 1;
   width: var(--tab-icon-size);
   height: var(--tab-icon-size);
@@ -6257,26 +6251,34 @@ body[data-mode="parking"] {
      made the label overflow the bar in the first place. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  transition: color 300ms ease, font-weight 200ms ease;
+  transition: color 300ms ease, transform 200ms var(--nav-spring);
 }
 
-/* ---- Active: foreground colour, plus the icon swapping to its solid cut ---- */
-.tabbar-item.is-active { color: var(--tab-color-active); }
+/* ---- Active: the badge fills, lifts out of the bar and takes the solid
+   cut of its icon. The label keeps the accent below it. ---- */
+.tabbar-item.is-active { color: var(--tab-color-active); z-index: 2; }
 .tabbar-item.is-active .tabbar-ic--line  { opacity: 0; transform: scale(1.08); }
 .tabbar-item.is-active .tabbar-ic--solid { opacity: 1; transform: scale(1); }
 .tabbar-item.is-active .tabbar-label { color: var(--tab-label-active); font-weight: 700; }
+.tabbar-item.is-active .tabbar-badge {
+  --badge-y: var(--badge-lift);
+  color: var(--badge-ink);
+}
+.tabbar-item.is-active .tabbar-badge::before { opacity: 1; transform: scale(1); }
 
 /* ---- Press ---- */
-.tabbar-item.is-pressing .tabbar-badge { transform: scale(0.88); }
+.tabbar-item.is-pressing .tabbar-badge { --badge-s: 0.88; }
 
-/* ---- Landing pop on the icon, so the change is felt and not just seen ---- */
+/* ---- Landing: the badge springs up out of the bar, overshooting the lift
+   before settling on it. Written against --badge-y rather than a literal so
+   it stays correct on the short-viewport sizes below. ---- */
 .tabbar-item.is-landing .tabbar-badge {
-  animation: badgeLand var(--nav-duration) var(--nav-spring);
+  animation: badgeLand var(--nav-duration) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes badgeLand {
-  0%   { transform: scale(0.82); }
-  55%  { transform: scale(1.12); }
-  100% { transform: scale(1); }
+  0%   { transform: translateY(0) scale(0.82); }
+  55%  { transform: translateY(calc(var(--badge-y) * 1.3)) scale(1.12); }
+  100% { transform: translateY(var(--badge-y)) scale(1); }
 }
 
 /* The bar is a phone control. This has to live with the rules above rather
@@ -6296,8 +6298,14 @@ body[data-mode="parking"] {
     --nav-height: 62px;
     --nav-radius: 31px;
     --nav-bottom-offset: 8px;
-    --badge-top: 10px;
-    --label-bottom: 12px;
+    --badge-size: 38px;
+    --badge-top: 2px;
+    --badge-lift: -6px;
+    --badge-radius: 12px;
+    /* The label comes up 2px with it: at 12px the lifted badge landed 2px
+       off the text, which is not air, it is a collision waiting for a
+       longer translation. */
+    --label-bottom: 10px;
     --lens-h: 50px;
     --tab-icon-size: 21px;
   }
@@ -6332,9 +6340,19 @@ body[data-mode="parking"] {
   .is-traveling > .lens-body,
   .is-traveling > .lens-body::before { animation: none; }
   .is-traveling > .lens-body::after { opacity: 0; }
-  .tabbar-badge { transition-duration: 1ms; }
+  .tabbar-badge,
+  .tabbar-badge::before { transition-duration: 1ms; }
   .tabbar-item.is-landing .tabbar-badge { animation: none; }
-  .tabbar-item.is-pressing .tabbar-badge { transform: none; }
+  .tabbar-item.is-pressing .tabbar-badge { --badge-s: 1; }
+  .tabbar-lens.is-dragging .lens-body { transform: none; }
+  .tabbar-item.is-under-lens .tabbar-badge { --badge-s: 1; }
+  .tabbar-item.is-under-lens .tabbar-label { transform: translateX(-50%); }
+  /* The badge keeps its colour — that is the state — and gives up the
+     lift and the spring, which are only the way it arrives. */
+  .tabbar-item.is-active .tabbar-badge,
+  .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-badge { --badge-y: 0px; }
+  .tabbar-item.is-active .tabbar-badge::before,
+  .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-badge::before { transform: none; }
 }
 
 /* ---- Language switch: the active one has to answer at a glance ----
@@ -6412,7 +6430,7 @@ body[data-mode="parking"] {
      a bright badge sitting under the filter punched straight through the
      blur and took the labels with it. */
   --isle-bg: rgba(14, 18, 28, 0.74);
-  --isle-blur: blur(30px) saturate(190%);
+  --isle-blur: var(--mat-blur-reg);
   --isle-edge:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     inset 0 -1px 0 rgba(0, 0, 0, 0.30),
@@ -6424,11 +6442,12 @@ body[data-mode="parking"] {
 }
 
 :root[data-theme="light"] {
-  --isle-bg: rgba(255, 255, 255, 0.82);
+  --isle-bg: rgba(255, 255, 255, 0.58);
   --isle-edge:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 0 0 0.5px rgba(13, 18, 32, 0.08);
-  --isle-shadow: 0 12px 34px -14px rgba(13, 18, 32, 0.22);
+    inset 0 -1px 0 rgba(13, 18, 32, 0.06),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.15);
+  --isle-shadow: 0 14px 34px -12px rgba(13, 18, 32, 0.30);
   --isle-hair: rgba(13, 18, 32, 0.14);
   --isle-slot-hover: rgba(13, 18, 32, 0.09);
 }
@@ -6571,7 +6590,7 @@ body[data-mode="parking"] {
    It takes the shared control height and derives everything else from it,
    so it lines up with the language pill and the icon buttons at every
    breakpoint without a second set of numbers. */
-.isle-tools .theme-switch { --sw-h: var(--isle-ctl); }
+
 
 /* ---- Phones: same three islands, smaller ---- */
 @media (max-width: 768px) {
@@ -6657,3 +6676,121 @@ body[data-mode="parking"] {
   outline: 2px solid var(--volt-500);
   outline-offset: 3px;
 }
+
+/* Contained tab selection: icon and caption share one quiet capsule. */
+.tabbar {
+  --badge-size: 24px;
+  --badge-top: 14px;
+  --label-bottom: 13px;
+  --tab-label-size: 11px;
+  --lens-h: 58px;
+  --lens-radius: 29px;
+  --lens-travel: 320ms;
+  --nav-spring: cubic-bezier(0.4, 0, 0.2, 1);
+  width: calc(100% - 32px);
+  overflow: hidden;
+}
+.tabbar .tabbar-badge,
+.tabbar .tabbar-item.is-active .tabbar-badge,
+.tabbar.is-carrying .tabbar-item .tabbar-badge {
+  --badge-y: 0px;
+  color: inherit;
+  animation: none;
+}
+.tabbar .tabbar-badge::before { display: none; }
+.tabbar .tabbar-label {
+  max-width: calc(100% - 16px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 500;
+}
+.tabbar .tabbar-item.is-active .tabbar-label { font-weight: 600; }
+.tabbar .lens-body { box-shadow: inset 0 0 0 0.5px var(--lens-ring); }
+.tabbar .is-traveling > .lens-body,
+.tabbar .is-traveling > .lens-body::before { animation: none; }
+.tabbar .tabbar-lens.is-dragging .lens-body { transform: none; }
+.tabbar .lens-body::after { display: none; }
+@media (hover: hover) {
+  .tabbar-item:hover { color: var(--tab-color-active); }
+}
+@media (max-width: 768px) and (max-height: 620px) {
+  .tabbar { --badge-top: 10px; --label-bottom: 9px; --lens-h: 50px; --lens-radius: 25px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar .tabbar-lens, .tabbar .tabbar-badge, .tabbar .tabbar-ic { transition: none; }
+}
+
+/* Light-only navigation material. Text stays opaque above a frosted surface. */
+:root[data-theme="light"] {
+  color-scheme: only light;
+  --mat-regular: rgba(255, 255, 255, 0.78);
+  --mat-thick: rgba(255, 255, 255, 0.88);
+  --surface-panel: rgba(255, 255, 255, 0.96);
+  --text-1: #17202e;
+  --text-2: #364152;
+  --text-3: #515d6d;
+  --text-4: #5b6573;
+  --isle-bg: var(--mat-regular);
+  --nav-bg: var(--mat-regular);
+  --tab-color-inactive: #515d6d;
+  --tab-label-inactive: #515d6d;
+  --tab-color-active: #006b50;
+  --tab-label-active: #006b50;
+  --nav-shadow: 0 8px 28px rgba(28, 40, 55, 0.12);
+}
+:root[data-theme="light"] .isle,
+:root[data-theme="light"] .map-stats,
+:root[data-theme="light"] .tabbar {
+  background: var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
+  color: var(--text-1);
+}
+:root[data-theme="light"] .seg-btn { color: var(--text-2); }
+:root[data-theme="light"] .stat-label,
+:root[data-theme="light"] .stat-time { color: var(--text-3); }
+:root[data-theme="light"] .stat-accent { color: #007454; text-shadow: none; }
+:root[data-theme="light"] .stat-busy { color: #b42332; text-shadow: none; }
+:root[data-theme="light"] .tabbar .lens-body {
+  background: rgba(255,255,255,0.9);
+  box-shadow: var(--edge-rim), 0 2px 6px rgba(28,40,55,0.06);
+}
+:root[data-theme="light"] .neru-popup .leaflet-popup-content-wrapper,
+:root[data-theme="light"] .neru-popup .leaflet-popup-tip {
+  background: var(--surface-panel);
+  color: var(--text-1);
+}
+:root[data-theme="light"] .neru-popup .leaflet-popup-content-wrapper {
+  box-shadow: var(--edge-rim), var(--rim-shadow);
+}
+:root[data-theme="light"] .pk-free-note { color: var(--text-3); }
+:root[data-theme="light"] .btn-primary { color: #006b50; }
+:root[data-theme="light"] .pk-popup .btn-primary { color: #075c7e; }
+:root[data-theme="light"] .loc-btn,
+:root[data-theme="light"] .an-trigger { color: var(--text-2); }
+:root[data-theme="light"] .isle-tools .seg-btn { min-height: 44px; }
+:root[data-theme="light"] .isle-tools { --isle-ctl: 44px; }
+:root[data-theme="light"] .isle-tools .notif-switch:not(.is-active) {
+  background: rgba(28,40,55,0.05);
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme="light"] {
+    --mat-regular: #fff;
+    --mat-thick: #fff;
+    --surface-panel: #fff;
+  }
+  :root[data-theme="light"] .isle,
+  :root[data-theme="light"] .map-stats,
+  :root[data-theme="light"] .tabbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="light"] { --mat-regular: #fff; --surface-panel: #fff; }
+}
+:root[data-theme="light"] body[data-mode="parking"] .map-stats .stat-num {
+  color: #075c7e;
+  text-shadow: none;
+}
+:root[data-theme="light"] .neru-popup--parking .btn-primary { color: #075c7e; }

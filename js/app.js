@@ -24,6 +24,8 @@ class App {
         stationNotifications.init();
       }
 
+      this.bindEvents();
+
       // Load stations
       await this.loadStations();
 
@@ -47,8 +49,6 @@ class App {
       // Start auto-refresh
       this.startAutoRefresh();
 
-      // Bind global events
-      this.bindEvents();
 
       // Set initial language buttons
       ui.updateLangButtons(i18n.getLang());
@@ -63,7 +63,8 @@ class App {
 
   async loadStations() {
     const stations = await stationAPI.fetchStations();
-    if (stations.length > 0) {
+    if (stationAPI.lastFetch && stationAPI.lastFetch !== this._processedSnapshot) {
+      this._processedSnapshot = stationAPI.lastFetch;
       const filtered = ui.applyFilter(stations);
       // Re-rendering markers destroys an open station card. If someone is
       // reading one, hold the redraw until they close it.
@@ -154,11 +155,6 @@ class App {
     window.addEventListener('stationsError', () => {
       ui.showToast(i18n.t('errorLoading'), 'error');
       ui.hideLoading();
-    });
-
-    // Theme changed — swap Leaflet tile layer (dark <-> light)
-    window.addEventListener('themechange', (e) => {
-      stationMap.setTheme(e.detail?.theme);
     });
 
     // In-app route request (from popup or sidebar card)
@@ -280,7 +276,12 @@ class App {
         .getUserLocation({ force: false, maxAgeMs: 30000 })
         .catch(() => null);
 
-      const pos = loc ? { lat: loc.lat, lng: loc.lng } : geoLocation.getPosition();
+      const pos = loc || geoLocation.getPosition();
+      if (!pos.isLocated) {
+        ui.hideLoading();
+        ui.showToast(i18n.t('locationUnavailable'), 'warning');
+        return;
+      }
       if (loc) {
         stationMap.setUserLocation(pos.lat, pos.lng);
         document.getElementById('loc-btn')?.classList.add('is-located');
@@ -319,7 +320,12 @@ class App {
         stationAPI.fetchStations().catch(() => null),
       ]);
 
-      const pos = loc ? { lat: loc.lat, lng: loc.lng } : geoLocation.getPosition();
+      const pos = loc || geoLocation.getPosition();
+      if (!pos.isLocated) {
+        ui.hideLoading();
+        ui.showToast(i18n.t('locationUnavailable'), 'warning');
+        return;
+      }
       stationMap.setUserLocation(pos.lat, pos.lng);
 
       if (loc) {
@@ -473,7 +479,7 @@ class App {
    * Auto-re-routes active route and keeps sidebar distances fresh.
    */
   startLiveTracking() {
-    if (this._liveTrackingStarted) return;
+    if (this._liveTrackingStarted && geoLocation.isWatching()) return;
     this._liveTrackingStarted = true;
     this._lastReroute = 0;
     this._lastReroutePos = null;
@@ -504,7 +510,7 @@ class App {
         const dest = stationRouter.activeRoute.station;
         const toDest = GeoLocation.distanceBetween(snap.lat, snap.lng, dest.lat, dest.lng) * 1000;
 
-        if (toDest <= ARRIVE_M) {
+        if (Number.isFinite(snap.accuracy) && snap.accuracy <= ARRIVE_M && toDest <= ARRIVE_M) {
           stationRouter.arrive();
         } else {
           const gpsOk = !Number.isFinite(snap.accuracy) || snap.accuracy < ACCURACY_MAX_M;

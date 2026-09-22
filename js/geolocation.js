@@ -32,6 +32,9 @@ class GeoLocation {
       const onSuccess = (pos) => {
         this.userLat = pos.coords.latitude;
         this.userLng = pos.coords.longitude;
+        this.userAccuracy = pos.coords.accuracy;
+        this.userHeading = Number.isFinite(pos.coords.heading) ? pos.coords.heading : null;
+        this.userSpeed = Number.isFinite(pos.coords.speed) ? pos.coords.speed : null;
         this.isLocated = true;
         this._lastLocatedAt = Date.now();
         resolve({ lat: this.userLat, lng: this.userLng, isLocated: this.isLocated });
@@ -52,8 +55,8 @@ class GeoLocation {
 
   getPosition() {
     return {
-      lat: this.userLat || DEFAULT_LAT,
-      lng: this.userLng || DEFAULT_LNG,
+      lat: this.userLat ?? DEFAULT_LAT,
+      lng: this.userLng ?? DEFAULT_LNG,
       isLocated: this.isLocated,
       accuracy: this.userAccuracy,
       heading: this.userHeading,
@@ -91,7 +94,7 @@ class GeoLocation {
       },
       (err) => {
         // 1 = PERMISSION_DENIED — stop watching
-        if (err?.code === 1) this.stopWatching();
+        if (err?.code === 1) { this.isLocated = false; this.stopWatching(); }
       },
       {
         enableHighAccuracy: true,

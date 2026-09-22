@@ -5,6 +5,7 @@
 class StationRouter {
   constructor() {
     this.activeRoute = null;
+    this._generation = 0;
     this._OSRM = 'https://router.project-osrm.org/route/v1/driving';
   }
 
@@ -15,11 +16,13 @@ class StationRouter {
       return;
     }
 
+    const generation = ++this._generation;
     const wasActive = !!this.activeRoute;
     ui.showToast(i18n.t('routeBuilding'), 'info', 2500);
 
     try {
       const data = await this._fetch(pos.lat, pos.lng, station.lat, station.lng);
+      if (generation !== this._generation) return;
       const route = data.routes[0];
       // OSRM returns [lng, lat] — flip for Leaflet
       const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
@@ -36,6 +39,7 @@ class StationRouter {
       ui.showRoutePanel(station, { distance: route.distance, duration: route.duration });
       ui.showToast(i18n.t(wasActive ? 'routeUpdated' : 'routeReady'), 'success', 2500);
     } catch (e) {
+      if (generation !== this._generation) return;
       ui.showToast(i18n.t('routeError'), 'error', 4000);
     }
   }
@@ -44,11 +48,15 @@ class StationRouter {
    * Re-route from current user location (used by live tracking)
    */
   async refreshFromCurrent() {
-    if (!this.activeRoute) return;
+    if (!this.activeRoute || this._refreshing) return;
+    const active = this.activeRoute;
+    const generation = this._generation;
     const pos = geoLocation.getPosition();
     if (!pos.isLocated) return;
+    this._refreshing = true;
     try {
-      const data = await this._fetch(pos.lat, pos.lng, this.activeRoute.station.lat, this.activeRoute.station.lng);
+      const data = await this._fetch(pos.lat, pos.lng, active.station.lat, active.station.lng);
+      if (generation !== this._generation || active !== this.activeRoute) return;
       const route = data.routes[0];
       const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
       this.activeRoute.coords = coords;
@@ -59,6 +67,8 @@ class StationRouter {
       ui.showRoutePanel(this.activeRoute.station, { distance: route.distance, duration: route.duration });
     } catch (_) {
       /* silent — keep last route on transient errors */
+    } finally {
+      this._refreshing = false;
     }
   }
 
@@ -68,14 +78,12 @@ class StationRouter {
     const timeout = setTimeout(() => ctrl.abort(), 12000);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timeout);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route');
       return data;
-    } catch (e) {
+    } finally {
       clearTimeout(timeout);
-      throw e;
     }
   }
 
@@ -100,6 +108,7 @@ class StationRouter {
 
   /** User reached the destination — clear route and celebrate. */
   arrive() {
+    ++this._generation;
     const had = !!this.activeRoute;
     this.activeRoute = null;
     stationMap.clearHighlight();
@@ -108,6 +117,7 @@ class StationRouter {
   }
 
   clear() {
+    ++this._generation;
     const had = !!this.activeRoute;
     this.activeRoute = null;
     stationMap.clearHighlight();

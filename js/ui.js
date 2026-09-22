@@ -27,13 +27,16 @@ function parseSchedule(str) {
   const h1 = +times[0][1], m1 = +times[0][2];
   const h2 = +times[1][1], m2 = +times[1][2];
 
+  if (h1 > 23 || m1 > 59 || h2 > 24 || m2 > 59 || (h2 === 24 && m2 !== 0)) return null;
+
   // Same open/close time or 0:00-24:00 → 24h station
-  if ((h1 === h2 && m1 === m2) || (h1 === 0 && m1 === 0 && h2 >= 23 && m2 >= 59) || (h2 === 24)) {
+  if ((h1 === h2 && m1 === m2) || (h1 === 0 && m1 === 0 && h2 >= 23 && m2 >= 59) || (h1 === 0 && m1 === 0 && h2 === 24)) {
     return { is24: true, isOpen: true, open: '00:00', close: '24:00' };
   }
 
   const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dushanbe', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+  const nowMin = +parts.find(p => p.type === 'hour').value * 60 + +parts.find(p => p.type === 'minute').value;
   const openMin = h1 * 60 + m1;
   const closeMin = h2 * 60 + m2;
 
@@ -71,9 +74,6 @@ class UI {
   init() {
     this.cacheElements();
     this.bindEvents();
-    if (this.themeToggle) {
-      this.themeToggle.checked = (this.getTheme() === 'dark');
-    }
     i18n.updateDOM();
     // Position the segmented indicators and the tab lens once fonts/layout settle
     requestAnimationFrame(() => {
@@ -110,35 +110,10 @@ class UI {
     this.filterBtns = this.filterSeg?.querySelectorAll('.filter-btn') || [];
     this.langBtns = this.langSeg?.querySelectorAll('.lang-btn') || [];
 
-    this.themeToggle = document.getElementById('theme-toggle');
     this.statsBusy = document.getElementById('stat-busy');
 
     this.tabbar = document.getElementById('tabbar');
     this.tabLens = document.getElementById('tab-lens');
-  }
-
-  getTheme() {
-    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-  }
-
-  setTheme(theme) {
-    const next = theme === 'light' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try { localStorage.setItem('neru-theme', next); } catch (_) {}
-
-    // The droid switch reads "on = night", so checked tracks the dark theme.
-    if (this.themeToggle) this.themeToggle.checked = (next === 'dark');
-
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', next === 'light' ? '#ffffff' : '#05070d');
-    }
-
-    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
-  }
-
-  toggleTheme() {
-    this.setTheme(this.getTheme() === 'light' ? 'dark' : 'light');
   }
 
   bindEvents() {
@@ -203,9 +178,7 @@ class UI {
       this.moveIndicator(this.langSeg);
     });
 
-    this.themeToggle?.addEventListener('change', () => {
-      this.toggleTheme();
-    });
+
   }
 
   setActive(nodeList, activeBtn) {
@@ -267,7 +240,7 @@ class UI {
         // Only animate the arrival, never the restore of a tab that was
         // already up — a badge that re-springs on every state sync reads as
         // a glitch rather than as feedback.
-        if (!was) {
+        if (!was && !this._skipLanding) {
           item.classList.add('is-landing');
           setTimeout(() => item.classList.remove('is-landing'), 420);
         }
@@ -302,16 +275,8 @@ class UI {
     // let the ResizeObserver place it if the viewport ever narrows.
     if (!item || !bar.offsetWidth) return;
 
-    // One capsule size for every tab, taken from the widest label in the bar.
-    // Sizing each tab to its own label made the lens shrink on "Find" and
-    // stretch on "Analytics" — the same object appearing to change size as it
-    // travels. It still stops short of the slot edge, so the bar never reads
-    // as four filled cells.
-    const labels = [...bar.querySelectorAll('.tabbar-label')];
-    const content = labels.reduce((max, el) => Math.max(max, el.offsetWidth), 44);
-    const width = Math.round(
-      Math.min(item.offsetWidth - 8, Math.max(58, content + 22))
-    );
+    // Equal-width slots contain both the icon and the longest clipped caption.
+    const width = item.offsetWidth - 4;
     const x = Math.round(item.offsetLeft + (item.offsetWidth - width) / 2);
     const first = this._lensX === undefined;
     const moved = !first && x !== this._lensX;
@@ -392,6 +357,132 @@ class UI {
     bar.addEventListener('pointerup', release);
     bar.addEventListener('pointercancel', release);
     bar.addEventListener('pointerleave', release);
+
+    this.bindTabDrag();
+  }
+
+  /**
+   * The lens can be dragged along the bar, the way the iOS tab bar lets you
+   * carry the selection between tabs instead of only tapping one.
+   *
+   * A tap and a drag start identically, so this stays out of the way until
+   * the finger has actually travelled DRAG_SLOP; below that the pointer
+   * sequence ends in an ordinary click and the existing handler does its job.
+   * Once dragging, the lens leaves its transition behind and is written
+   * straight to a custom property each frame — one style write per move, no
+   * layout reads, since every measurement is taken once on pointerdown.
+   *
+   * Release hands the tab over to the same click path a tap would take, so
+   * there is exactly one place that knows what a tab does.
+   */
+  bindTabDrag() {
+    const bar = this.tabbar;
+    const lens = this.tabLens;
+    if (!bar || !lens) return;
+
+    const DRAG_SLOP = 8;
+    let d = null;
+
+    const nearest = (centre) => d.items.reduce(
+      (best, it) => (Math.abs(it.centre - centre) < Math.abs(best.centre - centre) ? it : best),
+      d.items[0]
+    );
+
+    bar.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary || !bar.offsetWidth) return;
+      const barRect = bar.getBoundingClientRect();
+      const items = [...bar.querySelectorAll('.tabbar-item')].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { el, centre: r.left - barRect.left + r.width / 2 };
+      });
+      d = {
+        id: e.pointerId,
+        startX: e.clientX,
+        lensX: this._lensX ?? 0,
+        width: parseFloat(lens.style.getPropertyValue('--lens-w')) || 60,
+        max: bar.clientWidth,
+        from: e.target.closest('.tabbar-item'),
+        items,
+        dragging: false,
+        over: null,
+      };
+    });
+
+    bar.addEventListener('pointermove', (e) => {
+      if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.startX;
+
+      if (!d.dragging) {
+        if (Math.abs(dx) < DRAG_SLOP) return;
+        d.dragging = true;
+        bar.querySelectorAll('.is-pressing').forEach((i) => i.classList.remove('is-pressing'));
+        lens.classList.add('is-dragging');
+        lens.classList.remove('is-traveling');
+        // Hands the raised badge over to whichever tab the lens is over, so
+        // the selection travels with the finger instead of staying behind on
+        // the tab the app has not left yet.
+        bar.classList.add('is-carrying');
+        // Capture keeps the drag alive past the bar's edge, but it throws on
+        // a pointer the browser no longer knows about — and it is an
+        // enhancement, not the mechanism. Never let it take the drag down.
+        try { bar.setPointerCapture(d.id); } catch (_) {}
+      }
+
+      const x = Math.max(4, Math.min(d.max - d.width - 4, d.lensX + dx));
+      lens.style.setProperty('--lens-x', `${x}px`);
+      // A little lean into the direction of travel, so the glass feels
+      // carried rather than teleported.
+      lens.style.setProperty('--lens-skew', `${Math.max(-6, Math.min(6, dx * 0.06))}deg`);
+
+      const over = nearest(x + d.width / 2);
+      if (over !== d.over) {
+        d.over?.el.classList.remove('is-under-lens');
+        over.el.classList.add('is-under-lens');
+        d.over = over;
+        // One tick per boundary crossed — the only feedback a finger gets
+        // that it has moved far enough to change the answer.
+        if (e.isTrusted && navigator.vibrate) {
+          try { navigator.vibrate(8); } catch (_) {}
+        }
+      }
+    });
+
+    const finish = (e, cancelled) => {
+      if (!d || (e && e.pointerId !== d.id)) return;
+      const state = d;
+      d = null;
+      if (!state.dragging) {
+        bar.classList.remove('is-carrying');
+        return;
+      }
+
+      try { bar.releasePointerCapture(state.id); } catch (_) {}
+      lens.classList.remove('is-dragging');
+      lens.style.removeProperty('--lens-skew');
+
+      // Cancelled, or dropped back where it started: settle onto the tab the
+      // app is actually on rather than leaving the lens between two of them.
+      if (cancelled || !state.over || state.over.el === state.from) {
+        bar.classList.remove('is-carrying');
+        state.over?.el.classList.remove('is-under-lens');
+        this.moveTabLens();
+        return;
+      }
+
+      // Same path as a tap, so a dragged tab and a tapped tab cannot drift.
+      // The badge is already up and filled on this tab — it was carried here
+      // — so the landing pop would be a second arrival for one gesture. The
+      // carry classes come off only after the click, otherwise the badge
+      // drops for a frame and springs again on the tab it never left.
+      this._skipLanding = true;
+      state.over.el.click();
+      this._skipLanding = false;
+      bar.classList.remove('is-carrying');
+      state.over.el.classList.remove('is-under-lens');
+    };
+
+    bar.addEventListener('pointerup', (e) => finish(e, false));
+    bar.addEventListener('pointercancel', (e) => finish(e, true));
   }
 
   updateLangButtons(lang) {
@@ -563,7 +654,7 @@ class UI {
     }).join('');
 
     // Power chip
-    const isFast = station.capacityWatts >= 120;
+    const isFast = station.capacityKw >= 100;
     const powerChip = station.capacity
       ? `<span class="power-chip ${isFast ? 'is-fast' : ''}">
            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
