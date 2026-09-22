@@ -8,26 +8,26 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v32';
+const CACHE = 'nur-shell-v34';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=32',
-  '/js/i18n.js?v=32',
-  '/js/api.js?v=32',
-  '/js/parking.js?v=32',
-  '/js/geolocation.js?v=32',
-  '/js/finder.js?v=32',
-  '/js/map.js?v=32',
-  '/js/ui.js?v=32',
-  '/js/notifications.js?v=32',
-  '/js/router.js?v=32',
-  '/js/analytics.js?v=32',
-  '/js/parking-session.js?v=32',
-  '/js/pwa.js?v=32',
-  '/js/vendor/liquid-glass.js?v=32',
-  '/js/liquid-glass.js?v=32',
-  '/js/app.js?v=32',
+  '/css/style.css?v=34',
+  '/js/i18n.js?v=34',
+  '/js/api.js?v=34',
+  '/js/parking.js?v=34',
+  '/js/geolocation.js?v=34',
+  '/js/finder.js?v=34',
+  '/js/map.js?v=34',
+  '/js/ui.js?v=34',
+  '/js/notifications.js?v=34',
+  '/js/router.js?v=34',
+  '/js/analytics.js?v=34',
+  '/js/parking-session.js?v=34',
+  '/js/pwa.js?v=34',
+  '/js/vendor/liquid-glass.js?v=34',
+  '/js/liquid-glass.js?v=34',
+  '/js/app.js?v=34',
   '/logo.png',
   '/manifest.webmanifest',
 ];

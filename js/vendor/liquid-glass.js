@@ -340,3 +340,34 @@ class LiquidGlassRenderer {
 
 window.LiquidGlassRenderer = LiquidGlassRenderer;
 })();
+
+/* Upstream MIT spring integrator. */
+(()=>{const STIFFNESS = 340;
+const DAMPING = 26;
+const SETTLE_THRESHOLD = 0.4;
+const VELOCITY_THRESHOLD = 0.4;
+const MAX_STEP = 1 / 50;
+function createSpring(initial) {
+    return {
+        current: initial,
+        target: initial,
+        velocity: 0
+    };
+}
+function updateSpring(s, dt, stiffness = STIFFNESS, damping = DAMPING) {
+    const displacement = s.current - s.target;
+    const steps = Math.max(1, Math.ceil(dt / MAX_STEP));
+    const h = dt / steps;
+    for(let i = 0; i < steps; i++){
+        const springForce = -stiffness * (s.current - s.target);
+        const dampingForce = -damping * s.velocity;
+        s.velocity += (springForce + dampingForce) * h;
+        s.current += s.velocity * h;
+    }
+    if (Math.abs(displacement) < SETTLE_THRESHOLD && Math.abs(s.velocity) < VELOCITY_THRESHOLD) {
+        s.current = s.target;
+        s.velocity = 0;
+    }
+}
+
+window.LiquidGlassSpring={createSpring,updateSpring};})();

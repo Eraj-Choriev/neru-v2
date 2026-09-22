@@ -12,6 +12,10 @@
   const transparency = matchMedia('(prefers-reduced-transparency: reduce)');
   let renderer, frame = 0, until = 0, previousX = 0, previousTime = 0;
   let light = [0.35, 0.8], pressed = false;
+  const {createSpring, updateSpring} = window.LiquidGlassSpring;
+  const position = createSpring(0), width = createSpring(0), bulge = createSpring(0);
+  let placed = false, targetSignature = '';
+  bar.classList.add('has-glass-physics');
   function schedule() {
     until = performance.now() + 650;
     if (!frame && !document.hidden) frame = requestAnimationFrame(draw);
@@ -19,11 +23,30 @@
   function draw(time) {
     frame = 0;
     const bounds = bar.getBoundingClientRect();
-    if (!bounds.width || document.hidden || transparency.matches) {
+    if (!bounds.width || document.hidden) {
       canvas.hidden = true;
       return;
     }
-    canvas.hidden = !renderer;
+    canvas.hidden = !renderer || transparency.matches;
+    const targetX = parseFloat(lens.style.getPropertyValue('--lens-x')) || 0;
+    const targetWidth = parseFloat(lens.style.getPropertyValue('--lens-w')) || 0;
+    const dt = previousTime ? Math.min((time - previousTime) / 1000, .064) : 1 / 60;
+    position.target = targetX;
+    width.target = targetWidth;
+    bulge.target = pressed && !motion.matches ? .16 : 0;
+    if (!placed || motion.matches || lens.classList.contains('is-dragging')) {
+      position.current = targetX; position.velocity = 0;
+      width.current = targetWidth; width.velocity = 0;
+      placed = targetWidth > 0;
+    } else {
+      updateSpring(position, dt); updateSpring(width, dt);
+    }
+    if (motion.matches) { bulge.current = 0; bulge.velocity = 0; }
+    else updateSpring(bulge, dt, 260, 16);
+    lens.style.transform = `translate3d(${position.current}px,0,0)`;
+    lens.style.width = `${width.current}px`;
+    const stretch = motion.matches ? 0 : Math.min(Math.abs(position.velocity) * .00005, .035);
+    lens.firstElementChild.style.transform = `scale(${1 + bulge.current * .12 + stretch},${1 + bulge.current * .55 - stretch})`;
     const pill = lens.getBoundingClientRect();
     const x = pill.left - bounds.left + pill.width / 2;
     const velocity = previousTime ? (x - previousX) / Math.max((time - previousTime) / 1000, .001) : 0;
@@ -35,17 +58,23 @@
       pressAmt: motion.matches ? 0 : Number(pressed), tintColor: [0.65, 0.7, 1],
     });
     previousX = x; previousTime = time;
-    if (!motion.matches && time < until) frame = requestAnimationFrame(draw);
+    if (!motion.matches && (time < until || position.velocity !== 0 || width.velocity !== 0 || bulge.velocity !== 0)) frame = requestAnimationFrame(draw);
   }
   try { renderer = new LiquidGlassRenderer(canvas, schedule); }
-  catch { canvas.remove(); return; }
+  catch { canvas.remove(); }
   const resize = () => {
     const rect = bar.getBoundingClientRect();
-    if (rect.width) renderer.resize(rect.width, rect.height);
+    if (rect.width) renderer?.resize(rect.width, rect.height);
     schedule();
   };
   new ResizeObserver(resize).observe(bar);
-  new MutationObserver(schedule).observe(lens, {attributes: true, attributeFilter: ['style', 'class']});
+  new MutationObserver(() => {
+    const signature = lens.style.getPropertyValue('--lens-x') + '/' + lens.style.getPropertyValue('--lens-w') + '/' + lens.className;
+    if (signature === targetSignature) return;
+    targetSignature = signature;
+    if (lens.classList.contains('is-instant')) placed = false;
+    schedule();
+  }).observe(lens, {attributes: true, attributeFilter: ['style', 'class']});
   bar.addEventListener('pointermove', e => {
     if (motion.matches) return;
     const rect = bar.getBoundingClientRect();
