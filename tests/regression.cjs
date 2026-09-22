@@ -62,3 +62,12 @@ test('nearest search does not turn the fallback city centre into a GPS fix',asyn
  const c=context(['js/app.js'],{document:{addEventListener(){}},ui:{statsMode:'ev',showLoading(){},hideLoading(){},showToast(){warnings++;}},geoLocation:{getUserLocation:async()=>{throw Error('denied')},getPosition:()=>({lat:38,lng:68,isLocated:false})},stationAPI:{fetchStations:async()=>[]},stationMap:{setUserLocation(){markers++;}},i18n:{t:x=>x}});
  await vm.runInContext('app.handleFindNearest()',c);assert.equal(markers,0);assert.equal(warnings,1);
 });
+test('parking retries after failure even when stale zones are in memory',async()=>{
+ let calls=0;const c=context(['js/parking.js'],{localStorage:{getItem:()=>null,setItem(){}},fetch:async()=>{calls++;return {ok:true,json:async()=>({code:200,parks:[{id:1,marker1:'38.5',marker2:'68.7'}]})}}});
+ vm.runInContext('parkingAPI.zones=[{id:"old"}];parkingAPI.lastFetch=new Date();parkingAPI.lastError=new Error("offline");parkingAPI.normalizeZone=raw=>({id:raw.id})',c);
+ const r=await vm.runInContext('parkingAPI.fetchZones()',c);assert.equal(calls,1);assert.equal(r[0].id,1);assert.equal(vm.runInContext('parkingAPI.lastError',c),null);
+});
+test('parking session initializes once across reload attempts',async()=>{
+ let inits=0;const c=context(['js/app.js'],{document:{addEventListener(){}},parkingSession:{init(){inits++;}},parkingAPI:{fetchZones:async()=>[]}});
+ await vm.runInContext('app.loadParking()',c);await vm.runInContext('app.loadParking()',c);assert.equal(inits,1);
+});

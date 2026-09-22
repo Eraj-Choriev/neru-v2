@@ -13,6 +13,7 @@ class StationAPI {
     this.stations = [];
     this.lastFetch = null;
     this.isLoading = false;
+    this.lastError = null;
     this.workingProxy = null;
   }
 
@@ -40,6 +41,7 @@ class StationAPI {
       if (data && Number(data.code) === 200 && Array.isArray(data.powers)) {
         this.stations = data.powers.map(s => this.normalizeStation(s)).filter(Boolean);
         this.lastFetch = new Date();
+        this.lastError = null;
         console.log(`✅ Loaded ${this.stations.length} stations`);
         window.dispatchEvent(new CustomEvent('stationsLoaded', { 
           detail: { stations: this.stations, timestamp: this.lastFetch } 
@@ -48,6 +50,7 @@ class StationAPI {
         throw new Error('No valid data from any source');
       }
     } catch (error) {
+      this.lastError = error;
       console.error('API Error:', error);
       window.dispatchEvent(new CustomEvent('stationsError', { detail: { error } }));
     } finally {

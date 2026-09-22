@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-  <link rel="stylesheet" href="css/style.css?v=28">
+  <link rel="stylesheet" href="css/style.css?v=31">
 
   <!-- Favicon + PWA -->
   <link rel="icon" href="logo.png">
@@ -93,6 +93,11 @@
        </div>
       </div>
     </header>
+
+    <div id="data-status" class="data-status" role="status" hidden>
+      <span id="data-status-text" data-i18n="dataUnavailable"></span>
+      <button id="data-retry" type="button" data-i18n="dataRetry">Повторить</button>
+    </div>
 
     <!-- ===== Stats HUD — floats over map below header ===== -->
     <div class="map-stats" role="status" aria-live="polite">
@@ -268,11 +273,8 @@
 
     <!-- ===== Mobile Drawer Overlay ===== -->
 
-    <!-- ===== Mobile tab bar =====
-         Phones get one glass bar instead of a burger, a FAB and two header
-         icons scattered around the map. Two modes, the primary action in the
-         middle, a panel and an overflow — the same five slots an iOS app
-         would use. Desktop keeps the header controls and never shows this. -->
+    <!-- Mobile navigation: destinations in the capsule, search alongside. -->
+    <div class="tabbar-dock">
     <nav class="tabbar" id="tabbar" aria-label="Main">
       <!-- One glass lens for the whole bar. JS measures the active item and
            slides it; the squash and prism live in CSS. -->
@@ -294,14 +296,6 @@
         <span class="tabbar-label" data-i18n="tabParking">Парковки</span>
       </button>
 
-      <button class="tabbar-item" id="tab-find" data-tab="find">
-        <span class="tabbar-badge" aria-hidden="true">
-          <svg class="tabbar-ic tabbar-ic--line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-          <svg class="tabbar-ic tabbar-ic--solid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7" fill="currentColor" stroke="none"/><path d="M20 20l-3.6-3.6"/></svg>
-        </span>
-        <span class="tabbar-label" data-i18n="tabFind">Найти</span>
-      </button>
-
       <button class="tabbar-item" id="tab-analytics" data-tab="analytics">
         <span class="tabbar-badge" aria-hidden="true">
           <svg class="tabbar-ic tabbar-ic--line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11"/><path d="M10 20V5"/><path d="M16 20v-6"/></svg>
@@ -310,6 +304,11 @@
         <span class="tabbar-label" data-i18n="tabAnalytics">Аналитика</span>
       </button>
     </nav>
+      <button class="tabbar-search" id="tab-find" type="button" aria-labelledby="tab-find-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 4.5 4.5"/></svg>
+        <span id="tab-find-label" class="tabbar-search-label" data-i18n="tabFind">Найти</span>
+      </button>
+    </div>
 
 
     <!-- ===== Analytics ===== -->
@@ -381,19 +380,19 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=28"></script>
-  <script src="js/api.js?v=28"></script>
-  <script src="js/parking.js?v=28"></script>
-  <script src="js/geolocation.js?v=28"></script>
-  <script src="js/finder.js?v=28"></script>
-  <script src="js/map.js?v=28"></script>
-  <script src="js/ui.js?v=28"></script>
-  <script src="js/notifications.js?v=28"></script>
-  <script src="js/router.js?v=28"></script>
-  <script src="js/analytics.js?v=28"></script>
-  <script src="js/parking-session.js?v=28"></script>
-  <script src="js/pwa.js?v=28"></script>
-  <script src="js/app.js?v=28"></script>
+  <script src="js/i18n.js?v=31"></script>
+  <script src="js/api.js?v=31"></script>
+  <script src="js/parking.js?v=31"></script>
+  <script src="js/geolocation.js?v=31"></script>
+  <script src="js/finder.js?v=31"></script>
+  <script src="js/map.js?v=31"></script>
+  <script src="js/ui.js?v=31"></script>
+  <script src="js/notifications.js?v=31"></script>
+  <script src="js/router.js?v=31"></script>
+  <script src="js/analytics.js?v=31"></script>
+  <script src="js/parking-session.js?v=31"></script>
+  <script src="js/pwa.js?v=31"></script>
+  <script src="js/app.js?v=31"></script>
   <script>
     if (location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
       const beacon = document.createElement('script');

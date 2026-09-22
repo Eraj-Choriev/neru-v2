@@ -4,6 +4,10 @@
 
 const translations = {
   tj: {
+    dataUnavailable: 'Маълумоти истгоҳҳо ё таваққуфгоҳҳо нав намешавад. Маълумоти пешина метавонад кӯҳна бошад.',
+    dataRetry: 'Такрор',
+    dataRetrying: 'Маълумот бор мешавад…',
+
     appName: 'NŪR',
     appTagline: 'Истгоҳҳои барқии Душанбе',
     findNearest: 'Наздиктаринро ёб',
@@ -310,6 +314,10 @@ const translations = {
     },
   },
   ru: {
+    dataUnavailable: 'Данные станций или парковок не обновляются. Ранее загруженные данные могут быть устаревшими.',
+    dataRetry: 'Повторить',
+    dataRetrying: 'Загружаем данные…',
+
     appName: 'NŪR',
     appTagline: 'Электрозарядные станции Душанбе',
     findNearest: 'Найти ближайшую',
@@ -616,6 +624,10 @@ const translations = {
     },
   },
   en: {
+    dataUnavailable: 'Station or parking updates are unavailable. Previously loaded data may be outdated.',
+    dataRetry: 'Retry',
+    dataRetrying: 'Loading data…',
+
     appName: 'NŪR',
     appTagline: 'Dushanbe EV Charging Stations',
     findNearest: 'Find Nearest',

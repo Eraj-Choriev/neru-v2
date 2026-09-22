@@ -6722,7 +6722,7 @@ body[data-mode="parking"] {
 /* Light-only navigation material. Text stays opaque above a frosted surface. */
 :root[data-theme="light"] {
   color-scheme: only light;
-  --mat-regular: rgba(255, 255, 255, 0.78);
+  --mat-regular: rgba(215, 224, 232, 0.62);
   --mat-thick: rgba(255, 255, 255, 0.88);
   --surface-panel: rgba(255, 255, 255, 0.96);
   --text-1: #17202e;
@@ -6752,7 +6752,7 @@ body[data-mode="parking"] {
 :root[data-theme="light"] .stat-accent { color: #007454; text-shadow: none; }
 :root[data-theme="light"] .stat-busy { color: #b42332; text-shadow: none; }
 :root[data-theme="light"] .tabbar .lens-body {
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.58);
   box-shadow: var(--edge-rim), 0 2px 6px rgba(28,40,55,0.06);
 }
 :root[data-theme="light"] .neru-popup .leaflet-popup-content-wrapper,
@@ -6794,3 +6794,121 @@ body[data-mode="parking"] {
   text-shadow: none;
 }
 :root[data-theme="light"] .neru-popup--parking .btn-primary { color: #075c7e; }
+
+/* Persistent feed failures stay visible after transient toasts disappear. */
+.data-status {
+  position: fixed; z-index: 1260; left: 50%; transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  width: min(440px, calc(100% - 32px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 16px; padding: 12px 16px;
+  border-radius: 16px; background: #fff; color: #364152;
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm); font-size: 13px;
+}
+.data-status[hidden] { display: none; }
+.data-status button {
+  flex-shrink: 0; min-height: 44px; padding: 0 12px; border-radius: 12px;
+  border: 1px solid #d6dce3; background: #f5f7fa; color: #17202e;
+  font: inherit; cursor: pointer;
+}
+.data-status button:hover { background: #e7edf2; }
+.data-status button:active { background: #dce5ed; }
+.data-status button:focus-visible { outline: 2px solid #006b50; outline-offset: 2px; }
+
+/* Floating controls, with no full-width material behind the header. */
+:root[data-theme="light"] .header {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-theme="light"] .header::before,
+:root[data-theme="light"] .header::after { display: none; }
+:root[data-theme="light"] .isle-tools .notif-switch {
+  --sw-w: calc(var(--sw-h) * 2);
+}
+:root[data-theme="light"] .notif-switch-bell { width: 18px; height: 18px; }
+/* Language buttons sit on the same pane, not a second white capsule. */
+:root[data-theme="light"] .isle-tools #lang-seg {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+@media (max-width: 360px) {
+  :root[data-theme="light"] .header { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  :root[data-theme="light"] .isle-tools { gap: 3px; }
+  :root[data-theme="light"] .isle-tools #lang-seg .seg-btn { padding: 0 7px; }
+}
+
+/* iPhone-style dock: a destination capsule and a separate search action. */
+.tabbar-dock {
+  position: fixed;
+  z-index: 1250;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(480px, calc(100% - 32px));
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+.tabbar-dock .tabbar {
+  --lens-h: 56px;
+  --lens-radius: 28px;
+  --badge-top: 10px;
+  --label-bottom: 10px;
+  --lens-travel: 360ms;
+  --nav-spring: cubic-bezier(.22, .8, .24, 1);
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: 64px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 32px;
+  animation: none;
+}
+.tabbar-dock .tabbar-item { min-height: 44px; }
+.tabbar-dock .tabbar-label { max-width: calc(100% - 4px); font-size: 11px; }
+.tabbar-dock .tabbar-item.is-pressing .tabbar-badge { --badge-s: .92; }
+.tabbar-search {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mat-regular);
+  color: var(--text-1);
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 240ms cubic-bezier(.22,.8,.24,1), background 240ms ease;
+}
+.tabbar-search svg { width: 25px; height: 25px; }
+.tabbar-search-label {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.tabbar-search:active { transform: scale(.94); }
+.tabbar-search:focus-visible { outline: 2px solid var(--text-1); outline-offset: 3px; }
+.tabbar-search[aria-busy="true"] { cursor: progress; background: var(--mat-thick); }
+@media (hover: hover) { .tabbar-search:hover { background: var(--mat-thick); } }
+@media (max-width: 768px) { .tabbar-dock { display: flex; } }
+@media (prefers-reduced-motion: reduce) { .tabbar-search { transition: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .tabbar-search { background: #f0f2f4; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar-search { background: #f0f2f4; }
+}

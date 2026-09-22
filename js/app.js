@@ -26,12 +26,9 @@ class App {
 
       this.bindEvents();
 
-      // Load stations
-      await this.loadStations();
-
-      // Parking zones are a static reference list, so they load in the
-      // background and never join the 30s station refresh.
+      // Independent feeds: a slow station API must not delay parking.
       this.loadParking();
+      await this.loadStations();
 
       // Location is gated behind a first-visit consent card, so the native
       // browser prompt only fires once the user has opted in.
@@ -104,19 +101,28 @@ class App {
   async loadParking() {
     // Bind the session card first: a timer restored from a previous visit has
     // to come back even if the zone list is slow or unreachable this time.
-    parkingSession.init();
+    if (!this._parkingSessionInitialized) {
+      parkingSession.init();
+      this._parkingSessionInitialized = true;
+    }
 
     const zones = await parkingAPI.fetchZones();
     if (!zones.length) return;
 
     stationMap.renderParkingZones(zones);
     stationMap.setParkingVisible(this._parkingVisible === true);
+    if (this._parkingVisible) {
+      ui.setStatsMode('parking');
+      ui.updateParkingStats(parkingAPI.getStats());
+    }
   }
 
   toggleParking(force = null) {
     const zones = parkingAPI.getZones();
     if (!zones.length) {
-      ui.showToast(i18n.t('pkNoZones'), 'warning', 3000);
+      this._parkingVisible = force === null ? true : !!force;
+      ui.showToast(i18n.t('dataRetrying'), 'info', 3000);
+      this.loadParking();
       return;
     }
 
@@ -139,6 +145,19 @@ class App {
   }
 
   bindEvents() {
+    const updateStatus = () => {
+      const failed = stationAPI.lastError || parkingAPI.lastError;
+      const banner = document.getElementById('data-status');
+      if (!banner) return;
+      banner.hidden = !failed;
+      document.getElementById('data-status-text').textContent = i18n.t('dataUnavailable');
+    };
+    ['stationsLoaded', 'stationsError', 'parkingLoaded', 'parkingError', 'langchange']
+      .forEach(event => window.addEventListener(event, updateStatus));
+    document.getElementById('data-retry')?.addEventListener('click', () => {
+      this.loadStations();
+      this.loadParking();
+    });
     // Find nearest button
     window.addEventListener('findNearest', () => this.handleFindNearest());
 
@@ -231,16 +250,6 @@ class App {
           else ui.setActiveTab('parking');
           break;
 
-        case 'find':
-          // Finding is an action, not a place, so the badge rises for the
-          // length of the search and then hands itself back to the map layer
-          // you are actually on. A tab that stays lit for a finished action
-          // would claim you are somewhere you are not.
-          ui.setActiveTab('find');
-          Promise.resolve(this.handleFindNearest())
-            .finally(() => ui.syncTabToMode());
-          break;
-
         case 'analytics':
           if (stationAnalytics.isOpen()) {
             stationAnalytics.close();
@@ -249,6 +258,17 @@ class App {
             ui.setActiveTab('analytics');
           }
           break;
+      }
+    });
+
+    const search = document.getElementById('tab-find');
+    search?.addEventListener('click', async () => {
+      if (search.getAttribute('aria-busy') === 'true') return;
+      search.setAttribute('aria-busy', 'true');
+      try {
+        await this.handleFindNearest();
+      } finally {
+        search.removeAttribute('aria-busy');
       }
     });
 
@@ -567,13 +587,17 @@ class App {
   }
 
   startAutoRefresh() {
-    this.refreshInterval = setInterval(async () => {
-      if (!document.hidden) await this.loadStations();
-    }, this.REFRESH_MS);
-
+    const refresh = () => {
+      if (document.hidden) return;
+      this.loadStations();
+      if (!parkingAPI.lastFetch || parkingAPI.lastError ||
+          Date.now() - parkingAPI.lastFetch.getTime() > PARKING_CACHE_TTL) this.loadParking();
+    };
+    this.refreshInterval = setInterval(refresh, this.REFRESH_MS);
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.initialized) this.loadStations();
+      if (this.initialized) refresh();
     });
+    window.addEventListener('online', refresh);
   }
 
   stopAutoRefresh() {

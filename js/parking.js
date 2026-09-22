@@ -44,6 +44,7 @@ class ParkingAPI {
     this.zones = [];
     this.lastFetch = null;
     this.isLoading = false;
+    this.lastError = null;
     this.workingProxy = null;
   }
 
@@ -57,12 +58,13 @@ class ParkingAPI {
   }
 
   async _fetchZones({ force = false } = {}) {
-    if (this.zones.length && !force) return this.zones;
+    if (this.zones.length && !force && !this.lastError && this.lastFetch &&
+        Date.now() - this.lastFetch.getTime() < PARKING_CACHE_TTL) return this.zones;
     if (this.isLoading) return this.zones;
 
     // Serve the cache immediately when it is fresh — the list is static and a
     // cold network hit through a proxy can take seconds.
-    if (!force) {
+    if (!force && !this.lastError) {
       const cached = this._readCache();
       if (cached) {
         this.zones = cached.zones;
@@ -93,6 +95,7 @@ class ParkingAPI {
         if (zones.length) {
           this.zones = zones;
           this.lastFetch = new Date();
+          this.lastError = null;
           this._writeCache();
           console.log(`🅿️ Loaded ${zones.length} parking zones (${data.parks.length} raw)`);
           this._announce();
@@ -103,6 +106,7 @@ class ParkingAPI {
         throw new Error('No valid parking data from any source');
       }
     } catch (error) {
+      this.lastError = error;
       console.warn('Parking API error:', error.message);
       // Stale cache still beats an empty map.
       const stale = this._readCache({ ignoreTtl: true });
