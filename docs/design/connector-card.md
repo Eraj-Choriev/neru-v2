@@ -1,4 +1,6 @@
-# Photo-led connector card
+# Photo-led connector card (archived concept)
+
+Status: The original NŪR card design has been restored at the user’s request. This image and prompt are retained as unused design assets.
 
 Reference: user-provided station card screenshot, September 23, 2026.
 

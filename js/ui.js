@@ -541,13 +541,194 @@ class UI {
   }
 
   renderCard(station, index) {
-    // Map popups and search results use one design and the same live data.
+    const isBest = index === 0;
+    const rank = String(index + 1).padStart(2, '0');
+
+    // Status badge text
+    let strip = { cls: 'busy', label: i18n.t('busy') };
+    if (station.statusTag === 'freeNow') strip = { cls: 'free', label: i18n.t('freeNow') };
+    else if (station.statusTag === 'soonFree') strip = { cls: 'soon', label: i18n.t('soonFree') };
+
+    // Distance + ETA
+    const dist = station.distanceFormatted || { value: '—', unit: 'meters' };
+    const eta = walkingEta(station.distance);
+
+    // Schedule
+    const sch = parseSchedule(station.schedule);
+    let scheduleHtml = '';
+    if (sch) {
+      if (sch.is24) {
+        scheduleHtml = `<span class="open-now">${esc(i18n.t('open247') || '24/7')}</span>`;
+      } else {
+        scheduleHtml = `<span class="open-now">${sch.open}–${sch.close}</span>`;
+      }
+    } else if (station.schedule) {
+      scheduleHtml = `<span class="open-now">${esc(station.schedule)}</span>`;
+    }
+
+    // Connector dots & rows
+    const stripDots = station.connectors.map((c) => {
+      let cls = 'busy';
+      if (c.isAvailable) cls = 'free';
+      else if (c.chargeLevel >= 80) cls = 'high';
+      return `<span class="strip-dot ${cls}" title="#${esc(c.id)}"></span>`;
+    }).join('');
+
+    // Calc minimum ETA among charging connectors for the wait banner
+    let waitBannerHtml = '';
+    if (!station.hasAvailable) {
+      let minMinutes = Infinity;
+      let minEta = null;
+      for (const c of station.connectors) {
+        if ((c.isCharging || c.chargeLevel > 0) && station.capacityWatts > 0) {
+          const eta = chargingEta(c.chargeLevel, station.capacityWatts);
+          if (eta) {
+            const mins = eta.type === 'minSuffix'
+              ? (eta.val === '<1' ? 0 : parseInt(eta.val))
+              : parseFloat(eta.val) * 60;
+            if (mins < minMinutes) { minMinutes = mins; minEta = eta; }
+          }
+        }
+      }
+      if (minEta) {
+        const etaStr = minEta.val === '<1'
+          ? esc(i18n.t('etaSoon'))
+          : `${esc(i18n.t('freeIn'))} ~${esc(minEta.val)} ${esc(i18n.t(minEta.type))}`;
+        waitBannerHtml = `
+          <div class="wait-banner">
+            <svg class="wait-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke-width="1.5" fill="none"/>
+              <path d="M12 7v5l3 3" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </svg>
+            <span class="wait-text">${etaStr}</span>
+          </div>`;
+      }
+    }
+
+    // Same connector language as the map card, so a station reads identically
+    // wherever the user meets it.
+    const connRows = station.connectors.map((c) => {
+      if (c.isAvailable) {
+        return `
+          <div class="conn conn--free">
+            <span class="conn-id">#${esc(c.id)}</span>
+            <span class="conn-state">
+              <span class="conn-pip" aria-hidden="true"></span>
+              ${esc(i18n.t('available'))}
+            </span>
+          </div>`;
+      }
+
+      const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
+      if (c.isCharging || c.isStarting || level > 0) {
+        const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
+        const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
+        const freeIn = eta
+          ? (eta.val === '<1'
+              ? esc(i18n.t('etaSoonShort'))
+              : `~${esc(eta.val)} ${esc(i18n.t(eta.type))}`)
+          : '';
+        return `
+          <div class="conn conn--charging">
+            <span class="conn-id">#${esc(c.id)}</span>
+            <div class="conn-body">
+              <div class="conn-line">
+                <span class="conn-state conn-state--charging">${esc(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
+                ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
+              </div>
+              <div class="conn-gauge">
+                <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
+                  <span class="conn-meter-fill ${tone}" style="width:${level}%"></span>
+                </div>
+                <span class="conn-pct ${tone}">${level}<i>%</i></span>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="conn conn--busy">
+          <span class="conn-id">#${esc(c.id)}</span>
+          <span class="conn-state conn-state--busy">${esc(i18n.t('occupied'))}</span>
+        </div>`;
+    }).join('');
+
+    // Power chip
+    const isFast = station.capacityKw >= 100;
+    const powerChip = station.capacity
+      ? `<span class="power-chip ${isFast ? 'is-fast' : ''}">
+           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+           ${esc(String(station.capacityKw))} ${esc(i18n.t('kwUnit'))}
+         </span>`
+      : '';
+
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
+
+    // Sub line: address · schedule
+    const subParts = [];
+    // Many stations report the address as their name; printing it twice adds
+    // nothing but noise.
+    if (station.address && station.address.trim() !== station.name.trim()) {
+      subParts.push(`<span>${esc(station.address)}</span>`);
+    }
+    if (scheduleHtml) {
+      if (subParts.length) subParts.push('<span class="dot-sep">·</span>');
+      subParts.push(scheduleHtml);
+    }
+
     return `
-      <article class="card photo-result" data-station-id="${esc(station.id)}" style="--i: ${index}">
-        ${stationMap.buildPopup(station)}
-        <button class="btn btn-ghost station-show-map" data-action="show-map" data-station-id="${esc(station.id)}">
-          ${esc(i18n.t('navigateTo'))}
-        </button>
+      <article class="card ${isBest ? 'card-best' : ''}" data-station-id="${esc(station.id)}" style="--i: ${index}">
+        <div class="card-top">
+          <div class="card-rank">
+            <span class="rank-num">${rank}</span>
+            <span class="rank-label">${isBest ? esc(i18n.t('bestChoice')) : esc(i18n.t('recommended'))}</span>
+          </div>
+          <div class="card-top-right">
+            <img src="logo.png" alt="NŪR" class="card-logo" aria-hidden="true">
+            ${powerChip}
+          </div>
+        </div>
+
+        <h3 class="card-title">${esc(station.name)}</h3>
+        <p class="card-sub">${subParts.join('')}</p>
+
+        <div class="card-data">
+          <div class="data-cell">
+            <span class="data-label">${esc(i18n.t('distance'))}</span>
+            <span class="data-val">${esc(dist.value)}<span class="unit">${esc(i18n.t(dist.unit))}</span></span>
+          </div>
+          <div class="data-cell">
+            <span class="data-label">${esc(i18n.t('walking') || 'пешки')}</span>
+            <span class="data-val">${eta ? `${esc(eta.val)}<span class="unit">${esc(i18n.t(eta.type))}</span>` : '—'}</span>
+          </div>
+          <div class="data-cell">
+            <span class="data-label">${esc(i18n.t('tariff'))}</span>
+            <span class="data-val">${esc(station.tariff)}<span class="unit">${esc(i18n.t('somoniPerKwh'))}</span></span>
+          </div>
+        </div>
+
+        <div class="card-strip">
+          <div class="strip-dots">${stripDots}</div>
+          <span class="strip-text">${station.freeConnectors}/${station.totalConnectors} · ${esc(strip.label)}</span>
+        </div>
+
+        ${waitBannerHtml}
+        ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
+
+        <div class="conn-list">${connRows}</div>
+
+        <div class="card-actions card-actions-3">
+          <button class="btn btn-ghost" data-action="show-map" data-station-id="${esc(station.id)}">
+            ${esc(i18n.t('navigateTo'))}
+          </button>
+          <button class="btn btn-primary" data-action="route" data-station-id="${esc(station.id)}">
+            ${esc(i18n.t('routeLabel'))}
+            <span class="btn-arrow" aria-hidden="true">→</span>
+          </button>
+          <a class="btn btn-ghost btn-icon-only" href="${esc(directionsUrl)}" target="_blank" rel="noopener" title="${esc(i18n.t('openGoogleMaps'))}">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
       </article>
     `;
   }

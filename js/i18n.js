@@ -4,8 +4,6 @@
 
 const translations = {
   tj: {
-    stationIllustration: 'Тасвири намунавӣ',
-    connectorDetails: 'Пайвасткунакҳо ва тафсилот',
     dataUnavailable: 'Маълумоти истгоҳҳо ё таваққуфгоҳҳо нав намешавад. Маълумоти пешина метавонад кӯҳна бошад.',
     dataRetry: 'Такрор',
     dataRetrying: 'Маълумот бор мешавад…',
@@ -316,8 +314,6 @@ const translations = {
     },
   },
   ru: {
-    stationIllustration: 'Иллюстрация',
-    connectorDetails: 'Коннекторы и подробности',
     dataUnavailable: 'Данные станций или парковок не обновляются. Ранее загруженные данные могут быть устаревшими.',
     dataRetry: 'Повторить',
     dataRetrying: 'Загружаем данные…',
@@ -628,8 +624,6 @@ const translations = {
     },
   },
   en: {
-    stationIllustration: 'Illustration',
-    connectorDetails: 'Connectors and details',
     dataUnavailable: 'Station or parking updates are unavailable. Previously loaded data may be outdated.',
     dataRetry: 'Retry',
     dataRetrying: 'Loading data…',
