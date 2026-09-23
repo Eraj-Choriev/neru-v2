@@ -6972,3 +6972,60 @@ body[data-mode="parking"] {
     background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none;
   }
 }
+
+/* Photo-led charging cards: one image above the existing material surface. */
+.photo-station, .card.photo-result { padding: 0; border-radius: 24px; overflow: hidden; }
+.station-photo { position: relative; height: 160px; background: var(--ink-850); }
+.station-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 54%; }
+.station-photo-caption { position: absolute; left: 16px; top: 12px; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; line-height: 1.4; }
+.station-photo-body { position: relative; margin-top: -24px; padding: 24px 16px 16px; border-radius: 32px 32px 0 0; background: var(--surface-panel); }
+.photo-station .popup-head { padding-right: 0; margin-bottom: 16px; }
+.photo-station .popup-status-row { margin-bottom: 16px; }
+.photo-station .popup-dot-label { color: var(--text-1); font-size: 13px; font-weight: 650; }
+.photo-station .popup-title { font-size: 22px; line-height: 1.2; letter-spacing: -.5px; margin: 0; overflow-wrap: anywhere; }
+.photo-station .station-connector-label { margin: 8px 0 0; color: var(--text-2); font-size: 15px; line-height: 1.4; }
+.photo-station .chip-row { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 8px; margin: 0 0 16px; }
+.photo-station .chip { padding: 16px 8px; min-width: 0; border-radius: 16px; justify-content: center; }
+.photo-station .chip-icon svg { width: 20px; height: 20px; }
+.photo-station .chip-value { font-size: 17px; font-weight: 700; white-space: normal; }
+.photo-station .chip-value .unit { font-size: 11px; font-weight: 500; }
+.photo-station .chip--dist { grid-column: 1 / -1; padding: 8px; }
+.photo-station .popup-schedule-row { flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.photo-station .popup-schedule-time { font-size: 13px; }
+.station-details { margin: 8px 0; }
+.station-details summary { cursor: pointer; padding: 12px 0; min-height: 44px; box-sizing: border-box; font-size: 13px; color: var(--text-2); border-radius: 8px; }
+.station-details summary:hover { color: var(--text-1); }
+.station-details summary:active { background: var(--tint-volt); }
+.station-details summary:focus-visible { outline: 2px solid var(--volt-500); outline-offset: 2px; }
+.photo-station .popup-actions { gap: 8px; margin-top: 8px; }
+.photo-station .popup-actions .btn { min-height: 48px; border-radius: 16px; font-size: 15px; }
+.photo-station .popup-actions .btn-primary, .photo-result .btn-primary { background: #087443; color: #fff; }
+.photo-station .popup-actions .btn-primary:hover, .photo-result .btn-primary:hover { background: #096037; color: #fff; }
+.photo-station .popup-actions .btn-primary:active, .photo-result .btn-primary:active { background: #054d2c; }
+.photo-station .popup-actions .btn-icon-only { min-width: 48px; }
+.neru-popup:has(.photo-station) .leaflet-popup-content { width: min(340px, calc(100vw - 48px)) !important; }
+.neru-popup:has(.photo-station) .leaflet-popup-close-button { width: 44px; height: 44px; border-radius: 16px; background: var(--mat-thick); backdrop-filter: var(--mat-blur-thick); -webkit-backdrop-filter: var(--mat-blur-thick); box-shadow: var(--edge-rim); }
+.neru-popup:has(.photo-station) .leaflet-popup-close-button:focus-visible { outline: 2px solid var(--volt-500); outline-offset: 2px; }
+.neru-popup:has(.photo-station) .leaflet-popup-close-button:active { transform: scale(.96); }
+.photo-station { max-height: min(680px, calc(100dvh - 152px)); overflow-y: auto; }
+.photo-result .station-photo { height: 176px; }
+.photo-result .card-title { font-size: 22px; line-height: 1.25; }
+.photo-result .card-actions .btn { min-height: 44px; }
+:root[data-theme="light"] .station-photo-body { background: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .photo-station, .photo-result { animation: none; }
+}
+.photo-station .popup-dot-label,
+.photo-station .chip-value,
+.photo-station .chip-value .unit,
+.photo-station .popup-schedule-time {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.photo-station .popup-dot.status-partial { background: var(--volt-500); box-shadow: none; }
+.photo-station .popup-dot-label { color: var(--text-1); }
+
+/* Search and map surfaces consume the same charging card renderer. */
+.photo-result .photo-station { max-height: none; overflow: visible; }
+.photo-result .station-show-map { display: flex; width: calc(100% - 32px); margin: 0 16px 16px; min-height: 44px; }

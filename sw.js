@@ -8,27 +8,28 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v34';
+const CACHE = 'nur-shell-v39';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=34',
-  '/js/i18n.js?v=34',
-  '/js/api.js?v=34',
-  '/js/parking.js?v=34',
-  '/js/geolocation.js?v=34',
-  '/js/finder.js?v=34',
-  '/js/map.js?v=34',
-  '/js/ui.js?v=34',
-  '/js/notifications.js?v=34',
-  '/js/router.js?v=34',
-  '/js/analytics.js?v=34',
-  '/js/parking-session.js?v=34',
-  '/js/pwa.js?v=34',
-  '/js/vendor/liquid-glass.js?v=34',
-  '/js/liquid-glass.js?v=34',
-  '/js/app.js?v=34',
+  '/css/style.css?v=39',
+  '/js/i18n.js?v=39',
+  '/js/api.js?v=39',
+  '/js/parking.js?v=39',
+  '/js/geolocation.js?v=39',
+  '/js/finder.js?v=39',
+  '/js/map.js?v=39',
+  '/js/ui.js?v=39',
+  '/js/notifications.js?v=39',
+  '/js/router.js?v=39',
+  '/js/analytics.js?v=39',
+  '/js/parking-session.js?v=39',
+  '/js/pwa.js?v=39',
+  '/js/vendor/liquid-glass.js?v=39',
+  '/js/liquid-glass.js?v=39',
+  '/js/app.js?v=39',
   '/logo.png',
+  '/assets/images/charging-station-dusk.png',
   '/manifest.webmanifest',
 ];
 

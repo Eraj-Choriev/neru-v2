@@ -209,8 +209,8 @@ class StationMap {
       // Popup content
       const popupHtml = this.buildPopup(station);
       marker.bindPopup(popupHtml, {
-        maxWidth: 320,
-        minWidth: 280,
+        maxWidth: 340,
+        minWidth: 272,
         className: 'neru-popup',
         autoPan: true,
         autoPanPaddingTopLeft: L.point(16, 84),
@@ -626,17 +626,20 @@ class StationMap {
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
     return `
-      <div class="popup-content">
+      <div class="popup-content photo-station">
+        <div class="station-photo"><img src="assets/images/charging-station-dusk.png" alt="" width="1536" height="1024"><span class="station-photo-caption">${escHtml(i18n.t('stationIllustration'))}</span></div>
+        <div class="station-photo-body">
         <div class="popup-head">
           <div class="popup-status-row">
             <span class="popup-dot ${dotCls}" aria-hidden="true"></span>
-            <span class="popup-dot-label">${dotLabel}</span>
+            <span class="popup-dot-label">${free}/${total} · ${escHtml(i18n.t(free > 0 ? 'available' : 'busy'))}</span>
           </div>
           <h3 class="popup-title">${escHtml(station.name)}</h3>
+          <p class="station-connector-label">${escHtml(i18n.t('connector'))} ${station.connectors.map(c => '#' + escHtml(c.id)).join(', ')}</p>
           ${showAddress ? `<p class="popup-address">${escHtml(station.address)}</p>` : ''}
         </div>
 
-        <div class="popup-divider"></div>
+
 
         <div class="chip-row">
           <div class="chip chip--power">
@@ -652,18 +655,22 @@ class StationMap {
 
         ${scheduleRow}
         ${waitBannerHtml}
-        ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
-        <div class="conn-list">${connRows}</div>
+        <details class="station-details">
+          <summary>${escHtml(i18n.t('connectorDetails'))}</summary>
+          ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
+          <div class="conn-list">${connRows}</div>
+        </details>
 
         <div class="popup-actions">
-          <button class="btn btn-primary" data-action="route" data-station-id="${station.id}">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 12 5 10 9 14 15 8 19 12"/><path d="M3 18h18"/></svg>
+          <button class="btn btn-primary" data-action="route" data-station-id="${escHtml(station.id)}">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4 18-7Z"/></svg>
             ${escHtml(i18n.t('routeLabel'))}
-            <span class="btn-arrow" aria-hidden="true">→</span>
+
           </button>
           <a href="${directionsUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-icon-only" title="${escHtml(i18n.t('openGoogleMaps'))}">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
+        </div>
         </div>
       </div>
     `;
