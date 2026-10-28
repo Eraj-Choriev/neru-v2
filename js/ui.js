@@ -768,6 +768,13 @@ class UI {
     });
 
     document.body.dataset.mode = mode;
+    const modeSwitch = document.getElementById('map-mode-seg');
+    modeSwitch?.querySelectorAll('[data-map-mode]').forEach(button => {
+      const selected = button.dataset.mapMode === mode;
+      button.classList.toggle('is-active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    this.moveIndicator(modeSwitch);
     document.getElementById('filter-seg')?.classList.toggle('is-inert', mode === 'parking');
     document.getElementById('filter-seg')?.setAttribute('aria-disabled', String(mode === 'parking'));
     this.syncTabToMode();

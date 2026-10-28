@@ -8,27 +8,31 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v40';
+const CACHE = 'nur-shell-v42';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=40',
-  '/js/i18n.js?v=40',
-  '/js/api.js?v=40',
-  '/js/parking.js?v=40',
-  '/js/geolocation.js?v=40',
-  '/js/finder.js?v=40',
-  '/js/map.js?v=40',
-  '/js/ui.js?v=40',
-  '/js/notifications.js?v=40',
-  '/js/router.js?v=40',
-  '/js/analytics.js?v=40',
-  '/js/parking-session.js?v=40',
-  '/js/pwa.js?v=40',
-  '/js/vendor/liquid-glass.js?v=40',
-  '/js/liquid-glass.js?v=40',
-  '/js/app.js?v=40',
+  '/css/style.css?v=42',
+  '/js/i18n.js?v=42',
+  '/js/api.js?v=42',
+  '/js/parking.js?v=42',
+  '/js/geolocation.js?v=42',
+  '/js/finder.js?v=42',
+  '/js/map-config.js?v=42',
+  '/js/map.js?v=42',
+  '/js/ui.js?v=42',
+  '/js/notifications.js?v=42',
+  '/js/router.js?v=42',
+  '/js/analytics.js?v=42',
+  '/js/parking-session.js?v=42',
+  '/js/pwa.js?v=42',
+  '/js/vendor/liquid-glass.js?v=42',
+  '/js/liquid-glass.js?v=42',
+  '/js/app.js?v=42',
   '/logo.png',
+  '/assets/icons/icon-192.png',
+  '/assets/icons/icon-512.png',
+  '/assets/icons/apple-touch-icon.png',
   '/manifest.webmanifest',
 ];
 
@@ -71,6 +75,9 @@ self.addEventListener('fetch', (event) => {
 
   // Don't cache API / analytics / tiles — always network
   const networkOnly =
+    url.hostname.endsWith('.2gis.com') ||
+    url.hostname.endsWith('.2gis.ru') ||
+    url.hostname.endsWith('openfreemap.org') ||
     url.hostname.includes('parking.dc.tj') ||
     url.hostname.includes('corsproxy.io') ||
     url.hostname.includes('allorigins.win') ||

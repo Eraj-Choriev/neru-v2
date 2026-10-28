@@ -12,14 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-  <link rel="stylesheet" href="css/style.css?v=40">
+  <link rel="stylesheet" href="css/style.css?v=42">
 
   <!-- Favicon + PWA -->
   <link rel="icon" href="logo.png">
-  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -61,12 +58,11 @@
 
         <span class="isle-rule" aria-hidden="true"></span>
 
-        <button class="an-trigger pk-trigger" id="pk-toggle" aria-label="Parking zones" aria-pressed="false" data-i18n-title="pkShowZones" title="Парковочные зоны">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="5"/>
-            <path d="M9.2 17V7.6h3.1a2.9 2.9 0 0 1 0 5.8H9.2"/>
-          </svg>
-        </button>
+        <div class="segmented desktop-map-mode" id="map-mode-seg" role="group" aria-label="Map mode">
+          <span class="seg-indicator" aria-hidden="true"><span class="lens-body"></span></span>
+          <button type="button" class="seg-btn is-active" data-map-mode="ev" aria-pressed="true" data-i18n="tabStations">Станции</button>
+          <button type="button" class="seg-btn" data-map-mode="parking" aria-pressed="false" data-i18n="tabParking">Парковки</button>
+        </div>
 
         <button class="an-trigger" id="an-trigger" aria-label="Analytics" data-i18n-title="analytics" title="Аналитика">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -375,26 +371,25 @@
 
   </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
-
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=40"></script>
-  <script src="js/api.js?v=40"></script>
-  <script src="js/parking.js?v=40"></script>
-  <script src="js/geolocation.js?v=40"></script>
-  <script src="js/finder.js?v=40"></script>
-  <script src="js/map.js?v=40"></script>
-  <script src="js/ui.js?v=40"></script>
-  <script src="js/notifications.js?v=40"></script>
-  <script src="js/router.js?v=40"></script>
-  <script src="js/analytics.js?v=40"></script>
-  <script src="js/parking-session.js?v=40"></script>
-  <script src="js/pwa.js?v=40"></script>
-  <script src="js/vendor/liquid-glass.js?v=40"></script>
-  <script src="js/liquid-glass.js?v=40"></script>
-  <script src="js/app.js?v=40"></script>
+  <script src="js/i18n.js?v=42"></script>
+  <script src="js/api.js?v=42"></script>
+  <script src="js/parking.js?v=42"></script>
+  <script src="js/geolocation.js?v=42"></script>
+  <script src="js/finder.js?v=42"></script>
+  <script src="https://mapgl.2gis.com/api/js/v1"></script>
+  <script src="https://unpkg.com/@2gis/mapgl-clusterer@2.5.2/dist/clustering.js"></script>
+  <script src="js/map-config.js?v=42"></script>
+  <script src="js/map.js?v=42"></script>
+  <script src="js/ui.js?v=42"></script>
+  <script src="js/notifications.js?v=42"></script>
+  <script src="js/router.js?v=42"></script>
+  <script src="js/analytics.js?v=42"></script>
+  <script src="js/parking-session.js?v=42"></script>
+  <script src="js/pwa.js?v=42"></script>
+  <script src="js/vendor/liquid-glass.js?v=42"></script>
+  <script src="js/liquid-glass.js?v=42"></script>
+  <script src="js/app.js?v=42"></script>
   <script>
     if (location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
       const beacon = document.createElement('script');

@@ -5,8 +5,27 @@
 (function () {
   // Register service worker (HTTPS or localhost only)
   if ('serviceWorker' in navigator) {
+    // Refresh an already controlled page once when a new shell takes over.
+    let controlled = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (controlled && !reloading) {
+        reloading = true;
+        location.reload();
+      }
+      controlled = true;
+    });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => {
+        let lastCheck = Date.now();
+        registration.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible' && Date.now() - lastCheck > 60000) {
+            lastCheck = Date.now();
+            registration.update().catch(() => {});
+          }
+        });
+      }).catch(() => {});
     });
   }
 

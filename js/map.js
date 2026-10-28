@@ -1,377 +1,263 @@
-// ============================================
-// NerU v2 — Map Module (Leaflet.js)
-// ============================================
-
+// NŪR — 2GIS MapGL. Coordinates at the SDK boundary are [longitude, latitude].
 class StationMap {
   constructor() {
     this.map = null;
-    this.markers = [];
-    this.markerLayer = null;
-    this.userMarker = null;
-    this.userAccuracyCircle = null;
-    this.routeLine = null;
-    this.highlightCircle = null;
-    this.tileLayer = null;
-    this._followUser = false; // auto-pan map to follow user when true
-
-    // Paid parking zones — a separate, independently toggled layer
-    this.parkingLineLayer = null;   // the kerbside strips
-    this.parkingMarkerLayer = null; // the "P" pins (own cluster group)
-    this.parkingRenderer = null;
-    this.parkingMarkers = [];
+    this.stations = new Map();
+    this.zones = new Map();
     this.parkingVisible = false;
-  }
-
-  _buildTileLayer(theme) {
-    // Standard OSM tiles need no token. Respect provider attribution and
-    // browser HTTP caching; do not prefetch or offer offline tile downloads.
-    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 20,
-      maxNativeZoom: 19
-    });
-  }
-
-  setTheme(theme) {
-    if (!this.map) return;
-    const next = theme === 'light' ? 'light' : 'dark';
-    if (this.tileLayer) this.map.removeLayer(this.tileLayer);
-    this.tileLayer = this._buildTileLayer(next);
-    this.tileLayer.addTo(this.map);
-    this.refreshParkingTheme();
+    this.stationsVisible = true;
+    this.parkingLines = [];
+    this._icons = new Map();
+    this._followUser = false;
   }
 
   init(containerId = 'map') {
-    const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    this.tileLayer = this._buildTileLayer(currentTheme);
-
-    this.map = L.map(containerId, {
-      center: [38.5598, 68.7738],
-      zoom: 13,
-      layers: [this.tileLayer],
-      zoomControl: false,
+    this.container = document.getElementById(containerId);
+    this.map = new mapgl.Map(containerId, {
+      key: window.NUR_MAP_CONFIG.key,
+      center: window.NUR_MAP_CONFIG.center,
+      zoom: 13, minZoom: 8, maxZoom: 20, pitch: 0,
+      disablePitchByUserInteraction: true,
+      disableRotationByUserInteraction: true,
+      zoomControl: 'bottomRight',
+      copyright: 'topRight',
+      controlsLayoutPadding: { top: 96, right: 16, bottom: 88, left: 16 },
     });
-
-    // Zoom control in bottom-right
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-
-    this.markerLayer = L.markerClusterGroup({
-      showCoverageOnHover: false,
-      spiderfyOnMaxZoom: true,
-      maxClusterRadius: 40, // Groups markers if they are closer than 40px
-      spiderLegPolylineOptions: { weight: 2, color: '#6b7280', opacity: 0.5 },
-      iconCreateFunction: function(cluster) {
-        const count = cluster.getChildCount();
-        
-        // Find if any marker inside has free connectors or yellow status
-        const markers = cluster.getAllChildMarkers();
-        let clusterClass = 'cluster-red';
-        
-        if (markers.some(m => m.options.icon.options.className.includes('marker-green'))) {
-          clusterClass = 'cluster-green';
-        } else if (markers.some(m => m.options.icon.options.className.includes('marker-yellow'))) {
-          clusterClass = 'cluster-yellow';
-        }
-
-        return L.divIcon({
-          html: `<div class="cluster-inner"><span>${count}</span><div class="cluster-ring"></div></div>`,
-          className: `custom-cluster ${clusterClass}`,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20]
-        });
-      }
-    });
-
-    this.map.addLayer(this.markerLayer);
-
-    // ── Parking zones ──────────────────────────────────────────────────────
-    // 223 strips is enough polylines that SVG starts to stutter on a phone
-    // while panning, so they get their own canvas renderer.
-    this.parkingRenderer = L.canvas({ padding: 0.4 });
-    this.parkingLineLayer = L.layerGroup();
-
-    // Parking pins need their own cluster group: the station clusters are
-    // coloured by free-connector count (see iconCreateFunction above), which
-    // means nothing for a parking bay.
-    this.parkingMarkerLayer = L.markerClusterGroup({
-      showCoverageOnHover: false,
-      spiderfyOnMaxZoom: true,
-      maxClusterRadius: 46,
-      spiderLegPolylineOptions: { weight: 2, color: '#6b7280', opacity: 0.5 },
-      // Carry the "P" into the cluster too — a bare cyan number next to the
-      // station clusters is a colour riddle at a glance.
-      iconCreateFunction: (cluster) => L.divIcon({
-        html: `<div class="cluster-inner"><span><i class="cluster-p">P</i>${cluster.getChildCount()}</span><div class="cluster-ring"></div></div>`,
-        className: 'custom-cluster cluster-parking',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-      }),
-    });
-
-    // User-initiated drag disables follow-mode (like Google Maps)
+    this.stationCluster = this._cluster(false);
+    this.parkingCluster = this._cluster(true);
     this.map.on('dragstart', () => {
-      if (this._followUser) {
-        this._followUser = false;
-        document.getElementById('loc-btn')?.classList.remove('is-following');
-      }
+      this._followUser = false;
+      document.getElementById('loc-btn')?.classList.remove('is-following');
     });
-
-    // An open station card is the focused task: mark its marker so it is
-    // obvious which station the card belongs to, and get the floating
-    // install button out of the way of the card's close control.
-    this.map.on('popupopen', (e) => {
-      document.body.classList.add('has-popup');
-      const src = e.popup?._source;
-      if (src?.getElement) src.getElement()?.classList.add('marker-focused');
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') this.closePopup();
     });
-
-    this.map.on('popupclose', (e) => {
-      document.body.classList.remove('has-popup');
-      const src = e.popup?._source;
-      if (src?.getElement) src.getElement()?.classList.remove('marker-focused');
-      window.dispatchEvent(new CustomEvent('popupClosed'));
-    });
-
-    // Delegate popup button clicks (stations and parking zones alike)
-    this.map.getContainer().addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const action = btn.getAttribute('data-action');
-
-      if (action === 'route') {
-        const id = btn.getAttribute('data-station-id');
-        if (id) window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
-      } else if (action === 'zone-rules') {
-        window.dispatchEvent(new CustomEvent('parkingRulesRequest'));
-      }
-    });
-
     return this.map;
   }
 
-  createStationIcon(station) {
-    let colorClass = 'marker-red';
-    let pulseClass = '';
-    
-    const allFree = station.freeConnectors > 0 && station.freeConnectors === station.totalConnectors;
-    const partialFree = station.freeConnectors > 0 && station.freeConnectors < station.totalConnectors;
-
-    if (allFree) {
-      colorClass = 'marker-green';
-      pulseClass = 'marker-pulse';
-    } else if (partialFree) {
-      colorClass = 'marker-yellow';
-    } else if (station.maxChargeLevel >= 80) {
-      colorClass = 'marker-yellow';
+  _icon(color, glyph = 'bolt') {
+    const key = color + glyph;
+    if (!this._icons.has(key)) {
+      const shape = glyph === 'bolt'
+        ? '<path d="M23 9L13 23h8l-1 10 11-15h-9z" fill="white"/>'
+        : glyph === 'P' ? '<path d="M17 31V12h8a6 6 0 010 12h-4v7zm4-11h4a2 2 0 000-4h-4z" fill="white"/>' : '';
+      this._icons.set(key, 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="${color}" stroke="white" stroke-width="3"/>${shape}</svg>`));
     }
-
-    return L.divIcon({
-      className: `station-marker ${colorClass} ${pulseClass}`,
-      html: `<div class="marker-inner">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-      </div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -36],
-    });
+    return this._icons.get(key);
   }
 
-  createBestIcon() {
-    return L.divIcon({
-      className: 'station-marker marker-best marker-pulse',
-      html: `<div class="marker-inner marker-inner-best">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-      </div>`,
-      iconSize: [44, 44],
-      iconAnchor: [22, 44],
-      popupAnchor: [0, -48],
+  _color(s) {
+    return s.freeConnectors === s.totalConnectors && s.freeConnectors > 0
+      ? '#15834b' : s.freeConnectors > 0 || s.maxChargeLevel >= 80 ? '#ad750c' : '#c44343';
+  }
+
+  _cluster(parking) {
+    const cluster = new mapgl.Clusterer(this.map, {
+      radius: 48,
+      clusterStyle: (count, target) => ({
+        type: 'webgl', size: [44, 44],
+        icon: this._icon(parking ? '#087eac' : target.data.some(m => m.userData.free) ? '#15834b' : '#c44343', 'cluster'),
+        labelText: parking ? `P ${count}` : String(count), labelColor: '#ffffff', labelFontSize: 14,
+      }),
     });
+    cluster.on('click', e => {
+      if (e.target.type === 'marker') {
+        parking ? this.openZonePopup(e.target.data.userData.id) : this.openStationPopup(e.target.data.userData.id);
+      } else {
+        const data = e.target.data;
+        // Co-located stations remain selectable even when zooming cannot separate them.
+        if (this.map.getZoom() >= 18 || data.every(m => m.coordinates.every((v, i) => Math.abs(v - data[0].coordinates[i]) < .00002))) {
+          this._openGroup(data, parking);
+        } else {
+          const zoom = Math.min(20, cluster.getClusterExpansionZoom(e.target.id) + .2);
+          this.map.setCenter(e.lngLat, this._animation());
+          this.map.setZoom(zoom, this._animation());
+        }
+      }
+    });
+    return cluster;
+  }
+
+  _animation() {
+    return { duration: 350, animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches };
   }
 
   renderStations(stations) {
-    // Wiping the layer destroys any open card. Clear the popup flag here too,
-    // so the install button can never stay hidden after an auto-refresh.
-    this.markerLayer.clearLayers();
-    document.body.classList.remove('has-popup');
-    this.markers = [];
-
-    stations.forEach(station => {
-      if (!station.lat || !station.lng) return;
-
-      const icon = this.createStationIcon(station);
-      const marker = L.marker([station.lat, station.lng], { icon })
-        .addTo(this.markerLayer);
-
-      // Popup content
-      const popupHtml = this.buildPopup(station);
-      marker.bindPopup(popupHtml, {
-        maxWidth: 320,
-        minWidth: 280,
-        className: 'neru-popup',
-        autoPan: true,
-        autoPanPaddingTopLeft: L.point(16, 84),
-        autoPanPaddingBottomRight: L.point(16, 16),
-      });
-
-      marker.stationId = station.id;
-      this.markers.push(marker);
-    });
+    this.stations = new Map(stations.map(s => [String(s.id), s]));
+    this._syncStations();
+    if (this.popupType === 'station') {
+      const station = this.stations.get(this.popupId);
+      station ? this._setCard(this.buildPopup(station)) : this.closePopup();
+    }
   }
 
-  // ============================================
-  // Paid parking zones
-  // ============================================
-
-  /** Parking accent, per theme. Canvas strokes take a literal colour, not a CSS var. */
-  _parkingColor() {
-    return document.documentElement.getAttribute('data-theme') === 'light'
-      ? '#1a9cd0'
-      : '#4ad0ff';
+  _syncStations() {
+    const points = this.stationsVisible ? [...this.stations.values()].map(s => ({
+      coordinates: [s.lng, s.lat], icon: this._icon(this._color(s)), size: [36, 36],
+      userData: { id: String(s.id), free: s.freeConnectors > 0 },
+    })) : [];
+    const signature = JSON.stringify(points);
+    if (signature !== this._stationSignature) {
+      this.stationCluster.load(points);
+      this._stationSignature = signature;
+    }
   }
 
-  createParkingIcon() {
-    return L.divIcon({
-      className: 'parking-marker',
-      html: `<div class="marker-inner"><span class="parking-glyph">P</span></div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -34],
-    });
-  }
-
-  /**
-   * Each zone is a kerbside strip, so it is drawn as the thick rounded line
-   * the feed actually describes — not as a point. The "P" pin sits at its
-   * midpoint and carries the popup.
-   */
   renderParkingZones(zones) {
-    if (!this.parkingLineLayer || !this.parkingMarkerLayer) return;
+    this.zones = new Map(zones.map(z => [String(z.id), z]));
+    this._syncParking();
+  }
 
-    this.parkingLineLayer.clearLayers();
-    this.parkingMarkerLayer.clearLayers();
-    this.parkingMarkers = [];
-
-    const color = this._parkingColor();
-
-    zones.forEach((zone) => {
-      const line = L.polyline([zone.a, zone.b], {
-        renderer: this.parkingRenderer,
-        color,
-        weight: 9,
-        opacity: 0.5,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: true,
+  _syncParking() {
+    const zones = this.parkingVisible ? [...this.zones.values()] : [];
+    const signature = JSON.stringify(zones.map(z => [z.id, z.lat, z.lng, z.a, z.b]));
+    if (signature === this._parkingSignature) return;
+    this._parkingSignature = signature;
+    this.parkingLines.forEach(line => line.destroy());
+    this.parkingLines = zones.map(z => {
+      const line = new mapgl.Polyline(this.map, {
+        coordinates: [z.a, z.b].map(([lat, lng]) => [lng, lat]),
+        color: '#1a9cd080', width: 9,
       });
-      line.on('click', () => this.openZonePopup(zone.id));
-      line.addTo(this.parkingLineLayer);
-
-      const marker = L.marker([zone.lat, zone.lng], { icon: this.createParkingIcon() })
-        .bindPopup(this._buildZonePopup(zone), {
-          maxWidth: 320,
-          minWidth: 280,
-          className: 'neru-popup neru-popup--parking',
-          autoPan: true,
-          autoPanPaddingTopLeft: L.point(16, 84),
-          autoPanPaddingBottomRight: L.point(16, 16),
-        });
-
-      marker.zoneId = zone.id;
-      marker.addTo(this.parkingMarkerLayer);
-      this.parkingMarkers.push(marker);
+      line.on('click', () => this.openZonePopup(z.id));
+      return line;
     });
+    this.parkingCluster.load(zones.map(z => ({
+      coordinates: [z.lng, z.lat], icon: this._icon('#087eac', 'P'), size: [34, 34],
+      userData: { id: String(z.id) },
+    })));
   }
 
-  /**
-   * Parking and chargers are two different errands, and showing both at once
-   * turns the centre of the city into a wall of pins. Turning one layer on
-   * takes the other off.
-   */
   setParkingVisible(on) {
-    if (!this.map || !this.parkingLineLayer) return;
     this.parkingVisible = !!on;
-    if (on) {
-      this.parkingLineLayer.addTo(this.map);
-      this.parkingMarkerLayer.addTo(this.map);
-    } else {
-      this.map.removeLayer(this.parkingLineLayer);
-      this.map.removeLayer(this.parkingMarkerLayer);
-    }
     this.setStationsVisible(!on);
+    this._syncParking();
+    this.closePopup();
   }
-
-  setStationsVisible(on) {
-    if (!this.map || !this.markerLayer) return;
-    if (on) {
-      if (!this.map.hasLayer(this.markerLayer)) this.map.addLayer(this.markerLayer);
-    } else {
-      this.map.closePopup();
-      this.clearHighlight();
-      this.map.removeLayer(this.markerLayer);
-    }
-  }
-
+  setStationsVisible(on) { this.stationsVisible = !!on; this._syncStations(); }
   isParkingVisible() { return this.parkingVisible; }
-
-  /** Recolour the strips after a theme swap — canvas strokes don't inherit CSS. */
-  refreshParkingTheme() {
-    if (!this.parkingLineLayer) return;
-    const color = this._parkingColor();
-    this.parkingLineLayer.eachLayer((l) => {
-      if (l.setStyle) l.setStyle({ color });
-    });
-  }
-
-  /** Re-render every zone popup — used on language change. */
+  setTheme() {} // Existing app uses a light map in both UI themes.
+  refreshParkingTheme() {}
   refreshParkingPopups(zones) {
-    if (!this.parkingMarkers.length) return;
-    this.parkingMarkers.forEach((m) => {
-      const zone = zones.find((z) => String(z.id) === String(m.zoneId));
-      if (zone) m.setPopupContent(this._buildZonePopup(zone));
+    this.zones = new Map(zones.map(z => [String(z.id), z]));
+    const zone = this.zones.get(this.popupId);
+    if (this.popupType === 'parking' && zone) this._setCard(this._buildZonePopup(zone));
+  }
+
+  _openCard(type, id, html) {
+    this.closePopup();
+    this.popupType = type;
+    this.popupId = String(id);
+    this.card = document.createElement('section');
+    this.card.className = 'nur-map-card neru-popup';
+    this.card.setAttribute('role', 'dialog');
+    this.card.setAttribute('aria-label', type === 'parking' ? i18n.t('pkPaidZone') : i18n.t('stations'));
+    this.card.innerHTML = '<button class="nur-map-close" type="button" aria-label="' + this._esc(i18n.t('closePanel')) + '">×</button><div class="nur-map-card-body"></div>';
+    this.card.querySelector('button').onclick = () => this.closePopup();
+    this.card.addEventListener('click', e => {
+      const button = e.target.closest('[data-action]');
+      if (!button) return;
+      if (button.dataset.action === 'route') window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: button.dataset.stationId } }));
+      if (button.dataset.action === 'zone-rules') window.dispatchEvent(new CustomEvent('parkingRulesRequest'));
+      if (button.dataset.action === 'select-station') this.openStationPopup(button.dataset.id);
+      if (button.dataset.action === 'select-zone') this.openZonePopup(button.dataset.id);
     });
+    // Sibling of the SDK container: no map gestures leak through the card.
+    this.container.parentNode.append(this.card);
+    this._setCard(html);
+    document.body.classList.add('has-popup');
+    this.card.querySelector('.nur-map-close').focus({ preventScroll: true });
   }
-
-  openZonePopup(zoneId) {
-    const marker = this.parkingMarkers.find((m) => String(m.zoneId) === String(zoneId));
-    if (!marker) return;
-
-    // A clustered marker has no popup of its own until the cluster is broken
-    // apart, so ask the group to zoom in on it first.
-    const show = () => { marker.openPopup(); this._panForPopup(marker); };
-    if (this.parkingMarkerLayer?.zoomToShowLayer) {
-      this.parkingMarkerLayer.zoomToShowLayer(marker, show);
-    } else {
-      this.map.flyTo(marker.getLatLng(), 17, { duration: 0.8 });
-      this.map.once('moveend', show);
-    }
+  _setCard(html) {
+    const body = this.card?.querySelector('.nur-map-card-body');
+    if (body && body.innerHTML !== html) body.innerHTML = html;
   }
-
-  /**
-   * Mark the strip the user is currently parked on. Drawn on the normal
-   * (SVG) renderer so it can carry the dashed pulse the canvas layer cannot.
-   */
+  closePopup() {
+    if (!this.card) return;
+    this.card.remove(); this.card = null; this.popupType = null; this.popupId = null;
+    this.selectedMarker?.destroy(); this.selectedMarker = null;
+    document.body.classList.remove('has-popup');
+    window.dispatchEvent(new CustomEvent('popupClosed'));
+  }
+  _select(lat, lng) {
+    this.selectedMarker?.destroy();
+    this.selectedMarker = new mapgl.CircleMarker(this.map, {
+      coordinates: [lng, lat], radius: 25, color: '#15834b22', strokeColor: '#15834b', strokeWidth: 3,
+    });
+    this.flyTo(lat, lng, Math.max(16, this.map.getZoom()));
+  }
+  openStationPopup(id) {
+    const s = this.stations.get(String(id));
+    if (!s) return;
+    this._openCard('station', id, this.buildPopup(s));
+    this._select(s.lat, s.lng);
+  }
+  openZonePopup(id) {
+    const z = this.zones.get(String(id));
+    if (!z) return;
+    this._openCard('parking', id, this._buildZonePopup(z));
+    this._select(z.lat, z.lng);
+  }
+  _openGroup(points, parking) {
+    const records = parking ? this.zones : this.stations;
+    const rows = [...points].sort((a,b) => a.userData.id.localeCompare(b.userData.id, undefined, { numeric: true })).map((p,i) => {
+      const s = records.get(p.userData.id);
+      return `<button class="nur-group-row" data-action="${parking ? 'select-zone' : 'select-station'}" data-id="${this._esc(s.id)}"><b>${i+1}</b><span>${this._esc(parking ? s.address : s.name)}</span></button>`;
+    }).join('');
+    this._openCard('group', '', `<div class="popup-content">${rows}</div>`);
+  }
+  setUserLocation(lat, lng, { accuracy, heading } = {}) {
+    const coordinates = [lng, lat];
+    if (!this.userMarker) {
+      this.userElement = document.createElement('div');
+      this.userElement.className = 'user-marker';
+      this.userElement.innerHTML = '<div class="user-marker-cone"></div><div class="user-marker-dot"></div>';
+      this.userMarker = new mapgl.HtmlMarker(this.map, { coordinates, html: this.userElement, anchor: [14,14] });
+    } else this.userMarker.setCoordinates(coordinates);
+    const cone = this.userElement.querySelector('.user-marker-cone');
+    cone.style.opacity = Number.isFinite(heading) ? '1' : '0';
+    cone.style.transform = `translate(-50%,-50%) rotate(${heading || 0}deg)`;
+    this.userAccuracyCircle?.destroy(); this.userAccuracyCircle = null;
+    if (Number.isFinite(accuracy) && accuracy > 0) this.userAccuracyCircle = new mapgl.Circle(this.map, {
+      coordinates, radius: accuracy, color: '#15834b15', strokeColor: '#15834b55', strokeWidth: 1,
+    });
+    if (this._followUser) this.map.setCenter(coordinates, this._animation());
+  }
+  setFollowUser(on) { this._followUser = !!on; }
+  isFollowingUser() { return this._followUser; }
+  flyTo(lat, lng, zoom = 16) {
+    this.map.setCenter([lng, lat], this._animation());
+    this.map.setZoom(zoom, this._animation());
+  }
+  highlightStation(station) { this.clearHighlight(); this.openStationPopup(station.id); }
   highlightZone(zone) {
     this.clearZoneHighlight();
-    if (!zone || !this.map) return;
-    this.zoneHighlight = L.polyline([zone.a, zone.b], {
-      color: this._parkingColor(),
-      weight: 14,
-      opacity: 0.9,
-      lineCap: 'round',
-      className: 'parking-active-line',
-      interactive: false,
-    }).addTo(this.map);
+    if (zone) this.zoneHighlight = new mapgl.Polyline(this.map, {
+      coordinates: [zone.a, zone.b].map(([lat,lng]) => [lng,lat]), color: '#087eac', width: 14,
+    });
   }
-
-  clearZoneHighlight() {
-    if (this.zoneHighlight) {
-      this.map.removeLayer(this.zoneHighlight);
-      this.zoneHighlight = null;
+  clearZoneHighlight() { this.zoneHighlight?.destroy(); this.zoneHighlight = null; }
+  clearHighlight() {
+    this.routeLine?.destroy(); this.routeLine = null;
+    this.highlightCircle?.destroy(); this.highlightCircle = null;
+    this._routeSignature = null;
+  }
+  drawOSRMRoute(coords, station, fit = true) {
+    const signature = JSON.stringify([coords, station.id]);
+    if (signature !== this._routeSignature) {
+      this.clearHighlight();
+      this.routeLine = new mapgl.Polyline(this.map, {
+        coordinates: coords.map(([lat,lng]) => [lng,lat]), color: '#15834b', width: 6,
+      });
+      this.highlightCircle = new mapgl.CircleMarker(this.map, {
+        coordinates: [station.lng,station.lat], radius: 22, color: '#15834b22', strokeColor: '#15834b', strokeWidth: 2,
+      });
+      this._routeSignature = signature;
     }
+    if (fit && coords.length) this.map.fitBounds({
+      southWest: [Math.min(...coords.map(c => c[1])), Math.min(...coords.map(c => c[0]))],
+      northEast: [Math.max(...coords.map(c => c[1])), Math.max(...coords.map(c => c[0]))],
+    }, { padding: { top: 110, bottom: 210, left: 40, right: 40 }, maxZoom: 17, animation: this._animation() });
   }
 
   _buildZonePopup(zone) {
@@ -669,193 +555,6 @@ class StationMap {
     `;
   }
 
-  setUserLocation(lat, lng, opts = {}) {
-    const { accuracy = null, heading = null, animate = true } = opts;
-
-    // Create marker on first call
-    if (!this.userMarker) {
-      const userIcon = L.divIcon({
-        className: 'user-marker',
-        html: `
-          <div class="user-marker-accuracy"></div>
-          <div class="user-marker-cone" style="opacity:0"></div>
-          <div class="user-marker-ring"></div>
-          <div class="user-marker-dot"></div>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      });
-
-      this.userMarker = L.marker([lat, lng], {
-        icon: userIcon,
-        zIndexOffset: 1000,
-        interactive: false,
-        keyboard: false,
-      }).addTo(this.map);
-    } else {
-      // Smoothly animate to new location (CSS transition does the work)
-      const el = this.userMarker.getElement();
-      if (el && animate) {
-        el.style.transition = 'transform 900ms cubic-bezier(0.22, 1, 0.36, 1)';
-      }
-      this.userMarker.setLatLng([lat, lng]);
-    }
-
-    // Accuracy circle (semi-transparent ring showing GPS precision)
-    if (accuracy != null && Number.isFinite(accuracy) && accuracy > 0) {
-      if (!this.userAccuracyCircle) {
-        this.userAccuracyCircle = L.circle([lat, lng], {
-          radius: accuracy,
-          className: 'user-accuracy-circle',
-          color: '#7bffbe',
-          weight: 1,
-          fillColor: '#7bffbe',
-          fillOpacity: 0.08,
-          interactive: false,
-        }).addTo(this.map);
-      } else {
-        this.userAccuracyCircle.setLatLng([lat, lng]);
-        this.userAccuracyCircle.setRadius(accuracy);
-      }
-    }
-
-    // Heading cone
-    const coneEl = this.userMarker.getElement()?.querySelector('.user-marker-cone');
-    if (coneEl) {
-      if (heading != null && Number.isFinite(heading)) {
-        coneEl.style.opacity = '1';
-        coneEl.style.transform = `translate(-50%, -50%) rotate(${heading}deg)`;
-      } else {
-        coneEl.style.opacity = '0';
-      }
-    }
-
-    // Follow mode — pan map to keep user centred
-    if (this._followUser && this.map) {
-      this.map.panTo([lat, lng], { animate: true, duration: 0.9, easeLinearity: 0.4 });
-    }
-  }
-
-  setFollowUser(on) { this._followUser = !!on; }
-  isFollowingUser() { return this._followUser; }
-
-  highlightStation(station, userLat, userLng) {
-    // Remove previous highlights
-    this.clearHighlight();
-
-    // Change the marker to "best" icon
-    const bestMarker = this.markers.find(m => m.stationId === station.id);
-    if (bestMarker) {
-      bestMarker.setIcon(this.createBestIcon());
-      bestMarker.openPopup();
-      this._panForPopup(bestMarker);
-    }
-
-    // Draw route line
-    if (userLat && userLng) {
-      this.routeLine = L.polyline(
-        [[userLat, userLng], [station.lat, station.lng]],
-        {
-          color: '#00ff88',
-          weight: 3,
-          opacity: 0.7,
-          dashArray: '10, 10',
-          className: 'route-line'
-        }
-      ).addTo(this.map);
-
-      // Highlight circle
-      this.highlightCircle = L.circleMarker([station.lat, station.lng], {
-        radius: 25,
-        color: '#00ff88',
-        fillColor: '#00ff88',
-        fillOpacity: 0.1,
-        weight: 2,
-        className: 'highlight-circle'
-      }).addTo(this.map);
-
-      // Fit bounds to show both user and station
-      const bounds = L.latLngBounds([
-        [userLat, userLng],
-        [station.lat, station.lng]
-      ]);
-      this.map.fitBounds(bounds, { padding: [80, 80] });
-    } else {
-      this.map.setView([station.lat, station.lng], 16);
-    }
-  }
-
-  clearHighlight() {
-    if (this.routeLine) {
-      this.map.removeLayer(this.routeLine);
-      this.routeLine = null;
-    }
-    if (this.highlightCircle) {
-      this.map.removeLayer(this.highlightCircle);
-      this.highlightCircle = null;
-    }
-  }
-
-  drawOSRMRoute(coords, station, fit = true) {
-    this.clearHighlight();
-
-    this.routeLine = L.polyline(coords, {
-      color: '#7bffbe',
-      weight: 4,
-      opacity: 0.88,
-      dashArray: '12, 8',
-      lineCap: 'round',
-      lineJoin: 'round',
-      className: 'route-line',
-    }).addTo(this.map);
-
-    const marker = this.markers.find(m => m.stationId === station.id);
-    if (marker) marker.setIcon(this.createBestIcon());
-
-    this.highlightCircle = L.circleMarker([station.lat, station.lng], {
-      radius: 22,
-      color: '#7bffbe',
-      fillColor: '#7bffbe',
-      fillOpacity: 0.1,
-      weight: 1.5,
-    }).addTo(this.map);
-
-    // Only frame the whole route on the initial draw. During live re-routes
-    // this would fight follow-mode and yank the map away from the user.
-    if (fit) {
-      const bounds = L.latLngBounds(coords);
-      this.map.fitBounds(bounds, {
-        paddingTopLeft: [24, 90],
-        paddingBottomRight: [24, 140],
-      });
-    }
-  }
-
-  flyTo(lat, lng, zoom = 16) {
-    this.map.flyTo([lat, lng], zoom, { duration: 1.2 });
-  }
-
-  openStationPopup(stationId) {
-    const marker = this.markers.find(m => m.stationId === stationId);
-    if (!marker) return;
-    this.map.flyTo(marker.getLatLng(), 16, { duration: 0.8 });
-    this.map.once('moveend', () => {
-      marker.openPopup();
-      this._panForPopup(marker);
-    });
-  }
-
-  _panForPopup(marker) {
-    const popup = marker.getPopup();
-    if (!popup) return;
-    const px = this.map.latLngToContainerPoint(marker.getLatLng());
-    const popupH = popup._container ? popup._container.offsetHeight : 200;
-    const topEdge = px.y - popupH - 48;
-    const headerH = 84;
-    if (topEdge < headerH) {
-      this.map.panBy([0, topEdge - headerH], { animate: true, duration: 0.35 });
-    }
-  }
 }
 
 const stationMap = new StationMap();

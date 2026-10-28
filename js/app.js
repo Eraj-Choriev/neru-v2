@@ -63,13 +63,8 @@ class App {
     if (stationAPI.lastFetch && stationAPI.lastFetch !== this._processedSnapshot) {
       this._processedSnapshot = stationAPI.lastFetch;
       const filtered = ui.applyFilter(stations);
-      // Re-rendering markers destroys an open station card. If someone is
-      // reading one, hold the redraw until they close it.
-      if (document.body.classList.contains('has-popup')) {
-        this._renderPending = true;
-      } else {
-        stationMap.renderStations(filtered);
-      }
+      // MapGL updates changed markers and the selected card without closing it.
+      stationMap.renderStations(filtered);
 
       const stats = stationAPI.getStats();
       ui.updateStats(stats);
@@ -119,7 +114,7 @@ class App {
 
   toggleParking(force = null) {
     const zones = parkingAPI.getZones();
-    if (!zones.length) {
+    if (!zones.length && force !== false) {
       this._parkingVisible = force === null ? true : !!force;
       ui.showToast(i18n.t('dataRetrying'), 'info', 3000);
       this.loadParking();
@@ -194,7 +189,15 @@ class App {
 
     // Parking zones — layer toggle, rules sheet, and routing to a zone
     this.bindTabBar();
-    document.getElementById('pk-toggle')?.addEventListener('click', () => this.toggleParking());
+    const modeSwitch = document.getElementById('map-mode-seg');
+    modeSwitch?.addEventListener('click', e => {
+      const button = e.target.closest('[data-map-mode]');
+      if (button) this.toggleParking(button.dataset.mapMode === 'parking');
+    });
+    if (modeSwitch) {
+      new ResizeObserver(() => ui.moveIndicator(modeSwitch)).observe(modeSwitch);
+      window.addEventListener('langchange', () => requestAnimationFrame(() => ui.moveIndicator(modeSwitch)));
+    }
     window.addEventListener('parkingRulesRequest', () => parkingRules.open());
     document.getElementById('pk-close')?.addEventListener('click', () => parkingRules.close());
     document.getElementById('pk-modal')?.addEventListener('click', (e) => {
@@ -205,12 +208,6 @@ class App {
       stationMap.refreshParkingPopups(parkingAPI.getZones());
     });
 
-    // Apply a refresh that was held back while a station card was open
-    window.addEventListener('popupClosed', () => {
-      if (!this._renderPending) return;
-      this._renderPending = false;
-      stationMap.renderStations(ui.applyFilter(stationAPI.getStations() || []));
-    });
   }
 
   async handleRouteRequest({ stationId }) {
@@ -388,7 +385,7 @@ class App {
         stationMap.setFollowUser(true);
         btn.classList.add('is-following');
         const pos = geoLocation.getPosition();
-        if (pos.isLocated) stationMap.map.flyTo([pos.lat, pos.lng], Math.max(16, stationMap.map.getZoom()), { duration: 0.8 });
+        if (pos.isLocated) stationMap.flyTo(pos.lat, pos.lng, Math.max(16, stationMap.map.getZoom()));
       }
       return;
     }
@@ -404,7 +401,7 @@ class App {
         heading: geoLocation.userHeading,
         animate: false,
       });
-      stationMap.map.flyTo([pos.lat, pos.lng], 16, { duration: 1.0 });
+      stationMap.flyTo(pos.lat, pos.lng, 16);
       btn.classList.remove('is-locating');
       btn.classList.add('is-located');
       btn.classList.add('is-following');

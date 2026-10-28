@@ -24,7 +24,7 @@ class StationRouter {
       const data = await this._fetch(pos.lat, pos.lng, station.lat, station.lng);
       if (generation !== this._generation) return;
       const route = data.routes[0];
-      // OSRM returns [lng, lat] — flip for Leaflet
+      // App routes stay [lat, lng]; the map converts at the SDK boundary.
       const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
 
       this.activeRoute = {

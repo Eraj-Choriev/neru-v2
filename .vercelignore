@@ -1,0 +1,8 @@
+.DS_Store
+.codex/
+.playwright-mcp/
+brag-output*/
+build-premium-film.py
+navbar-fixed.png
+tests/
+docs/
