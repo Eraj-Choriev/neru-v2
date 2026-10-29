@@ -10,12 +10,14 @@ limits must be configured in the provider account.
 WebGL markers are clustered and icons cached. Identical station snapshots do
 not reload clusters; card details update independently without closing the
 card. Hidden parking strips are destroyed, and unchanged routes reuse their
-geometry. Co-located points open a numbered selection list. Camera animations
-honor reduced motion. Existing translated cards remain in use, with a mobile
-bottom card and desktop side card. OSRM remains the routing service.
+geometry. Co-located points expand into numbered markers linked to their
+origin, with separated 44px targets and a compact layout in landscape.
+Camera animations
+honor reduced motion. Existing translated cards anchor near the selected
+marker and are clamped between the header and dock. OSRM remains the routing service.
 
 Coordinates remain [lat, lng] within the app and are converted to [lng, lat]
-at the SDK boundary. Service worker v41 includes configuration and bypasses
+at the SDK boundary. Service worker v46 includes configuration and bypasses
 caching for 2GIS domains. Attribution is supplied by the SDK.
 
 Validation: 14 Node tests passed, including cluster reuse, parking cleanup,
@@ -47,3 +49,16 @@ A working WebGL browser and network access to the CDN and OpenFreeMap are
 required to display this basemap.
 
 Reference: https://openfreemap.org/quick_start/
+## Responsive follow-up — 2026-10-29
+
+The app fills one fixed viewport instead of mixing dynamic viewport height
+with fixed overlays. The dock, location button, zoom buttons and panels share
+one clearance calculation. Safe insets are counted once. Landscape phones
+retain the mobile navigation. Cards reuse the original compact typography,
+spacing and material, without the extra 40px top gutter.
+
+15 tests pass, including bounds and non-overlap for 20 expanded markers at
+320×568, 414×896 and 896×414. Browser layouts were checked from 320 to 1440px,
+including simulated 44px top / 34px bottom insets. Actual iOS standalone
+safe-area behavior still needs confirmation on the user's phone.
+

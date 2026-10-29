@@ -19,18 +19,39 @@ class StationMap {
       zoom: 13, minZoom: 8, maxZoom: 20, pitch: 0,
       disablePitchByUserInteraction: true,
       disableRotationByUserInteraction: true,
-      zoomControl: 'bottomRight',
+      zoomControl: false,
       copyright: 'topRight',
       controlsLayoutPadding: { top: 96, right: 16, bottom: 88, left: 16 },
     });
     this.stationCluster = this._cluster(false);
     this.parkingCluster = this._cluster(true);
+    const zoom = document.createElement('div');
+    zoom.className = 'nur-map-zoom';
+    for (const [delta, key, text] of [[1, 'zoomIn', '+'], [-1, 'zoomOut', '−']]) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = text;
+      const label = () => button.setAttribute('aria-label', i18n.t(key));
+      label(); window.addEventListener('langchange', label);
+      button.onclick = () => { this._closeSpider(); this.closePopup(); this.map.setZoom(Math.max(8, Math.min(20, this.map.getZoom() + delta)), this._animation()); };
+      zoom.append(button);
+    }
+    this.container.parentNode.append(zoom);
     this.map.on('dragstart', () => {
+      this._closeSpider();
+      this.closePopup();
       this._followUser = false;
       document.getElementById('loc-btn')?.classList.remove('is-following');
     });
+    this.map.on('zoomstart', () => this._closeSpider());
+    this.map.on('move', () => this._positionCard());
+    this.map.on('click', e => { if (!e.target) { this.closePopup(); this._closeSpider(); } });
+    this._resizeObserver = new ResizeObserver(() => {
+      this._closeSpider();
+      this._positionCard();
+    });
+    this._resizeObserver.observe(this.container);
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') this.closePopup();
+      if (e.key === 'Escape') { this.closePopup(); this._closeSpider(); }
     });
     return this.map;
   }
@@ -67,7 +88,7 @@ class StationMap {
         const data = e.target.data;
         // Co-located stations remain selectable even when zooming cannot separate them.
         if (this.map.getZoom() >= 18 || data.every(m => m.coordinates.every((v, i) => Math.abs(v - data[0].coordinates[i]) < .00002))) {
-          this._openGroup(data, parking);
+          this._openGroup(data, parking, e.lngLat);
         } else {
           const zoom = Math.min(20, cluster.getClusterExpansionZoom(e.target.id) + .2);
           this.map.setCenter(e.lngLat, this._animation());
@@ -129,6 +150,7 @@ class StationMap {
   }
 
   setParkingVisible(on) {
+    this._closeSpider();
     this.parkingVisible = !!on;
     this.setStationsVisible(!on);
     this._syncParking();
@@ -171,6 +193,34 @@ class StationMap {
   _setCard(html) {
     const body = this.card?.querySelector('.nur-map-card-body');
     if (body && body.innerHTML !== html) body.innerHTML = html;
+    if (body && this._spider) {
+      const number = this._spider.ids.indexOf(this.popupId) + 1;
+      const title = body.querySelector('.popup-title');
+      if (number && title && !title.querySelector('.popup-map-number')) {
+        const badge = document.createElement('span');
+        badge.className = 'popup-map-number'; badge.textContent = `#${number}`; title.prepend(badge);
+      }
+    }
+    this._positionCard();
+  }
+  _positionCard() {
+    if (!this.card) return;
+    const record = (this.popupType === 'parking' ? this.zones : this.stations).get(this.popupId);
+    if (!record) return;
+    const bounds = this.container.getBoundingClientRect();
+    const projected = this.map.project([record.lng, record.lat]);
+    const point = this._spider?.positions.get(this.popupId) || projected;
+    const header = document.querySelector('.header')?.getBoundingClientRect();
+    const dock = document.querySelector('.tabbar-dock')?.getBoundingClientRect();
+    const top = Math.max(8, header?.bottom || 80) + 8;
+    const bottom = dock?.height ? dock.top - 8 : bounds.bottom - 24;
+    const width = Math.min(306, bounds.width - 32);
+    this.card.style.width = `${width}px`;
+    this.card.style.maxHeight = `${Math.max(100, bottom - top)}px`;
+    const height = this.card.offsetHeight;
+    const x = Math.max(bounds.left + 16, Math.min(bounds.right - width - 16, bounds.left + point[0] - width / 2));
+    const y = Math.max(top, Math.min(bottom - height, bounds.top + point[1] - height - 28));
+    Object.assign(this.card.style, { left: `${x}px`, top: `${y}px`, right: 'auto', bottom: 'auto' });
   }
   closePopup() {
     if (!this.card) return;
@@ -184,7 +234,8 @@ class StationMap {
     this.selectedMarker = new mapgl.CircleMarker(this.map, {
       coordinates: [lng, lat], radius: 25, color: '#15834b22', strokeColor: '#15834b', strokeWidth: 3,
     });
-    this.flyTo(lat, lng, Math.max(16, this.map.getZoom()));
+    if (!this._spider) this.flyTo(lat, lng, Math.max(16, this.map.getZoom()));
+    this._positionCard();
   }
   openStationPopup(id) {
     const s = this.stations.get(String(id));
@@ -198,13 +249,56 @@ class StationMap {
     this._openCard('parking', id, this._buildZonePopup(z));
     this._select(z.lat, z.lng);
   }
-  _openGroup(points, parking) {
+  _closeSpider() {
+    this._spider?.element.remove();
+    this._spider = null;
+  }
+  _openGroup(points, parking, coordinates = points[0].coordinates) {
+    this.closePopup();
+    this._closeSpider();
     const records = parking ? this.zones : this.stations;
-    const rows = [...points].sort((a,b) => a.userData.id.localeCompare(b.userData.id, undefined, { numeric: true })).map((p,i) => {
-      const s = records.get(p.userData.id);
-      return `<button class="nur-group-row" data-action="${parking ? 'select-zone' : 'select-station'}" data-id="${this._esc(s.id)}"><b>${i+1}</b><span>${this._esc(parking ? s.address : s.name)}</span></button>`;
-    }).join('');
-    this._openCard('group', '', `<div class="popup-content">${rows}</div>`);
+    const sorted = [...points].filter(p => records.has(String(p.userData.id))).sort((a,b) => String(a.userData.id).localeCompare(String(b.userData.id), undefined, { numeric: true }));
+    const layer = document.createElement('div'); layer.className = 'nur-spider';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); layer.append(svg);
+    const bounds = this.container.getBoundingClientRect();
+    const origin = this.map.project(coordinates);
+    const header = document.querySelector('.header').getBoundingClientRect();
+    const dock = document.querySelector('.tabbar-dock').getBoundingClientRect();
+    const top = header.bottom - bounds.top + 32;
+    const bottom = (dock.height ? dock.top : bounds.bottom) - bounds.top - 32;
+    // Screen-space rings keep 44px targets separated regardless of map zoom.
+    const offsets = [];
+    for (let radius = 56; offsets.length < sorted.length; radius += 52) {
+      const candidates = Math.floor(2 * Math.PI * radius / 48);
+      for (let i = 0; i < candidates && offsets.length < sorted.length; i++) {
+        const angle = i * 2 * Math.PI / candidates - Math.PI / 2;
+        const point = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+        if (offsets.every(p => Math.abs(p[0] - point[0]) >= 48 || Math.abs(p[1] - point[1]) >= 48)) offsets.push(point);
+      }
+    }
+    const outer = Math.max(56, ...offsets.flatMap(p => p.map(Math.abs)));
+    const cx = Math.max(outer + 24, Math.min(bounds.width - outer - 24, origin[0]));
+    const cy = Math.max(top + outer, Math.min(bottom - outer, origin[1]));
+    const compact = bottom - top < outer * 2 || bounds.width < outer * 2 + 48;
+    const rows = Math.max(1, Math.floor((bottom - top) / 52) + 1);
+    const columns = Math.ceil(sorted.length / rows);
+    const positions = new Map(); let index = 0;
+    for (const offset of offsets) {
+      const p = sorted[index], s = records.get(String(p.userData.id));
+      const x = compact ? (bounds.width - (columns - 1) * 52) / 2 + (index % columns) * 52 : cx + offset[0];
+      const y = compact ? top + Math.floor(index / columns) * 52 : cy + offset[1];
+      const line = document.createElementNS(svg.namespaceURI, 'line');
+      for (const [key,value] of Object.entries({ x1: origin[0], y1: origin[1], x2:x, y2:y })) line.setAttribute(key, value);
+      svg.append(line);
+      const button = document.createElement('button'); button.className = 'nur-spider-marker';
+      button.textContent = String(index+1); button.title = parking ? s.address : s.name;
+      button.setAttribute('aria-label', `${index+1}. ${button.title}`);
+      button.style.cssText = `left:${x}px;top:${y}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
+      button.onclick = e => { e.stopPropagation(); parking ? this.openZonePopup(s.id) : this.openStationPopup(s.id); };
+      layer.append(button); positions.set(String(s.id), [x,y]); index++;
+    }
+    this.container.parentNode.append(layer);
+    this._spider = { element:layer, positions, ids: sorted.map(p => String(p.userData.id)) };
   }
   setUserLocation(lat, lng, { accuracy, heading } = {}) {
     const coordinates = [lng, lat];

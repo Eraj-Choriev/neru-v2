@@ -4,6 +4,8 @@
 
 const translations = {
   tj: {
+    zoomIn: 'Наздик кардан',
+    zoomOut: 'Дур кардан',
     dataUnavailable: 'Маълумоти истгоҳҳо ё таваққуфгоҳҳо нав намешавад. Маълумоти пешина метавонад кӯҳна бошад.',
     dataRetry: 'Такрор',
     dataRetrying: 'Маълумот бор мешавад…',
@@ -314,6 +316,8 @@ const translations = {
     },
   },
   ru: {
+    zoomIn: 'Приблизить',
+    zoomOut: 'Отдалить',
     dataUnavailable: 'Данные станций или парковок не обновляются. Ранее загруженные данные могут быть устаревшими.',
     dataRetry: 'Повторить',
     dataRetrying: 'Загружаем данные…',
@@ -624,6 +628,8 @@ const translations = {
     },
   },
   en: {
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
     dataUnavailable: 'Station or parking updates are unavailable. Previously loaded data may be outdated.',
     dataRetry: 'Retry',
     dataRetrying: 'Loading data…',

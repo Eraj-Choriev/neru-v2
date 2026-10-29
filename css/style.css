@@ -177,10 +177,11 @@ body {
 
 /* ---------- Layout ---------- */
 .app-container {
-  position: relative;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: auto;
 }
 
 #map {
@@ -215,8 +216,8 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1000;
-  height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
-  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(var(--header-h) + var(--safe-top));
+  padding-top: var(--safe-top);
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
   display: flex;
@@ -622,7 +623,7 @@ body {
    ============================================================ */
 .loc-btn {
   position: fixed;
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(26px + var(--safe-bottom));
   left: max(20px, env(safe-area-inset-left));
   z-index: 900;
   width: 46px;
@@ -734,7 +735,7 @@ body {
   animation: locRingPulse 1.2s var(--ease-out) infinite;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .loc-btn { bottom: 20px; left: 16px; width: 42px; height: 42px; }
 }
 
@@ -743,7 +744,7 @@ body {
    ============================================================ */
 .fab {
   position: fixed;
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(26px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 900;
@@ -2732,7 +2733,7 @@ body.sidebar-open { overflow: hidden; }
 
 /* Safe-area padding for iPhone home indicator */
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
 }
 
 /* Light theme drawer */
@@ -3041,7 +3042,7 @@ body.sidebar-open { overflow: hidden; }
   transform: rotate(90deg);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .route-panel { bottom: 80px; }
   .route-dest  { max-width: 140px; }
 }
@@ -3049,7 +3050,7 @@ body.sidebar-open { overflow: hidden; }
 /* ============================================================
    RESPONSIVE
    ============================================================ */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   :root { --header-h: 72px; --sidebar-w: 100vw; }
   .header { padding: 0 14px; gap: 0; z-index: 1300; }
   /* Logo: bigger and clearly visible */
@@ -3393,7 +3394,7 @@ body.sidebar-open { overflow: hidden; }
 }
 .calc-fab:hover { color: var(--volt-500); border-color: var(--line-volt); background: var(--ink-700); transform: translateY(-1px); }
 .calc-fab:active { transform: scale(0.94); }
-@media (max-width: 768px) { .calc-fab { right: 16px; bottom: 80px; width: 42px; height: 42px; } }
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) { .calc-fab { right: 16px; bottom: 80px; width: 42px; height: 42px; } }
 
 /* Overlay */
 .calc-overlay {
@@ -3755,7 +3756,7 @@ body.sidebar-open { overflow: hidden; }
 :root[data-theme="light"] .calc-slider::-webkit-slider-thumb { background: #ffffff; border-color: #ffffff; box-shadow: 0 2px 10px rgba(13,18,32,0.2), 0 0 0 1px rgba(14,183,128,0.4); }
 
 /* Mobile: bottom sheet */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .calc-panel {
     top: auto;
     right: 0; left: 0;
@@ -3837,7 +3838,7 @@ body.sidebar-open { overflow: hidden; }
 }
 
 /* Mobile: compact icon-only button under header */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .install-btn {
     right: 12px;
     top: calc(var(--header-total-h) + 10px);
@@ -4447,7 +4448,7 @@ body.sidebar-open .install-btn {
 }
 
 /* ---- Mobile: fewer heavy blurs, same look ---- */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   :root { --header-h: 66px; }
   .logo-img { height: 104px; max-width: 150px; }
   /* Large scrolling surfaces drop to a cheaper blur on phones */
@@ -4705,7 +4706,7 @@ body.sidebar-open .install-btn {
 }
 
 /* The trigger lives in the drawer on phones */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .an-trigger { display: none; }
 }
 @media (min-width: 769px) {
@@ -5347,7 +5348,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    has to earn its place inside the safe area rather than assume
    the browser chrome will pad it.
    ============================================================ */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   :root {
     /* Mirrors --nav-height and --nav-bottom-offset. Anything fixed to the
        bottom of the map insets past this so nothing hides under the bar. */
@@ -5370,8 +5371,8 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
      leave before their first row of content. */
   :root { --header-h: 62px; }
   .header {
-    height: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 6px);
-    padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+    height: calc(var(--header-h) + var(--safe-top) + 6px);
+    padding-top: calc(var(--safe-top) + 6px);
     padding-left: max(14px, env(safe-area-inset-left));
     padding-right: max(14px, env(safe-area-inset-right));
   }
@@ -5483,7 +5484,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
 
 /* On a phone the cards slide down from under the header and must clear
    the notch; they keep out of the tab bar's way by staying up top. */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   /* Clears the filter pill that now floats directly under the header */
   #neru-notif-stack {
     top: calc(var(--header-total-h) + 62px);
@@ -5553,7 +5554,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
    sheet is gone. Its two remaining jobs move into the open:
    language into the header, the charger filter onto the map.
    ============================================================ */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   /* Language: three letters in the header, always reachable. Sized so the
      current one is legible at a glance — on the light capsule the old chip
      gave no answer to "which language am I in?". */
@@ -5770,7 +5771,7 @@ body[data-mode="parking"] .fab-bolt { background: rgba(74, 208, 255, 0.22); }
      and never less than the plain offset (phones without an inset). */
   --nav-bottom-inset: max(
     var(--nav-bottom-offset),
-    calc(env(safe-area-inset-bottom, 0px) - 16px)
+    calc(var(--safe-bottom) - 16px)
   );
   --nav-border-color: rgba(255, 255, 255, 0.10);
   --nav-shadow:
@@ -6284,7 +6285,7 @@ body[data-mode="parking"] {
 /* The bar is a phone control. This has to live with the rules above rather
    than in the earlier layout block — a later `display: none` at equal
    specificity would silently win over an earlier media query and hide it. */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .tabbar { display: flex; }
 }
 
@@ -6593,7 +6594,7 @@ body[data-mode="parking"] {
 
 
 /* ---- Phones: same three islands, smaller ---- */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   :root { --isle-h: 42px; --isle-ctl: 32px; --isle-pad: 5px; }
   /* Two islands and 347px of room: the gap is track spacing the islands
      cannot spare, and justify-self already holds them apart. */
@@ -6609,7 +6610,7 @@ body[data-mode="parking"] {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: calc(env(safe-area-inset-top, 0px) + 10px);
+    height: calc(var(--safe-top) + 10px);
     background: linear-gradient(to bottom, rgba(4, 6, 12, 0.55), transparent);
     pointer-events: none;
   }
@@ -6621,7 +6622,7 @@ body[data-mode="parking"] {
 /* The phone override for the language pill is written with an id, so it
    outranks every `.isle-tools …` rule above no matter the order. Restate it
    at id strength or the buttons keep their old 38px box inside a 32px slot. */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .isle-tools #lang-seg { padding: 0; }
   .isle-tools #lang-seg .seg-btn {
     height: var(--isle-ctl);
@@ -6638,7 +6639,7 @@ body[data-mode="parking"] {
 /* Parking and analytics both carry `.an-trigger`, which phones hide because
    those jobs moved into the tab bar. That leaves the two hairlines with
    nothing between them, so the group they were separating goes too. */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   .isle-tools > .isle-rule:first-of-type { display: none; }
 }
 
@@ -6798,7 +6799,7 @@ body[data-mode="parking"] {
 /* Persistent feed failures stay visible after transient toasts disappear. */
 .data-status {
   position: fixed; z-index: 1260; left: 50%; transform: translateX(-50%);
-  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(96px + var(--safe-bottom));
   width: min(440px, calc(100% - 32px)); box-sizing: border-box;
   display: flex; align-items: center; gap: 16px; padding: 12px 16px;
   border-radius: 16px; background: #fff; color: #364152;
@@ -6846,7 +6847,7 @@ body[data-mode="parking"] {
   position: fixed;
   z-index: 1250;
   left: 50%;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--dock-bottom);
   transform: translateX(-50%);
   width: min(480px, calc(100% - 32px));
   display: none;
@@ -6904,7 +6905,7 @@ body[data-mode="parking"] {
 .tabbar-search:focus-visible { outline: 2px solid var(--text-1); outline-offset: 3px; }
 .tabbar-search[aria-busy="true"] { cursor: progress; background: var(--mat-thick); }
 @media (hover: hover) { .tabbar-search:hover { background: var(--mat-thick); } }
-@media (max-width: 768px) { .tabbar-dock { display: flex; } }
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) { .tabbar-dock { display: flex; } }
 @media (prefers-reduced-motion: reduce) { .tabbar-search { transition: none; } }
 @media (prefers-reduced-transparency: reduce) {
   .tabbar-search { background: #f0f2f4; backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -7012,7 +7013,7 @@ body[data-mode="parking"] {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   white-space: nowrap;
 }
-@media (max-width: 768px) { .desktop-map-mode { display: none; } }
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) { .desktop-map-mode { display: none; } }
 @media (min-width: 769px) and (max-width: 1100px) {
   .header { flex-wrap: wrap; }
   .header-controls { flex-wrap: wrap; }
@@ -7052,7 +7053,7 @@ body[data-mode="parking"] {
 :root[data-theme="light"] .header #lang-seg .seg-btn:focus-visible {
   outline: 2px solid #515d6d; outline-offset: -3px;
 }
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
   :root[data-theme="light"] .header .isle-tools { gap: 4px; }
 }
 @media (max-width: 380px) {
@@ -7067,8 +7068,10 @@ body[data-mode="parking"] {
   position: fixed; z-index: 1100; right: 24px; top: 112px;
   width: 320px; max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 224px); overflow: auto;
-  background: var(--mat-thick); backdrop-filter: var(--mat-blur-thick);
-  box-shadow: var(--rim-shadow); border-radius: 24px; overscroll-behavior: contain;
+  background: var(--mat-regular); backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  color: var(--text-1); font: 13px/1.5 var(--f-body);
+  box-shadow: var(--edge-rim), var(--rim-shadow); border-radius: 22px; overscroll-behavior: contain;
 }
 .nur-map-close {
   position: absolute; top: 4px; right: 4px; z-index: 1;
@@ -7083,7 +7086,60 @@ body[data-mode="parking"] {
   padding: 16px 8px; border: 0; background: transparent; color: inherit;
   text-align: left; font: inherit; cursor: pointer;
 }
-.nur-map-card .popup-content { padding-top: 40px; }
+.nur-map-card .popup-content { padding: 16px; animation: none; }
 @media(max-width: 640px) {
   .nur-map-card { top: auto; right: 16px; left: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); width: auto; max-height: 55dvh; }
+}
+
+/* One dock geometry for navigation, location, panels and notifications. */
+:root {
+  --dock-height: 64px;
+  --dock-bottom: max(8px, calc(var(--safe-bottom) - 16px));
+  --dock-clearance: calc(var(--dock-bottom) + var(--dock-height) + 8px);
+}
+#map { position: absolute; inset: 0; height: 100%; }
+.nur-spider { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.nur-spider svg { position: absolute; width: 100%; height: 100%; overflow: visible; }
+.nur-spider line { stroke: #66766c; stroke-width: 1.5px; }
+.nur-spider-marker {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
+  width: 44px; height: 44px; border-radius: 50%; border: 2px solid white;
+  background: var(--pin-color); color: white; font: 600 15px/1 system-ui;
+  box-shadow: 0 2px 8px #0003;
+}
+.nur-spider-marker:hover { filter: brightness(1.15); }
+.nur-spider-marker:active { transform: translate(-50%, -50%) scale(.94); }
+.nur-spider-marker:focus-visible { outline: 3px solid var(--text-1); outline-offset: 3px; }
+.nur-map-zoom {
+  position: fixed; z-index: 900; right: max(16px, env(safe-area-inset-right)); bottom: calc(26px + var(--safe-bottom));
+  background: var(--mat-regular); backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg); box-shadow: var(--edge-rim), var(--rim-shadow-sm);
+  border-radius: 16px; overflow: hidden;
+}
+.nur-map-zoom button { display: block; width: 44px; height: 44px; background: transparent; border: 0; font: 28px/1 system-ui; }
+.nur-map-zoom button:hover { background: var(--mat-thick); }
+.nur-map-zoom button:active { opacity: .65; }
+.nur-map-zoom button:focus-visible { outline: 2px solid var(--text-1); outline-offset: -4px; }
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
+  :root { --tabbar-gap: calc(var(--dock-height) + var(--dock-bottom)); }
+  .tabbar-dock { width: min(480px, calc(100% - 32px)); }
+  .tabbar-dock .tabbar { height: var(--dock-height); }
+  .loc-btn { bottom: var(--dock-clearance); left: max(16px, env(safe-area-inset-left)); }
+  .nur-map-zoom { bottom: var(--dock-clearance); }
+  .route-panel, .pk-session, .toast { bottom: var(--dock-clearance); }
+  .header { grid-template-columns: auto 1fr; gap: 8px; }
+  .header-right { grid-column: 2; }
+  .header-left { min-width: 0; }
+  .nur-map-card .popup-head { padding-right: 36px; }
+}
+@media(max-width: 360px) {
+  :root[data-theme="light"] .header .isle-tools .notif-switch { --sw-w: 44px; }
+  .tabbar-dock { width: calc(100% - 24px); gap: 8px; }
+  .tabbar-search { flex-basis: 56px; width: 56px; height: 56px; }
+  .tabbar-dock .tabbar-label { font-size: 10px; }
+}
+@media(orientation: landscape) and (max-height: 500px) {
+  .header { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .tabbar-dock { max-width: 440px; }
+  .nur-map-card { max-height: calc(100dvh - 112px); }
 }
