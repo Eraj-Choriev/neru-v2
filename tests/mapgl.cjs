@@ -52,3 +52,10 @@ test('20 expanded points stay separated and inside the usable phone viewport',()
     const layer=s._spider.element;s._closeSpider();assert.equal(layer.removed,true);assert.equal(s._spider,null);
   }
 });
+
+test('closing a spider cancels pending reveal animations and is safe to repeat',()=>{
+  const {s}=setup();let cancelled=0,removed=0;
+  s._spider={animations:[{cancel(){cancelled++;}},{cancel(){cancelled++;}}],element:{remove(){removed++;}}};
+  s._closeSpider();s._closeSpider();
+  assert.equal(cancelled,2);assert.equal(removed,1);assert.equal(s._spider,null);
+});

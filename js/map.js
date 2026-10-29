@@ -36,15 +36,23 @@ class StationMap {
       zoom.append(button);
     }
     this.container.parentNode.append(zoom);
-    this.map.on('dragstart', () => {
+    // Capture native input before the SDK dispatches a marker click. A new
+    // cluster can then open normally; an existing overlay never follows a drag.
+    this.container.addEventListener('pointerdown', () => {
       this._closeSpider();
       this.closePopup();
       this._followUser = false;
       document.getElementById('loc-btn')?.classList.remove('is-following');
+    }, { capture: true, passive: true });
+    this.container.addEventListener('wheel', () => {
+      this._closeSpider(); this.closePopup();
+    }, { capture: true, passive: true });
+    this.map.on('movestart', () => {
+      // Also covers keyboard zoom, follow-mode movement and programmatic moves.
+      // A normal card's own camera centering must not close that card.
+      if (this._spider) { this._closeSpider(); this.closePopup(); }
     });
-    this.map.on('zoomstart', () => this._closeSpider());
     this.map.on('move', () => this._positionCard());
-    this.map.on('click', e => { if (!e.target) { this.closePopup(); this._closeSpider(); } });
     this._resizeObserver = new ResizeObserver(() => {
       this._closeSpider();
       this._positionCard();
@@ -189,6 +197,12 @@ class StationMap {
     this._setCard(html);
     document.body.classList.add('has-popup');
     this.card.querySelector('.nur-map-close').focus({ preventScroll: true });
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.card.animate([
+        { opacity: 0, transform: 'translateY(8px) scale(.98)' },
+        { opacity: 1, transform: 'translateY(0) scale(1)' },
+      ], { duration: 240, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    }
   }
   _setCard(html) {
     const body = this.card?.querySelector('.nur-map-card-body');
@@ -250,6 +264,7 @@ class StationMap {
     this._select(z.lat, z.lng);
   }
   _closeSpider() {
+    this._spider?.animations?.forEach(animation => animation.cancel());
     this._spider?.element.remove();
     this._spider = null;
   }
@@ -282,23 +297,39 @@ class StationMap {
     const compact = bottom - top < outer * 2 || bounds.width < outer * 2 + 48;
     const rows = Math.max(1, Math.floor((bottom - top) / 52) + 1);
     const columns = Math.ceil(sorted.length / rows);
-    const positions = new Map(); let index = 0;
+    const positions = new Map(), reveal = []; let index = 0;
     for (const offset of offsets) {
       const p = sorted[index], s = records.get(String(p.userData.id));
       const x = compact ? (bounds.width - (columns - 1) * 52) / 2 + (index % columns) * 52 : cx + offset[0];
       const y = compact ? top + Math.floor(index / columns) * 52 : cy + offset[1];
       const line = document.createElementNS(svg.namespaceURI, 'line');
       for (const [key,value] of Object.entries({ x1: origin[0], y1: origin[1], x2:x, y2:y })) line.setAttribute(key, value);
+      line.setAttribute('pathLength', '1');
+      line.style.strokeDasharray = '1';
       svg.append(line);
       const button = document.createElement('button'); button.className = 'nur-spider-marker';
       button.textContent = String(index+1); button.title = parking ? s.address : s.name;
       button.setAttribute('aria-label', `${index+1}. ${button.title}`);
       button.style.cssText = `left:${x}px;top:${y}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
       button.onclick = e => { e.stopPropagation(); parking ? this.openZonePopup(s.id) : this.openStationPopup(s.id); };
+      reveal.push({ button, line, dx: origin[0]-x, dy: origin[1]-y });
       layer.append(button); positions.set(String(s.id), [x,y]); index++;
     }
     this.container.parentNode.append(layer);
-    this._spider = { element:layer, positions, ids: sorted.map(p => String(p.userData.id)) };
+    const animations = [];
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      reveal.forEach(({ button, line, dx, dy }, i) => {
+        const timing = { duration: 380, delay: Math.min(i * 18, 108), easing: 'cubic-bezier(.22,.75,.25,1)', fill: 'backwards' };
+        if (button.animate) animations.push(button.animate([
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 },
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        ], timing));
+        if (line.animate) animations.push(line.animate([
+          { strokeDashoffset: '1', opacity: 0 }, { strokeDashoffset: '0', opacity: 1 },
+        ], timing));
+      });
+    }
+    this._spider = { element:layer, positions, animations, ids: sorted.map(p => String(p.userData.id)) };
   }
   setUserLocation(lat, lng, { accuracy, heading } = {}) {
     const coordinates = [lng, lat];
