@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NerU v2 (current display name **NŪR** — see `manifest.webmanifest`, `index.html` meta/logo; the repo directory and git history retain "NerU v2") is a static, no-build frontend web app for locating EV charging stations in Dushanbe, Tajikistan. It is plain HTML/CSS/JS with no framework, bundler, or package manager — open `index.html` directly in a browser or serve it with any static server. It ships as an installable PWA (service worker + manifest) and deploys to Vercel.
+NerU v2 (current display name **NŪR** — see `manifest.webmanifest`, `index.html` meta/logo; the repo directory and git history retain "NerU v2") is a static, no-build frontend web app for drivers in Dushanbe, Tajikistan. It has two map modes, switched by `#map-mode-seg`: **EV charging stations** (live connector status) and **paid kerbside parking zones** (static list, plus a geofenced parking timer). It is plain HTML/CSS/JS with no framework, bundler, or package manager — serve it with any static server. It ships as an installable PWA (service worker + manifest) and deploys to Vercel.
 
 ```bash
 # Serve locally (Python)
@@ -12,49 +12,62 @@ python3 -m http.server 8080
 
 # Or with Node
 npx serve .
+
+# Run the tests (Node ≥ 18 built-in runner; no dependencies to install).
+# Pass the files, not the directory — `node --test tests/` fails to resolve.
+node --test tests/*.cjs
+
+# Run a single test by name
+node --test --test-name-pattern="latest destination wins" tests/regression.cjs
 ```
 
-There are no build steps, no tests, and no lint configuration.
+There is no build step and no lint configuration. Tests (`tests/*.cjs`) load the browser scripts into a `node:vm` context with hand-rolled stubs (`fetch`, `mapgl`, `i18n`, DOM fragments) — there is no jsdom. `tests/regression.cjs` covers API/router/schedule/SW invariants; `tests/mapgl.cjs` covers `js/map.js` against a fake `mapgl`. One regression test asserts every local `js/`/`css/` URL in `index.html` appears in `sw.js`'s `SHELL`.
 
 ## Architecture
 
-All modules are loaded as plain `<script>` tags in `index.html`. **Load order matters** — each module depends on the ones before it. Leaflet + `leaflet.markercluster` load first from CDN, then the local modules (`index.html:297–305`):
+All modules are loaded as plain `<script>` tags at the bottom of `index.html`. **Load order matters** — each module depends on the ones before it. The 2GIS MapGL loader and `@2gis/mapgl-clusterer` load from CDN just before `map-config.js`:
 
 ```
-i18n → api → geolocation → finder → map → ui → notifications → router → analytics → pwa → app
+i18n → api → parking → geolocation → finder → [2GIS mapgl + clusterer] → map-config → map → ui → notifications → router → analytics → parking-session → pwa → app
 ```
 
-Each module exposes a single global singleton:
+Each module exposes a global singleton:
 
 | File | Singleton | Responsibility |
 |------|-----------|----------------|
 | `js/i18n.js` | `i18n` | TJ/RU/EN translations; `data-i18n` DOM attribute updates |
-| `js/api.js` | `stationAPI` | Fetch from `api.parking.dc.tj` with CORS proxy fallback; station normalization; also exports `chargingEta()` |
+| `js/api.js` | `stationAPI` | Charger feed from `api.parking.dc.tj` — direct fetch and CORS proxy are **raced** (`Promise.any`), losers aborted; concurrent callers share one in-flight promise; on failure keeps the last good snapshot and `lastFetch`. Station normalization; also exports `chargingEta()` |
+| `js/parking.js` | `parkingAPI` | Paid-parking zones (`getMarkerParking`, ~243 static strips). Fetched once, cached 24h in `localStorage` (`nur-parking-v1`) — not part of the 30s refresh. Holds the `PARKING` constants (tariff, free minutes, fine indicator, SMS/support numbers) that timer, popups and rules sheet all share |
 | `js/geolocation.js` | `geoLocation` | Browser geolocation wrapper; Haversine distance helpers (`GeoLocation.distanceBetween`, `GeoLocation.formatDistance`) |
 | `js/finder.js` | `stationFinder` | Nearest-station sorting (by distance or weighted score) |
-| `js/map.js` | `stationMap` | Leaflet map init, marker rendering, popups, highlight/route (`drawOSRMRoute`), theme swap |
-| `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar, toast, theme toggle, route panel; also exports `parseSchedule()` and `walkingEta()` |
+| `js/map-config.js` | `window.NUR_MAP_CONFIG` | 2GIS public browser key + default center (frozen). Key is Referer-restricted in the 2GIS console |
+| `js/map.js` | `stationMap` | 2GIS MapGL map: two clusterers (stations / parking), parking strips as polylines, "spider" expansion of co-located markers, cards, route line (`drawOSRMRoute`) |
+| `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar (`setStatsMode('ev'\|'parking')`), toast, route panel, lens indicator (`moveIndicator`); also exports `parseSchedule()` and `walkingEta()` |
 | `js/notifications.js` | `stationNotifications` | Web Notifications API; fires on busy→free transitions within radius |
-| `js/router.js` | `stationRouter` | In-app driving routes via OSRM (`router.project-osrm.org`); `routeTo(station)` draws route + panel, `refreshFromCurrent()` live re-routes as the user moves |
+| `js/router.js` | `stationRouter` | In-app driving routes via OSRM (`router.project-osrm.org`); `routeTo(station)` draws route + panel, `refreshFromCurrent()` live re-routes. Stale responses are discarded: the latest destination always wins, and `clear()` cannot be undone by a late reply |
 | `js/analytics.js` | `stationAnalytics` | Local-only usage history: folds every poll into `localStorage` (`nur-analytics-v1`), derives trend/hour-of-day/per-station availability, and renders the Analytics modal |
+| `js/parking-session.js` | `parkingSession`, `parkingRules` | Geofenced parking meter: auto-starts when the device dwells near a strip (proximity + low speed + persistence, with hysteresis), warns before each hour; persisted in `nur-parking-session-v1`. Only runs while the page is open. `parkingRules` is the rules/fines modal |
 | `js/pwa.js` | *(IIFE, no singleton)* | Registers `/sw.js`; drives the `#install-btn` install flow with per-browser hints (handles the iOS-Safari-only PWA install caveat) |
-| `js/app.js` | `app` | Boot controller; wires all modules together; 30s station auto-refresh; ~12s live re-route while a route is active |
+| `js/app.js` | `app` | Boot controller; wires all modules together; location consent gate (`neru-loc-consent`); 30s station auto-refresh (also on `visibilitychange`/`online`); adaptive live re-route while a route is active |
 
-`js/siwtcher.js` is a standalone anti-FOUC theme initializer (reads `neru-theme` from localStorage and sets `data-theme` before paint). Its content is **inlined** in the `index.html` `<head>` (`index.html:27`); the file itself is not loaded via `<script src>`.
+**Coordinates:** the app uses `[lat, lng]` everywhere internally; `js/map.js` converts to MapGL's `[lng, lat]` at the SDK boundary. Keep that conversion in one place.
+
+**Theme:** the app is **light-only**. `index.html` hard-codes `data-theme="light"`; `js/siwtcher.js` is a legacy stub that just sets it again and is not loaded. There is no theme toggle and no `themechange` event any more.
 
 ## Key Data Flow
 
-1. `app.init()` → `stationAPI.fetchStations()` hits `https://api.parking.dc.tj/api/v1/getMarkerPower`
-2. API tries direct fetch first, then CORS proxies (`corsproxy.io`, `allorigins.win`) in sequence
-3. Raw response is normalized via `stationAPI.normalizeStation()` into a consistent station object
-4. `stationMap.renderStations()` places Leaflet markers clustered via `leaflet.markercluster`
-5. "Find Nearest" FAB dispatches a `findNearest` custom event → `app.handleFindNearest()` → `stationFinder.findNearestStations()` → `ui.openSidebar()`
-6. Inter-module communication uses `window.dispatchEvent(new CustomEvent(...))` for: `findNearest`, `filterChanged`, `langchange`, `themechange`, `stationsLoaded`, `stationsError`
-7. Stations auto-refresh every 30s (`REFRESH_MS`, `js/app.js:8`). While a route is active, the app re-routes from the user's current position roughly every 12s (`js/app.js:238` → `stationRouter.refreshFromCurrent()`) so the driving route tracks live movement.
+1. `app.init()` → `ui.init()`, `stationMap.init('map')`, then `loadParking()` (fire-and-forget) and `await loadStations()` — the two feeds are independent so a slow charger API never delays parking.
+2. `stationAPI.fetchStations()` hits `https://api.parking.dc.tj/api/v1/getMarkerPower`, racing direct vs. `api.allorigins.win`.
+3. Raw response is normalized via `stationAPI.normalizeStation()` (invalid coordinates → `null`, dropped).
+4. `stationMap.renderStations()` loads markers into the 2GIS clusterer; identical snapshots skip the reload.
+5. "Find Nearest" dispatches `findNearest` → `app.handleFindNearest()` → `stationFinder.findNearestStations()` → `ui.openSidebar()`.
+6. Inter-module events (`window.dispatchEvent(new CustomEvent(...))`): `findNearest`, `filterChanged`, `langchange`, `stationsLoaded`, `stationsError`, `parkingLoaded`, `parkingError`, `parkingRulesRequest`, `routeRequest`, `popupClosed`.
+7. Stations auto-refresh every 30s (`REFRESH_MS`, `js/app.js`). While a route is active, `app` watches GPS and calls `stationRouter.refreshFromCurrent()` when the user drifts off the line or has moved enough — never more often than 6s, at least every 20s (`MIN_REROUTE_MS` / `MAX_REROUTE_MS`).
 
 ## PWA & Deployment
 
-- `sw.js` — service worker, cache `nur-shell-v1`. App shell (HTML/CSS/JS/logo/manifest) is **cache-first** with background update; **network-only** (never cached) for `parking.dc.tj`, the CORS proxies, `router.project-osrm.org`, CARTO basemaps, and `cloudflareinsights.com`. When editing the module list, keep `sw.js`'s `SHELL` array in sync with the `<script>` tags in `index.html`.
+- **Cache-busting:** every local CSS/JS URL in `index.html` carries `?v=N`, and `sw.js` has a matching `CACHE = 'nur-shell-vN'` and the same `?v=N` URLs in `SHELL`. When shipping a change to CSS/JS, bump the version in **all three places together** (the regression test catches a missing `SHELL` entry, not a mismatched number).
+- `sw.js` — HTML/CSS/JS are **network-first** with cache fallback (cache-first served stale CSS against fresh HTML on mobile); images/fonts cache-first. **Network-only** for 2GIS domains, `parking.dc.tj`, the CORS proxies, `router.project-osrm.org`, `cloudflareinsights.com`, and legacy tile hosts. Also handles `notificationclick` (needed for installed Android PWAs). When editing the module list, keep `SHELL` in sync with the `<script>` tags in `index.html`.
 - `manifest.webmanifest` — standalone, portrait, `logo.png` icons, `lang: tj`, theme/background `#05070d`.
 - `vercel.json` — deploy config: `cleanUrls`, security headers (HSTS, `X-Frame-Options: DENY`, `nosniff`, geolocation-only `Permissions-Policy`), and per-path `Cache-Control` tiers. **CSS and JS must stay `max-age=0, must-revalidate`**: their filenames are not fingerprinted, so any real max-age lets a browser pair week-old CSS/JS with fresh HTML — the service worker cannot help, since its own `fetch()` also goes through the HTTP cache. Revalidation is a cheap 304 thanks to ETags. Only images/fonts carry a long `immutable` cache.
 
@@ -64,7 +77,6 @@ Each module exposes a single global singleton:
 - Add new keys to all three translation objects in `js/i18n.js`
 - HTML elements use `data-i18n="key"` for text, `data-i18n-placeholder="key"` for placeholders, `data-i18n-title="key"` for titles
 - Language preference stored in `localStorage` key `neru_lang`
-- Theme preference stored in `localStorage` key `neru-theme`
 
 ## Station Object Shape
 
@@ -82,6 +94,12 @@ After normalization, every station has:
 
 - `index.html` — main map app; loads all `js/` modules (see load order above)
 - `analysis.html` — standalone analytics page. Fully self-contained: all logic lives in a single inline `<script>`; loads **no** `js/` modules and shares no state with `index.html`
+
+## Docs
+
+`docs/` holds dated design and engineering notes (excluded from Vercel deploys via `.vercelignore`). Most useful before touching related code: `map-provider.md` (2GIS integration decisions), `api-audit-2026-10-28.md` + `api-baseline-*.json` (feed quirks), `liquid-glass.md` (material system), `DESIGN.md` (native-app design brief for Stitch — deliberately differs from the web house style).
+
+`AGENTS.md` is a copy of this file for other coding agents; keep the two in sync.
 
 ## Design System — Apple HIG for Web
 
@@ -122,8 +140,11 @@ second.** Everything glass in `css/style.css` comes from these tokens:
 | `--edge-glass` / `--edge-glass-lit` | the same idea for filled/tinted *controls* (FAB, toasts, install) |
 | `--tint-volt` / `--tint-cyan` / `--tint-coral` | colour arrives as light through glass, never as paint |
 
-Both `:root` and `:root[data-theme="light"]` define every one of them —
-add light values in the same commit or the surface goes black on light.
+Both `:root` (legacy dark values) and `:root[data-theme="light"]` define
+every one of them. Because the app is now light-only, the
+`[data-theme="light"]` block is what actually renders — a token defined only
+in `:root` will show its dark value. Always add the light value in the same
+commit.
 
 **Selection is a lens.** The tab bar (`.tabbar-lens`) and both segmented
 controls (`.seg-indicator`) share one moving piece of glass: a positioner
