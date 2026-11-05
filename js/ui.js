@@ -574,44 +574,14 @@ class UI {
       return `<span class="strip-dot ${cls}" title="#${esc(c.id)}"></span>`;
     }).join('');
 
-    // Calc minimum ETA among charging connectors for the wait banner
-    let waitBannerHtml = '';
-    if (!station.hasAvailable) {
-      let minMinutes = Infinity;
-      let minEta = null;
-      for (const c of station.connectors) {
-        if ((c.isCharging || c.chargeLevel > 0) && station.capacityWatts > 0) {
-          const eta = chargingEta(c.chargeLevel, station.capacityWatts);
-          if (eta) {
-            const mins = eta.type === 'minSuffix'
-              ? (eta.val === '<1' ? 0 : parseInt(eta.val))
-              : parseFloat(eta.val) * 60;
-            if (mins < minMinutes) { minMinutes = mins; minEta = eta; }
-          }
-        }
-      }
-      if (minEta) {
-        const etaStr = minEta.val === '<1'
-          ? esc(i18n.t('etaSoon'))
-          : `${esc(i18n.t('freeIn'))} ~${esc(minEta.val)} ${esc(i18n.t(minEta.type))}`;
-        waitBannerHtml = `
-          <div class="wait-banner">
-            <svg class="wait-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" stroke-width="1.5" fill="none"/>
-              <path d="M12 7v5l3 3" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            </svg>
-            <span class="wait-text">${etaStr}</span>
-          </div>`;
-      }
-    }
-
     // Same connector language as the map card, so a station reads identically
     // wherever the user meets it.
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
         return `
           <div class="conn conn--free">
-            <span class="conn-id">#${esc(c.id)}</span>
+            <span class="conn-id" role="img" aria-label="${esc(i18n.t('connector'))} ${esc(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${esc(c.id)}</span>
             <span class="conn-state">
               <span class="conn-pip" aria-hidden="true"></span>
               ${esc(i18n.t('available'))}
@@ -622,19 +592,13 @@ class UI {
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
       if (c.isCharging || c.isStarting || level > 0) {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
-        const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
-        const freeIn = eta
-          ? (eta.val === '<1'
-              ? esc(i18n.t('etaSoonShort'))
-              : `~${esc(eta.val)} ${esc(i18n.t(eta.type))}`)
-          : '';
         return `
           <div class="conn conn--charging">
-            <span class="conn-id">#${esc(c.id)}</span>
+            <span class="conn-id" role="img" aria-label="${esc(i18n.t('connector'))} ${esc(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${esc(c.id)}</span>
             <div class="conn-body">
               <div class="conn-line">
                 <span class="conn-state conn-state--charging">${esc(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
-                ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
               <div class="conn-gauge">
                 <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(i18n.t('chargeLabel'))}">
@@ -648,7 +612,8 @@ class UI {
 
       return `
         <div class="conn conn--busy">
-          <span class="conn-id">#${esc(c.id)}</span>
+          <span class="conn-id" role="img" aria-label="${esc(i18n.t('connector'))} ${esc(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${esc(c.id)}</span>
           <span class="conn-state conn-state--busy">${esc(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
@@ -712,7 +677,6 @@ class UI {
           <span class="strip-text">${station.freeConnectors}/${station.totalConnectors} · ${esc(strip.label)}</span>
         </div>
 
-        ${waitBannerHtml}
         ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
 
         <div class="conn-list">${connRows}</div>

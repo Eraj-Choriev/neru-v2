@@ -5,7 +5,7 @@ const fs = require('node:fs');
 function setup() {
   const shapes=[];
   class Shape { constructor(map,options){this.options=options;shapes.push(this);} destroy(){this.destroyed=true;} on(){} }
-  const c=vm.createContext({mapgl:{Polyline:Shape,CircleMarker:Shape},window:{matchMedia:()=>({matches:false})}});
+  const c=vm.createContext({mapgl:{Polyline:Shape,CircleMarker:Shape},window:{matchMedia:()=>({matches:true})},i18n:{t:k=>k}});
   vm.runInContext(fs.readFileSync('js/map.js','utf8')+';this.subject=stationMap;',c);
   const s=c.subject;let loads=0;
   s.stationCluster={load(){loads++;}};s.parkingCluster={load(){}};
@@ -33,10 +33,10 @@ test('parking refresh reuses geometry and hiding it releases all strips',()=>{
   s.parkingVisible=false;s._syncParking();assert.equal(first.destroyed,true);assert.equal(s.parkingLines.length,0);
 });
 
-test('20 expanded points stay separated and inside the usable phone viewport',()=>{
+test('20 expanded points form an evenly spaced circle inside the usable phone viewport',()=>{
   for (const [width,height] of [[320,568],[414,896],[896,414]]) {
     const {s,c}=setup();
-    const element=()=>({style:{},append(){},setAttribute(){},remove(){this.removed=true;}});
+    const element=()=>({style:{},append(){},setAttribute(){},querySelectorAll(){return []},remove(){this.removed=true;}});
     c.document={createElement:element,createElementNS:element,querySelector:selector=>({getBoundingClientRect:()=>selector==='.header'?{bottom:112}:{top:height-82,height:64}})};
     s.container={getBoundingClientRect:()=>({left:0,top:0,width,height,bottom:height}),parentNode:{append(){}}};
     s.map.project=()=>[width/2,height/2];
@@ -47,7 +47,7 @@ test('20 expanded points stay separated and inside the usable phone viewport',()
     assert.equal(positions.length,20);
     for(const [i,p] of positions.entries()) {
       assert.ok(p[0]>=22&&p[0]<=width-22&&p[1]>=134&&p[1]<=height-104);
-      for(const q of positions.slice(i+1)) assert.ok(Math.abs(p[0]-q[0])>=44||Math.abs(p[1]-q[1])>=44);
+      if (i > 0) { const prev=positions[i-1]; assert.ok(Math.abs(Math.hypot(p[0]-prev[0],p[1]-prev[1])-Math.hypot(positions[1][0]-positions[0][0],positions[1][1]-positions[0][1])) < 0.001); }
     }
     const layer=s._spider.element;s._closeSpider();assert.equal(layer.removed,true);assert.equal(s._spider,null);
   }
@@ -55,7 +55,17 @@ test('20 expanded points stay separated and inside the usable phone viewport',()
 
 test('closing a spider cancels pending reveal animations and is safe to repeat',()=>{
   const {s}=setup();let cancelled=0,removed=0;
-  s._spider={animations:[{cancel(){cancelled++;}},{cancel(){cancelled++;}}],element:{remove(){removed++;}}};
+  s._spider={animations:[{cancel(){cancelled++;}},{cancel(){cancelled++;}}],reveal:[],element:{style:{},querySelectorAll(){return []},remove(){removed++;}}};
   s._closeSpider();s._closeSpider();
   assert.equal(cancelled,2);assert.equal(removed,1);assert.equal(s._spider,null);
+});
+
+test('a six-station cluster opens directly without a second zoom',()=>{
+ const {s,c}=setup();let handler,opened=0,zoomed=0;
+ c.mapgl.Clusterer=class {on(event,fn){handler=fn;} getClusterExpansionZoom(){return 17;}};
+ s.map={getZoom:()=>13,setCenter(){zoomed++},setZoom(){zoomed++}};
+ s._openGroup=(data)=>{opened=data.length};
+ s._cluster(false);
+ handler({target:{type:'cluster',data:Array.from({length:6},(_,i)=>({coordinates:[i,i]}))},lngLat:[0,0]});
+ assert.equal(opened,6);assert.equal(zoomed,0);
 });

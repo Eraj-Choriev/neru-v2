@@ -25,7 +25,7 @@ class StationRouter {
       if (generation !== this._generation) return;
       const route = data.routes[0];
       // App routes stay [lat, lng]; the map converts at the SDK boundary.
-      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      const coords = this._coordinates(route, station);
 
       this.activeRoute = {
         station,
@@ -58,7 +58,7 @@ class StationRouter {
       const data = await this._fetch(pos.lat, pos.lng, active.station.lat, active.station.lng);
       if (generation !== this._generation || active !== this.activeRoute) return;
       const route = data.routes[0];
-      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      const coords = this._coordinates(route, active.station);
       this.activeRoute.coords = coords;
       this.activeRoute.distance = route.distance;
       this.activeRoute.duration = route.duration;
@@ -70,6 +70,13 @@ class StationRouter {
     } finally {
       this._refreshing = false;
     }
+  }
+
+  _coordinates(route, station) {
+    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    // OSRM ends at the nearest road, which can be short of the station pin.
+    if (coords.length) coords.push([station.lat, station.lng]);
+    return coords;
   }
 
   async _fetch(lat1, lng1, lat2, lng2) {

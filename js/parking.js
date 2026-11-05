@@ -80,9 +80,19 @@ class ParkingAPI {
 
       const candidates = [...new Set([this.workingProxy, ...PARKING_PROXIES])]
         .filter(proxy => proxy !== null);
-      for (const proxy of candidates) {
-        data = await this._tryFetch(proxy);
-        if (data) { this.workingProxy = proxy; break; }
+      const controllers = candidates.map(() => new AbortController());
+      try {
+        const result = await Promise.any(candidates.map(async (proxy, index) => {
+          const value = await this._tryFetch(proxy, controllers[index]);
+          if (!value) throw new Error('Parking source unavailable');
+          return { value, proxy };
+        }));
+        data = result.value;
+        this.workingProxy = result.proxy;
+      } catch (_) {
+        // Preserve the existing stale-cache and error handling below.
+      } finally {
+        controllers.forEach(controller => controller.abort());
       }
 
       // This endpoint returns code as a NUMBER (200), while getMarkerPower
@@ -124,9 +134,8 @@ class ParkingAPI {
     return this.zones;
   }
 
-  async _tryFetch(proxy) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+  async _tryFetch(proxy, controller = new AbortController()) {
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       const url = proxy ? proxy + encodeURIComponent(PARKING_URL) : PARKING_URL;
       const response = await fetch(url, {
@@ -135,7 +144,8 @@ class ParkingAPI {
       });
       if (!response.ok) return null;
       const data = await response.json();
-      return Number(data?.code) === 200 && Array.isArray(data.parks) ? data : null;
+      // An empty list cannot populate this map; let another source win.
+      return Number(data?.code) === 200 && Array.isArray(data.parks) && data.parks.length ? data : null;
     } catch (e) {
       return null;
     } finally {

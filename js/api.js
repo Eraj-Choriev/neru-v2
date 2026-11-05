@@ -33,9 +33,21 @@ class StationAPI {
 
       const candidates = [...new Set([this.workingProxy, ...CORS_PROXIES])]
         .filter(proxy => proxy !== null);
-      for (const proxy of candidates) {
-        data = await this._tryFetch(proxy);
-        if (data) { this.workingProxy = proxy; break; }
+      // Race independent sources: a slow direct connection must not hold up
+      // an already responsive proxy. Cancel the remaining requests on success.
+      const controllers = candidates.map(() => new AbortController());
+      try {
+        const result = await Promise.any(candidates.map(async (proxy, index) => {
+          const value = await this._tryFetch(proxy, controllers[index]);
+          if (!value) throw new Error('Station source unavailable');
+          return { value, proxy };
+        }));
+        data = result.value;
+        this.workingProxy = result.proxy;
+      } catch (_) {
+        // The common error path below reports failure after every source fails.
+      } finally {
+        controllers.forEach(controller => controller.abort());
       }
 
       if (data && Number(data.code) === 200 && Array.isArray(data.powers)) {
@@ -60,9 +72,8 @@ class StationAPI {
     return this.stations;
   }
 
-  async _tryFetch(proxy) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+  async _tryFetch(proxy, controller = new AbortController()) {
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       const url = proxy ? proxy + encodeURIComponent(API_URL) : API_URL;
       const response = await fetch(url, {
@@ -73,7 +84,6 @@ class StationAPI {
       const data = await response.json();
       return Number(data?.code) === 200 && Array.isArray(data.powers) ? data : null;
     } catch (e) {
-      console.warn(`Proxy "${proxy || 'direct'}" failed:`, e.message);
       return null;
     } finally {
       clearTimeout(timeout);
@@ -157,17 +167,3 @@ class StationAPI {
 }
 
 const stationAPI = new StationAPI();
-
-const ETA_BATTERY_KWH = 50;
-const ETA_TARGET_PCT  = 90;
-
-function chargingEta(chargeLevel, powerKw) {
-  if (!powerKw || powerKw <= 0 || chargeLevel == null || chargeLevel < 0) return null;
-  const remainPct = Math.max(0, ETA_TARGET_PCT - chargeLevel);
-  if (remainPct <= 0) return { val: '<1', type: 'minSuffix' };
-  const minutes = Math.round((remainPct / 100) * ETA_BATTERY_KWH / powerKw * 60);
-  if (minutes < 1)  return { val: '<1', type: 'minSuffix' };
-  if (minutes < 60) return { val: String(minutes), type: 'minSuffix' };
-  
-  return { val: (minutes / 60).toFixed(1), type: 'hrSuffix' };
-}

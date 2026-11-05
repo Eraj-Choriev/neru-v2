@@ -151,27 +151,6 @@ class StationAnalytics {
     }));
   }
 
-  /** Stations whose busy connector is closest to finishing. */
-  freeingSoon(stations, limit = 4) {
-    const out = [];
-    for (const s of stations || []) {
-      if (s.hasAvailable || !(s.capacityKw > 0)) continue;
-      let best = null;
-      for (const c of s.connectors || []) {
-        if (!(c.isCharging || c.isStarting) || !(c.chargeLevel > 0)) continue;
-        const eta = chargingEta(c.chargeLevel, s.capacityKw);
-        if (!eta) continue;
-        const mins = eta.type === 'minSuffix'
-          ? (eta.val === '<1' ? 0 : parseInt(eta.val, 10))
-          : parseFloat(eta.val) * 60;
-        if (best === null || mins < best.mins) best = { mins, eta, level: c.chargeLevel };
-      }
-      if (best) out.push({ id: s.id, name: s.name, ...best });
-    }
-    out.sort((a, b) => a.mins - b.mins);
-    return out.slice(0, limit);
-  }
-
   /**
    * What the history says about one station, or null when it does not yet
    * say anything worth printing.
@@ -375,7 +354,6 @@ class StationAnalytics {
 
     const mostFree = this.ranked('free', 5);
     const mostBusy = this.ranked('busy', 5);
-    const soon = this.freeingSoon(stationAPI.getStations(), 4);
     const overall = this.overall();
     const parking = this.parkingFacts();
 
@@ -425,18 +403,6 @@ class StationAnalytics {
         <h3 class="an-h">${esc(t('anByHour'))}<span class="an-sub">${esc(t('anByHourHint'))}</span></h3>
         ${this._hourChart()}
       </section>
-
-      ${soon.length ? `
-      <section class="an-sec">
-        <h3 class="an-h">${esc(t('anFreeingSoon'))}</h3>
-        <ul class="an-list">
-          ${soon.map((s) => `
-            <li class="an-row">
-              <span class="an-row-name">${esc(s.name)}</span>
-              <span class="an-row-val an-row-val--soon">~${esc(s.eta.val)} ${esc(t(s.eta.type))}</span>
-            </li>`).join('')}
-        </ul>
-      </section>` : ''}
 
       <div class="an-cols">
         ${this._rankList(t('anMostFree'), mostFree, 'free')}

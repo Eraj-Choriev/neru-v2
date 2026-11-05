@@ -65,9 +65,22 @@ test('nearest search does not turn the fallback city centre into a GPS fix',asyn
 test('parking retries after failure even when stale zones are in memory',async()=>{
  let calls=0;const c=context(['js/parking.js'],{localStorage:{getItem:()=>null,setItem(){}},fetch:async()=>{calls++;return {ok:true,json:async()=>({code:200,parks:[{id:1,marker1:'38.5',marker2:'68.7'}]})}}});
  vm.runInContext('parkingAPI.zones=[{id:"old"}];parkingAPI.lastFetch=new Date();parkingAPI.lastError=new Error("offline");parkingAPI.normalizeZone=raw=>({id:raw.id})',c);
- const r=await vm.runInContext('parkingAPI.fetchZones()',c);assert.equal(calls,1);assert.equal(r[0].id,1);assert.equal(vm.runInContext('parkingAPI.lastError',c),null);
+ const r=await vm.runInContext('parkingAPI.fetchZones()',c);assert.equal(calls,2);assert.equal(r[0].id,1);assert.equal(vm.runInContext('parkingAPI.lastError',c),null);
 });
 test('parking session initializes once across reload attempts',async()=>{
  let inits=0;const c=context(['js/app.js'],{document:{addEventListener(){}},parkingSession:{init(){inits++;}},parkingAPI:{fetchZones:async()=>[]}});
  await vm.runInContext('app.loadParking()',c);await vm.runInContext('app.loadParking()',c);assert.equal(inits,1);
+});
+
+test('data warning waits for stale station data and distinguishes feeds',()=>{
+ const stationAPI={lastError:new Error('network'),lastFetch:new Date()};
+ const parkingAPI={lastError:null,lastFetch:new Date()};
+ const c=context(['js/app.js'],{document:{addEventListener(){}},stationAPI,parkingAPI,PARKING_CACHE_TTL:86400000});
+ assert.equal(vm.runInContext('app.getDataStatusKey()',c),null);
+ stationAPI.lastFetch=new Date(Date.now()-91000);
+ assert.equal(vm.runInContext('app.getDataStatusKey()',c),'stationsUnavailable');
+ stationAPI.lastError=null;parkingAPI.lastError=new Error('network');parkingAPI.lastFetch=null;
+ assert.equal(vm.runInContext('app.getDataStatusKey()',c),'parkingUnavailable');
+ stationAPI.lastError=new Error('network');
+ assert.equal(vm.runInContext('app.getDataStatusKey()',c),'dataUnavailable');
 });

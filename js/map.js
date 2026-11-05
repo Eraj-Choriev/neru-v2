@@ -95,7 +95,7 @@ class StationMap {
       } else {
         const data = e.target.data;
         // Co-located stations remain selectable even when zooming cannot separate them.
-        if (this.map.getZoom() >= 18 || data.every(m => m.coordinates.every((v, i) => Math.abs(v - data[0].coordinates[i]) < .00002))) {
+        if (data.length <= 20 || this.map.getZoom() >= 18 || data.every(m => m.coordinates.every((v, i) => Math.abs(v - data[0].coordinates[i]) < .00002))) {
           this._openGroup(data, parking, e.lngLat);
         } else {
           const zoom = Math.min(20, cluster.getClusterExpansionZoom(e.target.id) + .2);
@@ -183,8 +183,24 @@ class StationMap {
     this.card.setAttribute('role', 'dialog');
     this.card.setAttribute('aria-label', type === 'parking' ? i18n.t('pkPaidZone') : i18n.t('stations'));
     this.card.innerHTML = '<button class="nur-map-close" type="button" aria-label="' + this._esc(i18n.t('closePanel')) + '">×</button><div class="nur-map-card-body"></div>';
-    this.card.querySelector('button').onclick = () => this.closePopup();
+    if (this._spider && this._spider.parking === (type === 'parking')) {
+      const nav = document.createElement('nav');
+      nav.className = 'nur-group-nav';
+      nav.setAttribute('aria-label', i18n.t('groupNavigation'));
+      const index = this._spider.ids.indexOf(String(id));
+      nav.innerHTML = `<button type="button" data-group-step="-1" aria-label="${this._esc(i18n.t('previousStation'))}">‹</button><span>${index + 1} / ${this._spider.ids.length}</span><button type="button" data-group-step="1" aria-label="${this._esc(i18n.t('nextStation'))}">›</button>`;
+      this.card.prepend(nav);
+    }
+    this.card.querySelector('.nur-map-close').onclick = () => this.closePopup();
     this.card.addEventListener('click', e => {
+      const step = e.target.closest('[data-group-step]');
+      if (step && this._spider) {
+        const ids = this._spider.ids;
+        const index = (ids.indexOf(this.popupId) + Number(step.dataset.groupStep) + ids.length) % ids.length;
+        this._spider.parking ? this.openZonePopup(ids[index]) : this.openStationPopup(ids[index]);
+        this.card?.querySelector(`[data-group-step="${step.dataset.groupStep}"]`)?.focus({ preventScroll: true });
+        return;
+      }
       const button = e.target.closest('[data-action]');
       if (!button) return;
       if (button.dataset.action === 'route') window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: button.dataset.stationId } }));
@@ -248,7 +264,8 @@ class StationMap {
     this.selectedMarker = new mapgl.CircleMarker(this.map, {
       coordinates: [lng, lat], radius: 25, color: '#15834b22', strokeColor: '#15834b', strokeWidth: 3,
     });
-    if (!this._spider) this.flyTo(lat, lng, Math.max(16, this.map.getZoom()));
+    // Opening a station during navigation must not zoom away from the route.
+    if (!this._spider && !this.routeLine) this.flyTo(lat, lng, Math.max(16, this.map.getZoom()));
     this._positionCard();
   }
   openStationPopup(id) {
@@ -264,9 +281,25 @@ class StationMap {
     this._select(z.lat, z.lng);
   }
   _closeSpider() {
-    this._spider?.animations?.forEach(animation => animation.cancel());
-    this._spider?.element.remove();
+    const spider = this._spider;
+    if (!spider) return;
     this._spider = null;
+    spider.animations.forEach(animation => animation.cancel());
+    spider.element.style.pointerEvents = 'none';
+    spider.element.querySelectorAll('button').forEach(button => { button.disabled = true; });
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !spider.reveal.length) {
+      spider.element.remove();
+      return;
+    }
+    const closing = spider.reveal.flatMap(({ button, line, dx, dy }, i) => {
+      const timing = { duration: 360, delay: Math.min((spider.reveal.length - 1 - i) * 12, 96), easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' };
+      return [
+        button.animate([{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 }], timing),
+        line.animate([{ strokeDashoffset: '0', opacity: 1 }, { strokeDashoffset: '1', opacity: 0 }], timing),
+      ];
+    });
+    Promise.all(closing.map(animation => animation.finished.catch(() => {}))).then(() => spider.element.remove());
   }
   _openGroup(points, parking, coordinates = points[0].coordinates) {
     this.closePopup();
@@ -281,45 +314,48 @@ class StationMap {
     const dock = document.querySelector('.tabbar-dock').getBoundingClientRect();
     const top = header.bottom - bounds.top + 32;
     const bottom = (dock.height ? dock.top : bounds.bottom) - bounds.top - 32;
-    // Screen-space rings keep 44px targets separated regardless of map zoom.
-    const offsets = [];
-    for (let radius = 56; offsets.length < sorted.length; radius += 52) {
-      const candidates = Math.floor(2 * Math.PI * radius / 48);
-      for (let i = 0; i < candidates && offsets.length < sorted.length; i++) {
-        const angle = i * 2 * Math.PI / candidates - Math.PI / 2;
-        const point = [Math.cos(angle) * radius, Math.sin(angle) * radius];
-        if (offsets.every(p => Math.abs(p[0] - point[0]) >= 48 || Math.abs(p[1] - point[1]) >= 48)) offsets.push(point);
-      }
-    }
-    const outer = Math.max(56, ...offsets.flatMap(p => p.map(Math.abs)));
-    const cx = Math.max(outer + 24, Math.min(bounds.width - outer - 24, origin[0]));
-    const cy = Math.max(top + outer, Math.min(bottom - outer, origin[1]));
-    const compact = bottom - top < outer * 2 || bounds.width < outer * 2 + 48;
-    const rows = Math.max(1, Math.floor((bottom - top) / 52) + 1);
-    const columns = Math.ceil(sorted.length / rows);
+    if (!sorted.length) return;
+    // One evenly spaced circle, sized to its population and the visible map.
+    const count = sorted.length;
+    const wantedRadius = Math.max(58, count > 1 ? 52 / (2 * Math.sin(Math.PI / count)) : 58);
+    const radius = Math.max(30, Math.min(wantedRadius, (bounds.width - 48) / 2, (bottom - top) / 2));
+    const size = Math.min(44, count > 1 ? Math.max(20, 2 * radius * Math.sin(Math.PI / count) - 4) : 44);
+    const cx = Math.max(radius + 24, Math.min(bounds.width - radius - 24, origin[0]));
+    const cy = Math.max(top + radius, Math.min(bottom - radius, origin[1]));
+    const offsets = sorted.map((_, i) => {
+      const angle = i * 2 * Math.PI / count - Math.PI / 2;
+      return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+    });
+    const center = document.createElement('button');
+    center.type = 'button'; center.className = 'nur-spider-center';
+    center.textContent = String(count);
+    center.setAttribute('aria-label', i18n.t('closePanel'));
+    center.style.left = `${cx}px`; center.style.top = `${cy}px`;
+    center.onclick = e => { e.stopPropagation(); this.closePopup(); this._closeSpider(); };
+    layer.append(center);
     const positions = new Map(), reveal = []; let index = 0;
     for (const offset of offsets) {
       const p = sorted[index], s = records.get(String(p.userData.id));
-      const x = compact ? (bounds.width - (columns - 1) * 52) / 2 + (index % columns) * 52 : cx + offset[0];
-      const y = compact ? top + Math.floor(index / columns) * 52 : cy + offset[1];
+      const x = cx + offset[0], y = cy + offset[1];
+      const ux = offset[0] / radius, uy = offset[1] / radius;
       const line = document.createElementNS(svg.namespaceURI, 'line');
-      for (const [key,value] of Object.entries({ x1: origin[0], y1: origin[1], x2:x, y2:y })) line.setAttribute(key, value);
+      for (const [key,value] of Object.entries({ x1: cx + ux * 24, y1: cy + uy * 24, x2: x - ux * size / 2, y2: y - uy * size / 2 })) line.setAttribute(key, value);
       line.setAttribute('pathLength', '1');
       line.style.strokeDasharray = '1';
       svg.append(line);
       const button = document.createElement('button'); button.className = 'nur-spider-marker';
       button.textContent = String(index+1); button.title = parking ? s.address : s.name;
       button.setAttribute('aria-label', `${index+1}. ${button.title}`);
-      button.style.cssText = `left:${x}px;top:${y}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
+      button.style.cssText = `left:${x}px;top:${y}px;--spider-size:${size}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
       button.onclick = e => { e.stopPropagation(); parking ? this.openZonePopup(s.id) : this.openStationPopup(s.id); };
-      reveal.push({ button, line, dx: origin[0]-x, dy: origin[1]-y });
+      reveal.push({ button, line, dx: cx-x, dy: cy-y });
       layer.append(button); positions.set(String(s.id), [x,y]); index++;
     }
     this.container.parentNode.append(layer);
     const animations = [];
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       reveal.forEach(({ button, line, dx, dy }, i) => {
-        const timing = { duration: 380, delay: Math.min(i * 18, 108), easing: 'cubic-bezier(.22,.75,.25,1)', fill: 'backwards' };
+        const timing = { duration: 320, delay: Math.min(i * 32, 400), easing: 'cubic-bezier(.22,.75,.25,1)', fill: 'backwards' };
         if (button.animate) animations.push(button.animate([
           { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 },
           { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
@@ -329,7 +365,7 @@ class StationMap {
         ], timing));
       });
     }
-    this._spider = { element:layer, positions, animations, ids: sorted.map(p => String(p.userData.id)) };
+    this._spider = { element:layer, positions, animations, reveal, parking, ids: sorted.map(p => String(p.userData.id)) };
   }
   setUserLocation(lat, lng, { accuracy, heading } = {}) {
     const coordinates = [lng, lat];
@@ -354,7 +390,7 @@ class StationMap {
     this.map.setCenter([lng, lat], this._animation());
     this.map.setZoom(zoom, this._animation());
   }
-  highlightStation(station) { this.clearHighlight(); this.openStationPopup(station.id); }
+  highlightStation(station) { this.openStationPopup(station.id); }
   highlightZone(zone) {
     this.clearZoneHighlight();
     if (zone) this.zoneHighlight = new mapgl.Polyline(this.map, {
@@ -555,33 +591,6 @@ class StationMap {
     // Address only if different from station name
     const showAddress = station.address && station.address.trim() !== station.name.trim();
 
-    // Wait banner
-    let waitBannerHtml = '';
-    if (!station.hasAvailable) {
-      let minMinutes = Infinity;
-      let minEta = null;
-      for (const c of station.connectors) {
-        if ((c.isCharging || c.chargeLevel > 0) && station.capacityWatts > 0) {
-          const eta = chargingEta(c.chargeLevel, station.capacityWatts);
-          if (eta) {
-            const mins = eta.type === 'minSuffix'
-              ? (eta.val === '<1' ? 0 : parseInt(eta.val))
-              : parseFloat(eta.val) * 60;
-            if (mins < minMinutes) { minMinutes = mins; minEta = eta; }
-          }
-        }
-      }
-      const clockSvg = `<svg class="wait-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>`;
-      if (minEta) {
-        const etaStr = minEta.val === '<1'
-          ? escHtml(i18n.t('etaSoon'))
-          : `${escHtml(i18n.t('freeIn'))} ~${escHtml(minEta.val)} ${escHtml(i18n.t(minEta.type))}`;
-        waitBannerHtml = `<div class="wait-banner">${clockSvg}<span class="wait-text">${etaStr}</span></div>`;
-      } else {
-        waitBannerHtml = `<div class="wait-banner wait-banner--no-eta">${clockSvg}<span class="wait-text">${escHtml(i18n.t('allBusy'))}</span></div>`;
-      }
-    }
-
     // Connector rows.
     // Each row answers one question in order: which plug, what state, and —
     // when it is busy — when it frees up. The meter shows the real charge
@@ -590,7 +599,8 @@ class StationMap {
       if (c.isAvailable) {
         return `
           <div class="conn conn--free">
-            <span class="conn-id">#${escHtml(c.id)}</span>
+            <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
             <span class="conn-state">
               <span class="conn-pip" aria-hidden="true"></span>
               ${escHtml(i18n.t('available'))}
@@ -601,21 +611,13 @@ class StationMap {
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
       if (c.isCharging || c.isStarting || level > 0) {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
-        const eta = station.capacityWatts > 0 ? chargingEta(level, station.capacityWatts) : null;
-        // Keep this to a short, single-line value — it shares a line with the
-        // state label, and a full sentence here wraps and breaks the row.
-        const freeIn = eta
-          ? (eta.val === '<1'
-              ? escHtml(i18n.t('etaSoonShort'))
-              : `~${escHtml(eta.val)} ${escHtml(i18n.t(eta.type))}`)
-          : '';
         return `
           <div class="conn conn--charging">
-            <span class="conn-id">#${escHtml(c.id)}</span>
+            <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
             <div class="conn-body">
               <div class="conn-line">
                 <span class="conn-state conn-state--charging">${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
-                ${freeIn ? `<span class="conn-freein">${freeIn}</span>` : ''}
               </div>
               <div class="conn-gauge">
                 <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
@@ -629,7 +631,8 @@ class StationMap {
 
       return `
         <div class="conn conn--busy">
-          <span class="conn-id">#${escHtml(c.id)}</span>
+          <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
           <span class="conn-state conn-state--busy">${escHtml(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
@@ -662,7 +665,6 @@ class StationMap {
         </div>
 
         ${scheduleRow}
-        ${waitBannerHtml}
         ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
         <div class="conn-list">${connRows}</div>
 

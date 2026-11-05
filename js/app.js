@@ -139,13 +139,22 @@ class App {
     ui.showToast(i18n.t(next ? 'pkZonesOn' : 'pkZonesOff'), 'info', 2000);
   }
 
+  getDataStatusKey() {
+    const stationsStale = stationAPI.lastError && (!stationAPI.lastFetch || Date.now() - stationAPI.lastFetch.getTime() >= 90000);
+    const parkingStale = parkingAPI.lastError && (!parkingAPI.lastFetch || Date.now() - parkingAPI.lastFetch.getTime() >= PARKING_CACHE_TTL);
+    if (stationsStale && parkingStale) return 'dataUnavailable';
+    if (stationsStale) return 'stationsUnavailable';
+    if (parkingStale) return 'parkingUnavailable';
+    return null;
+  }
+
   bindEvents() {
     const updateStatus = () => {
-      const failed = stationAPI.lastError || parkingAPI.lastError;
+      const key = this.getDataStatusKey();
       const banner = document.getElementById('data-status');
       if (!banner) return;
-      banner.hidden = !failed;
-      document.getElementById('data-status-text').textContent = i18n.t('dataUnavailable');
+      banner.hidden = !key;
+      if (key) document.getElementById('data-status-text').textContent = i18n.t(key);
     };
     ['stationsLoaded', 'stationsError', 'parkingLoaded', 'parkingError', 'langchange']
       .forEach(event => window.addEventListener(event, updateStatus));
@@ -167,7 +176,7 @@ class App {
 
     // Station load error
     window.addEventListener('stationsError', () => {
-      ui.showToast(i18n.t('errorLoading'), 'error');
+      if (!stationAPI.lastFetch) ui.showToast(i18n.t('errorLoading'), 'error');
       ui.hideLoading();
     });
 
