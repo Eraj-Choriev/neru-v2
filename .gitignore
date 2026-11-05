@@ -5,3 +5,9 @@
 brag-output*/
 build-premium-film.py
 navbar-fixed.png
+
+# Secrets and the config generated from them (scripts/build-config.mjs)
+.env
+.env.*
+!.env.example
+js/config.js

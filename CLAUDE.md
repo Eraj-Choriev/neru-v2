@@ -7,6 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 NerU v2 (current display name **NŪR** — see `manifest.webmanifest`, `index.html` meta/logo; the repo directory and git history retain "NerU v2") is a static, no-build frontend web app for drivers in Dushanbe, Tajikistan. It has two map modes, switched by `#map-mode-seg`: **EV charging stations** (live connector status) and **paid kerbside parking zones** (static list, plus a geofenced parking timer). It is plain HTML/CSS/JS with no framework, bundler, or package manager — serve it with any static server. It ships as an installable PWA (service worker + manifest) and deploys to Vercel.
 
 ```bash
+# One-time: API keys live in .env (git-ignored), never in source
+cp .env.example .env   # then fill in NUR_2GIS_KEY (required), NUR_CF_BEACON_TOKEN (optional)
+
+# Generate js/config.js from .env — required before the map can load
+node scripts/build-config.mjs
+
 # Serve locally (Python)
 python3 -m http.server 8080
 
@@ -21,14 +27,14 @@ node --test tests/*.cjs
 node --test --test-name-pattern="latest destination wins" tests/regression.cjs
 ```
 
-There is no build step and no lint configuration. Tests (`tests/*.cjs`) load the browser scripts into a `node:vm` context with hand-rolled stubs (`fetch`, `mapgl`, `i18n`, DOM fragments) — there is no jsdom. `tests/regression.cjs` covers API/router/schedule/SW invariants; `tests/mapgl.cjs` covers `js/map.js` against a fake `mapgl`. One regression test asserts every local `js/`/`css/` URL in `index.html` appears in `sw.js`'s `SHELL`.
+The only build step is `scripts/build-config.mjs` (see *Secrets & config* below); there is no bundler and no lint configuration. Tests (`tests/*.cjs`) load the browser scripts into a `node:vm` context with hand-rolled stubs (`fetch`, `mapgl`, `i18n`, DOM fragments) — there is no jsdom. `tests/regression.cjs` covers API/router/schedule/SW invariants; `tests/mapgl.cjs` covers `js/map.js` against a fake `mapgl`. One regression test asserts every local `js/`/`css/` URL in `index.html` appears in `sw.js`'s `SHELL`.
 
 ## Architecture
 
 All modules are loaded as plain `<script>` tags at the bottom of `index.html`. **Load order matters** — each module depends on the ones before it. The 2GIS MapGL loader and `@2gis/mapgl-clusterer` load from CDN just before `map-config.js`:
 
 ```
-i18n → api → parking → geolocation → finder → [2GIS mapgl + clusterer] → map-config → map → ui → notifications → router → analytics → parking-session → pwa → app
+i18n → api → parking → geolocation → finder → [2GIS mapgl + clusterer] → config → map → ui → notifications → router → analytics → parking-session → pwa → app
 ```
 
 Each module exposes a global singleton:
@@ -40,7 +46,7 @@ Each module exposes a global singleton:
 | `js/parking.js` | `parkingAPI` | Paid-parking zones (`getMarkerParking`, ~243 static strips). Fetched once, cached 24h in `localStorage` (`nur-parking-v1`) — not part of the 30s refresh. Holds the `PARKING` constants (tariff, free minutes, fine indicator, SMS/support numbers) that timer, popups and rules sheet all share |
 | `js/geolocation.js` | `geoLocation` | Browser geolocation wrapper; Haversine distance helpers (`GeoLocation.distanceBetween`, `GeoLocation.formatDistance`) |
 | `js/finder.js` | `stationFinder` | Nearest-station sorting (by distance or weighted score) |
-| `js/map-config.js` | `window.NUR_MAP_CONFIG` | 2GIS public browser key + default center (frozen). Key is Referer-restricted in the 2GIS console |
+| `js/config.js` | `window.NUR_MAP_CONFIG`, `window.NUR_ANALYTICS_TOKEN` | **Generated, git-ignored.** 2GIS key + default center, Cloudflare beacon token. Never edit or commit; regenerate with `scripts/build-config.mjs` |
 | `js/map.js` | `stationMap` | 2GIS MapGL map: two clusterers (stations / parking), parking strips as polylines, "spider" expansion of co-located markers, cards, route line (`drawOSRMRoute`) |
 | `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar (`setStatsMode('ev'\|'parking')`), toast, route panel, lens indicator (`moveIndicator`); also exports `parseSchedule()` and `walkingEta()` |
 | `js/notifications.js` | `stationNotifications` | Web Notifications API; fires on busy→free transitions within radius |
@@ -52,7 +58,14 @@ Each module exposes a global singleton:
 
 **Coordinates:** the app uses `[lat, lng]` everywhere internally; `js/map.js` converts to MapGL's `[lng, lat]` at the SDK boundary. Keep that conversion in one place.
 
-**Theme:** the app is **light-only**. `index.html` hard-codes `data-theme="light"`; `js/siwtcher.js` is a legacy stub that just sets it again and is not loaded. There is no theme toggle and no `themechange` event any more.
+**Theme:** the app is **light-only**. `index.html` hard-codes `data-theme="light"`. There is no theme toggle and no `themechange` event any more.
+
+## Secrets & config
+
+- Keys live only in `.env` (local, git-ignored, also in `.vercelignore`) and in Vercel → Project Settings → Environment Variables (Production **and** Preview). `.env.example` documents the names: `NUR_2GIS_KEY` (required), `NUR_CF_BEACON_TOKEN` (optional; empty disables analytics).
+- `vercel.json` runs `node scripts/build-config.mjs` as `buildCommand` (`outputDirectory: "."`). It writes `js/config.js` and **exits 1 if `NUR_2GIS_KEY` is missing or malformed**, so a misconfigured deploy fails and Vercel keeps the previous one live.
+- Both values still reach the browser — that is inherent to a browser map key and a web-analytics beacon. Their real protection is the Referer allow-list in the 2GIS Platform Manager and Cloudflare's site binding. Never put a true server-side secret in `config.js`; that would need a serverless function.
+- Third-party scripts with a pinned version carry SRI (`integrity` + `crossorigin`). When bumping `@2gis/mapgl-clusterer`, recompute: `curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A`. The 2GIS loader (`mapgl.2gis.com/api/js/v1`) is unversioned, so it cannot have SRI.
 
 ## Key Data Flow
 
@@ -67,7 +80,7 @@ Each module exposes a global singleton:
 ## PWA & Deployment
 
 - **Cache-busting:** every local CSS/JS URL in `index.html` carries `?v=N`, and `sw.js` has a matching `CACHE = 'nur-shell-vN'` and the same `?v=N` URLs in `SHELL`. When shipping a change to CSS/JS, bump the version in **all three places together** (the regression test catches a missing `SHELL` entry, not a mismatched number).
-- `sw.js` — HTML/CSS/JS are **network-first** with cache fallback (cache-first served stale CSS against fresh HTML on mobile); images/fonts cache-first. **Network-only** for 2GIS domains, `parking.dc.tj`, the CORS proxies, `router.project-osrm.org`, `cloudflareinsights.com`, and legacy tile hosts. Also handles `notificationclick` (needed for installed Android PWAs). When editing the module list, keep `SHELL` in sync with the `<script>` tags in `index.html`.
+- `sw.js` — HTML/CSS/JS are **network-first** with cache fallback (cache-first served stale CSS against fresh HTML on mobile); images/fonts cache-first. **Network-only** for 2GIS domains, `parking.dc.tj`, `allorigins.win`, `router.project-osrm.org` and `cloudflareinsights.com`. Also handles `notificationclick` (needed for installed Android PWAs). When editing the module list, keep `SHELL` in sync with the `<script>` tags in `index.html`.
 - `manifest.webmanifest` — standalone, portrait, `logo.png` icons, `lang: tj`, theme/background `#05070d`.
 - `vercel.json` — deploy config: `cleanUrls`, security headers (HSTS, `X-Frame-Options: DENY`, `nosniff`, geolocation-only `Permissions-Policy`), and per-path `Cache-Control` tiers. **CSS and JS must stay `max-age=0, must-revalidate`**: their filenames are not fingerprinted, so any real max-age lets a browser pair week-old CSS/JS with fresh HTML — the service worker cannot help, since its own `fetch()` also goes through the HTTP cache. Revalidation is a cheap 304 thanks to ETags. Only images/fonts carry a long `immutable` cache.
 
@@ -93,11 +106,18 @@ After normalization, every station has:
 ## Pages
 
 - `index.html` — main map app; loads all `js/` modules (see load order above)
-- `analysis.html` — standalone analytics page. Fully self-contained: all logic lives in a single inline `<script>`; loads **no** `js/` modules and shares no state with `index.html`
+- `analysis.html` — standalone analytics page. Self-contained: all logic lives in a single inline `<script>`; loads only `js/config.js` (for the analytics token) and shares no state with `index.html`
+
+## Performance rules
+
+- Animations that run forever (live dots, pulses) animate only `transform`/`opacity` on a pseudo-element. Animating `box-shadow`/`filter` repaints on the main thread every frame and re-composites the glass (`backdrop-filter`) behind it.
+- Work driven by MapGL's `move` event goes through `requestAnimationFrame` (see `_schedulePositionCard`) and must not read layout after writing styles.
+- Do not rebuild WebGL objects (`mapgl.Circle`, `Polyline`) when their inputs did not change; compare a cheap key first.
+- Images ship at no more than ~2× their largest rendered size. `logo.png` is 768×512 — keep the 3:2 canvas, the CSS crops the wordmark from it.
 
 ## Docs
 
-`docs/` holds dated design and engineering notes (excluded from Vercel deploys via `.vercelignore`). Most useful before touching related code: `map-provider.md` (2GIS integration decisions), `api-audit-2026-10-28.md` + `api-baseline-*.json` (feed quirks), `liquid-glass.md` (material system), `DESIGN.md` (native-app design brief for Stitch — deliberately differs from the web house style).
+`docs/` holds dated design and engineering notes (excluded from Vercel deploys via `.vercelignore`). Most useful before touching related code: `review-2026-11-05.md` (latest security/performance audit and open items), `map-provider.md` (2GIS integration decisions), `api-audit-2026-10-28.md` + `api-baseline-*.json` (feed quirks), `liquid-glass.md` (material system), `DESIGN.md` (native-app design brief for Stitch — deliberately differs from the web house style).
 
 `AGENTS.md` is a copy of this file for other coding agents; keep the two in sync.
 

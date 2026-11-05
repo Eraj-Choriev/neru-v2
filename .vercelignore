@@ -6,3 +6,5 @@ build-premium-film.py
 navbar-fixed.png
 tests/
 docs/
+.env
+.env.*

@@ -360,17 +360,28 @@ body {
 }
 
 .stat-live-dot {
+  position: relative;
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--volt-500);
-  box-shadow: 0 0 0 0 var(--volt-glow);
+}
+/* The pulse is a scaled ring, not an animated box-shadow: transform + opacity
+   run on the compositor, while a box-shadow keyframe repaints this always-on
+   dot — and the blurred glass behind it — on every frame. */
+.stat-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(123, 255, 190, 0.5);
   animation: livePulse 2.4s var(--ease-out) infinite;
+  pointer-events: none;
 }
 
 @keyframes livePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.5); }
-  70%  { box-shadow: 0 0 0 8px rgba(123, 255, 190, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0); }
+  0%   { transform: scale(1);    opacity: 1; }
+  70%  { transform: scale(3.67); opacity: 0; }
+  100% { transform: scale(3.67); opacity: 0; }
 }
 
 @media (max-width: 640px) { .map-stats { display: none; } }
@@ -1405,16 +1416,25 @@ body {
 
 /* Live pip on a free connector */
 .conn-pip {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--volt-500);
   flex-shrink: 0;
+}
+.conn-pip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(123, 255, 190, 0.55);
   animation: connPip 2s var(--ease-io) infinite;
+  pointer-events: none;
 }
 @keyframes connPip {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.55); }
-  50%      { box-shadow: 0 0 0 5px rgba(123, 255, 190, 0); }
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(2.43); opacity: 0; }
 }
 
 .conn-body {
@@ -1542,7 +1562,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .conn-meter-fill { animation-duration: 1ms; }
-  .conn-pip { animation: none; }
+  .conn-pip, .conn-pip::after, .stat-live-dot::after, .route-icon::after { animation: none; }
 }
 
 /* Station-level wait banner — shown when all connectors are busy */
@@ -2126,6 +2146,11 @@ body.sidebar-open { overflow: hidden; }
   transition: opacity 320ms var(--ease-out), visibility 320ms;
 }
 .loading-overlay.visible { opacity: 1; visibility: visible; }
+/* The loader's ripples animate box-shadow and filter — main-thread work that
+   keeps ticking under visibility:hidden. Freeze them once the overlay is gone. */
+.loading-overlay:not(.visible) *,
+.loading-overlay:not(.visible) *::before,
+.loading-overlay:not(.visible) *::after { animation-play-state: paused; }
 
 .loader-wrap {
   display: flex;
@@ -2973,12 +2998,23 @@ body.sidebar-open { overflow: hidden; }
   color: var(--ink-900);
   flex-shrink: 0;
   box-shadow: 0 4px 14px -4px var(--volt-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+/* Halo as a compositor-only ring (was an animated box-shadow repaint). */
+.route-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(123, 255, 190, 0.12);
+  opacity: 0;
   animation: routeIconPulse 2.8s var(--ease-io) infinite;
+  pointer-events: none;
 }
 
 @keyframes routeIconPulse {
-  0%, 100% { box-shadow: 0 4px 14px -4px var(--volt-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
-  50%       { box-shadow: 0 4px 20px -4px var(--volt-glow), inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 4px rgba(123,255,190,0.12); }
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 1; }
 }
 
 .route-info {

@@ -13,6 +13,9 @@ class StationMap {
 
   init(containerId = 'map') {
     this.container = document.getElementById(containerId);
+    if (!window.NUR_MAP_CONFIG?.key) {
+      throw new Error('2GIS key missing: js/config.js was not generated. Run `node scripts/build-config.mjs` (see .env.example).');
+    }
     this.map = new mapgl.Map(containerId, {
       key: window.NUR_MAP_CONFIG.key,
       center: window.NUR_MAP_CONFIG.center,
@@ -52,9 +55,11 @@ class StationMap {
       // A normal card's own camera centering must not close that card.
       if (this._spider) { this._closeSpider(); this.closePopup(); }
     });
-    this.map.on('move', () => this._positionCard());
+    // 'move' fires every animation frame; coalesce to one layout pass per frame.
+    this.map.on('move', () => this._schedulePositionCard());
     this._resizeObserver = new ResizeObserver(() => {
       this._closeSpider();
+      this._chromeRects = null;
       this._positionCard();
     });
     this._resizeObserver.observe(this.container);
@@ -121,13 +126,14 @@ class StationMap {
   }
 
   _syncStations() {
-    const points = this.stationsVisible ? [...this.stations.values()].map(s => ({
-      coordinates: [s.lng, s.lat], icon: this._icon(this._color(s)), size: [36, 36],
-      userData: { id: String(s.id), free: s.freeConnectors > 0 },
-    })) : [];
-    const signature = JSON.stringify(points);
+    const stations = this.stationsVisible ? [...this.stations.values()] : [];
+    // Compare compact fields, not the ~600-char icon data URI of every marker.
+    const signature = JSON.stringify(stations.map(s => [s.id, s.lng, s.lat, this._color(s), s.freeConnectors > 0]));
     if (signature !== this._stationSignature) {
-      this.stationCluster.load(points);
+      this.stationCluster.load(stations.map(s => ({
+        coordinates: [s.lng, s.lat], icon: this._icon(this._color(s)), size: [36, 36],
+        userData: { id: String(s.id), free: s.freeConnectors > 0 },
+      })));
       this._stationSignature = signature;
     }
   }
@@ -166,8 +172,6 @@ class StationMap {
   }
   setStationsVisible(on) { this.stationsVisible = !!on; this._syncStations(); }
   isParkingVisible() { return this.parkingVisible; }
-  setTheme() {} // Existing app uses a light map in both UI themes.
-  refreshParkingTheme() {}
   refreshParkingPopups(zones) {
     this.zones = new Map(zones.map(z => [String(z.id), z]));
     const zone = this.zones.get(this.popupId);
@@ -233,27 +237,45 @@ class StationMap {
     }
     this._positionCard();
   }
-  _positionCard() {
+  _schedulePositionCard() {
+    if (!this.card || this._positionFrame) return;
+    this._positionFrame = requestAnimationFrame(() => {
+      this._positionFrame = null;
+      this._positionCard({ cachedChrome: true });
+    });
+  }
+  // Reads all geometry first, then writes only what changed, so a camera
+  // animation does not force a synchronous layout on every frame. Header and
+  // dock never move during a pan, so their rects are cached until a resize.
+  _positionCard({ cachedChrome = false } = {}) {
     if (!this.card) return;
     const record = (this.popupType === 'parking' ? this.zones : this.stations).get(this.popupId);
     if (!record) return;
-    const bounds = this.container.getBoundingClientRect();
+    if (!cachedChrome || !this._chromeRects) {
+      this._chromeRects = {
+        bounds: this.container.getBoundingClientRect(),
+        header: document.querySelector('.header')?.getBoundingClientRect(),
+        dock: document.querySelector('.tabbar-dock')?.getBoundingClientRect(),
+      };
+    }
+    const { bounds, header, dock } = this._chromeRects;
     const projected = this.map.project([record.lng, record.lat]);
     const point = this._spider?.positions.get(this.popupId) || projected;
-    const header = document.querySelector('.header')?.getBoundingClientRect();
-    const dock = document.querySelector('.tabbar-dock')?.getBoundingClientRect();
     const top = Math.max(8, header?.bottom || 80) + 8;
     const bottom = dock?.height ? dock.top - 8 : bounds.bottom - 24;
-    const width = Math.min(306, bounds.width - 32);
-    this.card.style.width = `${width}px`;
-    this.card.style.maxHeight = `${Math.max(100, bottom - top)}px`;
+    const width = `${Math.min(306, bounds.width - 32)}px`;
+    const maxHeight = `${Math.max(100, bottom - top)}px`;
+    if (this.card.style.width !== width) this.card.style.width = width;
+    if (this.card.style.maxHeight !== maxHeight) this.card.style.maxHeight = maxHeight;
     const height = this.card.offsetHeight;
-    const x = Math.max(bounds.left + 16, Math.min(bounds.right - width - 16, bounds.left + point[0] - width / 2));
+    const w = parseFloat(width);
+    const x = Math.max(bounds.left + 16, Math.min(bounds.right - w - 16, bounds.left + point[0] - w / 2));
     const y = Math.max(top, Math.min(bottom - height, bounds.top + point[1] - height - 28));
     Object.assign(this.card.style, { left: `${x}px`, top: `${y}px`, right: 'auto', bottom: 'auto' });
   }
   closePopup() {
     if (!this.card) return;
+    if (this._positionFrame) { cancelAnimationFrame(this._positionFrame); this._positionFrame = null; }
     this.card.remove(); this.card = null; this.popupType = null; this.popupId = null;
     this.selectedMarker?.destroy(); this.selectedMarker = null;
     document.body.classList.remove('has-popup');
@@ -378,10 +400,17 @@ class StationMap {
     const cone = this.userElement.querySelector('.user-marker-cone');
     cone.style.opacity = Number.isFinite(heading) ? '1' : '0';
     cone.style.transform = `translate(-50%,-50%) rotate(${heading || 0}deg)`;
-    this.userAccuracyCircle?.destroy(); this.userAccuracyCircle = null;
-    if (Number.isFinite(accuracy) && accuracy > 0) this.userAccuracyCircle = new mapgl.Circle(this.map, {
-      coordinates, radius: accuracy, color: '#15834b15', strokeColor: '#15834b55', strokeWidth: 1,
-    });
+    // A stationary phone repeats the same fix every second; rebuilding the
+    // WebGL circle each time is pure churn.
+    const circleKey = Number.isFinite(accuracy) && accuracy > 0
+      ? `${lng.toFixed(6)},${lat.toFixed(6)},${Math.round(accuracy)}` : null;
+    if (circleKey !== this._accuracyKey) {
+      this._accuracyKey = circleKey;
+      this.userAccuracyCircle?.destroy(); this.userAccuracyCircle = null;
+      if (circleKey) this.userAccuracyCircle = new mapgl.Circle(this.map, {
+        coordinates, radius: accuracy, color: '#15834b15', strokeColor: '#15834b55', strokeWidth: 1,
+      });
+    }
     if (this._followUser) this.map.setCenter(coordinates, this._animation());
   }
   setFollowUser(on) { this._followUser = !!on; }
