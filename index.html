@@ -14,7 +14,7 @@
   <!-- Web fonts must not block first paint: load as print, switch to all once fetched (system fallback until then). -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=54">
+  <link rel="stylesheet" href="css/style.css?v=55">
 
   <!-- Favicon + PWA -->
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
@@ -26,19 +26,19 @@
 
 
 </head>
-<body>
+<body class="lg">
   <div class="app-container">
 
     <!-- ===== Header ===== -->
     <header class="header" role="banner">
       <div class="header-left">
-        <a href="#" class="isle logo" aria-label="NŪR — Home">
+        <a href="#" class="isle logo" aria-label="NŪR — Home" data-glass>
           <img src="logo.png" alt="NŪR" class="logo-img">
         </a>
       </div>
 
       <div class="header-center">
-        <div class="segmented isle" id="filter-seg" role="tablist" aria-label="Filter">
+        <div class="segmented isle" id="filter-seg" role="tablist" aria-label="Filter" data-glass>
           <span class="seg-indicator" aria-hidden="true"><span class="lens-body"></span></span>
           <button class="seg-btn filter-btn is-active" data-filter="all" role="tab" data-i18n="filterAll">Ҳама</button>
           <button class="seg-btn filter-btn" data-filter="available" role="tab" data-i18n="filterAvailable">Озод</button>
@@ -50,7 +50,7 @@
        <!-- One capsule, not six floating controls. Groups are separated by
             hairlines rather than gaps, which is what makes the row read as a
             single object. -->
-       <div class="isle isle-tools">
+       <div class="isle isle-tools" data-glass>
         <div class="segmented segmented-compact" id="lang-seg" role="tablist" aria-label="Language">
           <span class="seg-indicator" aria-hidden="true"><span class="lens-body"></span></span>
           <button class="seg-btn lang-btn is-active" data-lang="tj" role="tab">TJ</button>
@@ -98,7 +98,7 @@
     </div>
 
     <!-- ===== Stats HUD — floats over map below header ===== -->
-    <div class="map-stats" role="status" aria-live="polite">
+    <div class="map-stats" role="status" aria-live="polite" data-glass>
       <div class="stat-cell">
         <span class="stat-num" id="stat-total">—</span>
         <span class="stat-label" id="stat-label-total" data-i18n="totalStations">Истгоҳҳо</span>
@@ -127,7 +127,7 @@
     <div class="map-vignette" aria-hidden="true"></div>
 
     <!-- ===== Location Button ===== -->
-    <button class="loc-btn" id="loc-btn" aria-label="My location">
+    <button class="loc-btn" id="loc-btn" aria-label="My location" data-glass>
       <span class="loc-btn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
@@ -273,7 +273,7 @@
 
     <!-- Mobile navigation: destinations in the capsule, search alongside. -->
     <div class="tabbar-dock">
-    <nav class="tabbar" id="tabbar" aria-label="Main">
+    <nav class="tabbar" id="tabbar" aria-label="Main" data-glass>
       <!-- One glass lens for the whole bar. JS measures the active item and
            slides it; the squash and prism live in CSS. -->
       <span class="tabbar-lens" id="tab-lens" aria-hidden="true"><span class="lens-body"></span></span>
@@ -302,7 +302,7 @@
         <span class="tabbar-label" data-i18n="tabAnalytics">Аналитика</span>
       </button>
     </nav>
-      <button class="tabbar-search" id="tab-find" type="button" aria-labelledby="tab-find-label">
+      <button class="tabbar-search" id="tab-find" type="button" aria-labelledby="tab-find-label" data-glass>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 4.5 4.5"/></svg>
         <span id="tab-find-label" class="tabbar-search-label" data-i18n="tabFind">Найти</span>
       </button>
@@ -374,23 +374,24 @@
   </div>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=54"></script>
-  <script src="js/api.js?v=54"></script>
-  <script src="js/parking.js?v=54"></script>
-  <script src="js/geolocation.js?v=54"></script>
-  <script src="js/finder.js?v=54"></script>
+  <script src="js/i18n.js?v=55"></script>
+  <script src="js/api.js?v=55"></script>
+  <script src="js/parking.js?v=55"></script>
+  <script src="js/geolocation.js?v=55"></script>
+  <script src="js/finder.js?v=55"></script>
   <script src="https://mapgl.2gis.com/api/js/v1"></script>
   <!-- Pinned + SRI: a tampered CDN file is refused instead of executed. Update the hash when bumping the version. -->
   <script src="https://unpkg.com/@2gis/mapgl-clusterer@2.5.2/dist/clustering.js" integrity="sha384-/elyHJy00s/J+lL6X7H8JHc3Vy3xFMc25glgaVtMU7/Ko2tryYsOHi6V4Z71D0Rr" crossorigin="anonymous"></script>
-  <script src="js/config.js?v=54"></script>
-  <script src="js/map.js?v=54"></script>
-  <script src="js/ui.js?v=54"></script>
-  <script src="js/notifications.js?v=54"></script>
-  <script src="js/router.js?v=54"></script>
-  <script src="js/analytics.js?v=54"></script>
-  <script src="js/parking-session.js?v=54"></script>
-  <script src="js/pwa.js?v=54"></script>
-  <script src="js/app.js?v=54"></script>
+  <script src="js/config.js?v=55"></script>
+  <script src="js/map.js?v=55"></script>
+  <script src="js/ui.js?v=55"></script>
+  <script src="js/notifications.js?v=55"></script>
+  <script src="js/router.js?v=55"></script>
+  <script src="js/analytics.js?v=55"></script>
+  <script src="js/parking-session.js?v=55"></script>
+  <script src="js/pwa.js?v=55"></script>
+  <script src="js/glass.js?v=55"></script>
+  <script src="js/app.js?v=55"></script>
   <script>
     // Token comes from js/config.js (generated from env); empty → no analytics.
     if (window.NUR_ANALYTICS_TOKEN && location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {

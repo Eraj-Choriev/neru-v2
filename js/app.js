@@ -18,6 +18,8 @@ class App {
 
       // Initialize map
       stationMap.init('map');
+      // Refraction for the glass chrome, once the map's own controls exist.
+      if (typeof liquidGlass !== 'undefined') liquidGlass.attach();
 
       // Initialize notifications early so enabled state is known before seeding
       if (typeof stationNotifications !== 'undefined') {

@@ -30,6 +30,7 @@ class StationMap {
     this.parkingCluster = this._cluster(true);
     const zoom = document.createElement('div');
     zoom.className = 'nur-map-zoom';
+    zoom.dataset.glass = '';
     for (const [delta, key, text] of [[1, 'zoomIn', '+'], [-1, 'zoomOut', '−']]) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = text;
@@ -101,7 +102,10 @@ class StationMap {
         const data = e.target.data;
         // Co-located stations remain selectable even when zooming cannot separate them.
         if (data.length <= 20 || this.map.getZoom() >= 18 || data.every(m => m.coordinates.every((v, i) => Math.abs(v - data[0].coordinates[i]) < .00002))) {
-          this._openGroup(data, parking, e.lngLat);
+          // The cluster's own coordinates, not the tap's: the hub has to land
+          // exactly on the circle that was tapped.
+          const at = cluster.clusters?.get?.(e.target.id)?.coordinates || e.lngLat;
+          this._openGroup(data, parking, at, { color: parking ? '#087eac' : data.some(m => m.userData?.free) ? '#15834b' : '#c44343' });
         } else {
           const zoom = Math.min(20, cluster.getClusterExpansionZoom(e.target.id) + .2);
           this.map.setCenter(e.lngLat, this._animation());
@@ -302,8 +306,64 @@ class StationMap {
     this._openCard('parking', id, this._buildZonePopup(z));
     this._select(z.lat, z.lng);
   }
+  // ---- Spider: a group opened in place, as a web around its cluster ----
+  //
+  // The hub is drawn exactly over the WebGL cluster it opens, at the same
+  // size and colour, so the cluster and the hub read as one circle. If the web
+  // would spill off-screen the map moves, never the hub: a hub nudged away
+  // from its cluster is what showed up as two overlapping circles.
+
+  /** Rings around the hub, packed as tight as the markers allow. */
+  _spiderLayout(count, maxExtent = Infinity) {
+    const HUB_R = 21.5, GAP = 6;
+    let layout = null;
+    for (const size of [36, 32, 28]) {
+      const pitch = size + GAP;                    // centre-to-centre, along a ring and between rings
+      const minR = HUB_R + GAP + 2 + size / 2;     // first ring clears the hub
+      const ringR = n => Math.max(minR, n > 1 ? pitch / (2 * Math.sin(Math.PI / n)) : minR);
+      layout = { size, rings: [{ r: ringR(count), n: count }], extent: ringR(count) + size / 2 };
+      // A second ring only when it makes the web clearly smaller; up to about
+      // a dozen, one ring is both tighter and calmer.
+      for (let r1 = minR; count > 6 && r1 <= minR + pitch; r1 += 2) {
+        const caps = [];
+        let total = 0;
+        for (let r = r1; total < count; r += pitch) {
+          // Neighbours are a chord apart, not an arc: fit by the chord.
+          const c = Math.floor(Math.PI / Math.asin(Math.min(1, pitch / (2 * r))));
+          caps.push({ r, c });
+          total += c;
+        }
+        const extent = caps[caps.length - 1].r + size / 2;
+        if (caps.length < 2 || extent > layout.extent - 10) continue;
+        // Share the markers out in proportion to each ring's length, so every
+        // ring has the same spacing.
+        const share = caps.map(({ r, c }) => ({ r, c, n: Math.floor(count * c / total), f: (count * c / total) % 1 }));
+        let left = count - share.reduce((sum, s) => sum + s.n, 0);
+        for (const s of [...share].sort((a, b) => b.f - a.f)) {
+          if (!left) break;
+          if (s.n < s.c) { s.n++; left--; }
+        }
+        const rings = share.filter(s => s.n > 0).map(({ r, n }) => ({ r, n }));
+        layout = { size, rings, extent: rings[rings.length - 1].r + size / 2 };
+      }
+      if (layout.extent <= maxExtent) break;
+    }
+    layout.offsets = [];
+    layout.rings.forEach(({ r, n }, ring) => {
+      // Alternate rings sit half a step round, so legs to the outer ring pass
+      // between the inner markers instead of through them.
+      const start = -Math.PI / 2 + (ring % 2 ? Math.PI / n : 0);
+      for (let i = 0; i < n; i++) {
+        const a = start + i * 2 * Math.PI / n;
+        layout.offsets.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+    });
+    return layout;
+  }
+
   _closeSpider() {
     const spider = this._spider;
+    this._pendingGroup = null;
     if (!spider) return;
     this._spider = null;
     spider.animations.forEach(animation => animation.cancel());
@@ -313,81 +373,141 @@ class StationMap {
       spider.element.remove();
       return;
     }
-    const closing = spider.reveal.flatMap(({ button, line, dx, dy }, i) => {
-      const timing = { duration: 360, delay: Math.min((spider.reveal.length - 1 - i) * 12, 96), easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' };
-      return [
-        button.animate([{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 }], timing),
-        line.animate([{ strokeDashoffset: '0', opacity: 1 }, { strokeDashoffset: '1', opacity: 0 }], timing),
-      ];
-    });
+    // Everything folds back into the hub, quicker than it came out.
+    const n = spider.reveal.length;
+    const fold = { duration: 220, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' };
+    const closing = spider.reveal.flatMap(({ button, line, dx, dy }, i) => [
+      button.animate([
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.3)`, opacity: 0 },
+      ], { ...fold, delay: Math.min((n - 1 - i) * 6, 60) }),
+      line.animate([{ opacity: 1 }, { opacity: 0 }], { ...fold, duration: 160 }),
+    ]);
+    for (const web of spider.webs || []) closing.push(web.animate([{ opacity: 1 }, { opacity: 0 }], { ...fold, duration: 160 }));
+    if (spider.plate) closing.push(spider.plate.animate([
+      { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+      { opacity: 0, transform: 'translate(-50%, -50%) scale(.55)' },
+    ], { ...fold, duration: 260, delay: 40 }));
     Promise.all(closing.map(animation => animation.finished.catch(() => {}))).then(() => spider.element.remove());
   }
-  _openGroup(points, parking, coordinates = points[0].coordinates) {
+
+  _openGroup(points, parking, coordinates = points[0].coordinates, { color, panned = false } = {}) {
     this.closePopup();
     this._closeSpider();
     const records = parking ? this.zones : this.stations;
     const sorted = [...points].filter(p => records.has(String(p.userData.id))).sort((a,b) => String(a.userData.id).localeCompare(String(b.userData.id), undefined, { numeric: true }));
-    const layer = document.createElement('div'); layer.className = 'nur-spider';
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); layer.append(svg);
-    const bounds = this.container.getBoundingClientRect();
-    const origin = this.map.project(coordinates);
-    const header = document.querySelector('.header').getBoundingClientRect();
-    const dock = document.querySelector('.tabbar-dock').getBoundingClientRect();
-    const top = header.bottom - bounds.top + 32;
-    const bottom = (dock.height ? dock.top : bounds.bottom) - bounds.top - 32;
     if (!sorted.length) return;
-    // One evenly spaced circle, sized to its population and the visible map.
-    const count = sorted.length;
-    const wantedRadius = Math.max(58, count > 1 ? 52 / (2 * Math.sin(Math.PI / count)) : 58);
-    const radius = Math.max(30, Math.min(wantedRadius, (bounds.width - 48) / 2, (bottom - top) / 2));
-    const size = Math.min(44, count > 1 ? Math.max(20, 2 * radius * Math.sin(Math.PI / count) - 4) : 44);
-    const cx = Math.max(radius + 24, Math.min(bounds.width - radius - 24, origin[0]));
-    const cy = Math.max(top + radius, Math.min(bottom - radius, origin[1]));
-    const offsets = sorted.map((_, i) => {
-      const angle = i * 2 * Math.PI / count - Math.PI / 2;
-      return [Math.cos(angle) * radius, Math.sin(angle) * radius];
-    });
-    const center = document.createElement('button');
-    center.type = 'button'; center.className = 'nur-spider-center';
-    center.textContent = String(count);
-    center.setAttribute('aria-label', i18n.t('closePanel'));
-    center.style.left = `${cx}px`; center.style.top = `${cy}px`;
-    center.onclick = e => { e.stopPropagation(); this.closePopup(); this._closeSpider(); };
-    layer.append(center);
-    const positions = new Map(), reveal = []; let index = 0;
-    for (const offset of offsets) {
-      const p = sorted[index], s = records.get(String(p.userData.id));
-      const x = cx + offset[0], y = cy + offset[1];
-      const ux = offset[0] / radius, uy = offset[1] / radius;
-      const line = document.createElementNS(svg.namespaceURI, 'line');
-      for (const [key,value] of Object.entries({ x1: cx + ux * 24, y1: cy + uy * 24, x2: x - ux * size / 2, y2: y - uy * size / 2 })) line.setAttribute(key, value);
-      line.setAttribute('pathLength', '1');
-      line.style.strokeDasharray = '1';
-      svg.append(line);
-      const button = document.createElement('button'); button.className = 'nur-spider-marker';
-      button.textContent = String(index+1); button.title = parking ? s.address : s.name;
-      button.setAttribute('aria-label', `${index+1}. ${button.title}`);
-      button.style.cssText = `left:${x}px;top:${y}px;--spider-size:${size}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
-      button.onclick = e => { e.stopPropagation(); parking ? this.openZonePopup(s.id) : this.openStationPopup(s.id); };
-      reveal.push({ button, line, dx: cx-x, dy: cy-y });
-      layer.append(button); positions.set(String(s.id), [x,y]); index++;
+
+    const bounds = this.container.getBoundingClientRect();
+    const header = document.querySelector('.header')?.getBoundingClientRect();
+    const dock = document.querySelector('.tabbar-dock')?.getBoundingClientRect();
+    const area = {
+      left: 8, right: bounds.width - 8,
+      top: (header ? header.bottom - bounds.top : 0) + 8,
+      bottom: (dock?.height ? dock.top - bounds.top : bounds.height) - 8,
+    };
+    const layout = this._spiderLayout(sorted.length, Math.min(area.right - area.left, area.bottom - area.top) / 2);
+    const plateR = layout.extent + 10;
+    const origin = this.map.project(coordinates);
+
+    // Fit the web on screen by moving the map, then open over the cluster's
+    // new position.
+    const need = (lo, hi, at) => at - plateR < lo && at + plateR > hi ? (lo + hi) / 2 - at
+      : at - plateR < lo ? lo - (at - plateR) : at + plateR > hi ? hi - (at + plateR) : 0;
+    const dx = need(area.left, area.right, origin[0]), dy = need(area.top, area.bottom, origin[1]);
+    if (!panned && (Math.abs(dx) > 1 || Math.abs(dy) > 1) && this.map.unproject && this.map.getCenter) {
+      const token = this._pendingGroup = {};
+      const reopen = () => {
+        this.map.off?.('moveend', reopen);
+        if (this._pendingGroup !== token) return;
+        this._pendingGroup = null;
+        this._openGroup(points, parking, coordinates, { color, panned: true });
+      };
+      const center = this.map.project(this.map.getCenter());
+      this.map.on('moveend', reopen);
+      this.map.setCenter(this.map.unproject([center[0] - dx, center[1] - dy]), this._animation());
+      setTimeout(reopen, 520); // in case the SDK settles without a moveend
+      return;
     }
+
+    const [ox, oy] = origin;
+    const count = sorted.length;
+    const hubColor = color || (parking ? '#087eac' : sorted.some(p => p.userData?.free) ? '#15834b' : '#c44343');
+    const layer = document.createElement('div'); layer.className = 'nur-spider';
+
+    // Frosted plate: lifts the web off the map's own labels and lines.
+    const plate = document.createElement('div');
+    plate.className = 'nur-spider-plate';
+    plate.style.cssText = `left:${ox}px;top:${oy}px;width:${plateR * 2}px;height:${plateR * 2}px`;
+    layer.append(plate);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); layer.append(svg);
+    const ns = svg.namespaceURI;
+    const webs = layout.rings.map(({ r }) => {
+      const web = document.createElementNS(ns, 'circle');
+      for (const [key, value] of Object.entries({ cx: ox, cy: oy, r, class: 'nur-spider-web' })) web.setAttribute(key, value);
+      svg.append(web);
+      return web;
+    });
+
+    const hub = document.createElement('button');
+    hub.type = 'button'; hub.className = 'nur-spider-hub';
+    hub.textContent = parking ? `P ${count}` : String(count);
+    hub.setAttribute('aria-label', `${count} · ${i18n.t('closePanel')}`);
+    hub.style.cssText = `left:${ox}px;top:${oy}px;--pin-color:${hubColor}`;
+    hub.onclick = e => { e.stopPropagation(); this.closePopup(); this._closeSpider(); };
+
+    const positions = new Map(), reveal = [];
+    sorted.forEach((p, index) => {
+      const s = records.get(String(p.userData.id));
+      const [offX, offY] = layout.offsets[index];
+      const x = ox + offX, y = oy + offY;
+      const dist = Math.hypot(offX, offY), ux = offX / dist, uy = offY / dist;
+      const line = document.createElementNS(ns, 'line');
+      for (const [key, value] of Object.entries({ x1: ox + ux * 23, y1: oy + uy * 23, x2: x - ux * layout.size / 2, y2: y - uy * layout.size / 2 })) line.setAttribute(key, value);
+      line.setAttribute('pathLength', '1');
+      line.setAttribute('class', 'nur-spider-leg');
+      svg.append(line);
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'nur-spider-marker';
+      button.textContent = String(index + 1); button.title = parking ? s.address : s.name;
+      button.setAttribute('aria-label', `${index + 1}. ${button.title}`);
+      button.style.cssText = `left:${x}px;top:${y}px;--spider-size:${layout.size}px;--pin-color:${parking ? '#087eac' : this._color(s)}`;
+      button.onclick = e => { e.stopPropagation(); parking ? this.openZonePopup(s.id) : this.openStationPopup(s.id); };
+      reveal.push({ button, line, dx: -offX, dy: -offY });
+      layer.append(button); positions.set(String(s.id), [x, y]);
+    });
+    layer.append(hub); // last, so the hub paints over the legs' roots
     this.container.parentNode.append(layer);
+
     const animations = [];
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && hub.animate) {
+      // Tap acknowledged at once, then the web unfolds from the hub on a
+      // spring: transform and opacity only, so it runs on the compositor.
+      animations.push(hub.animate([
+        { transform: 'translate(-50%, -50%) scale(1)' },
+        { transform: 'translate(-50%, -50%) scale(.86)', offset: .3 },
+        { transform: 'translate(-50%, -50%) scale(1.05)', offset: .7 },
+        { transform: 'translate(-50%, -50%) scale(1)' },
+      ], { duration: 420, easing: 'ease-out' }));
+      animations.push(plate.animate([
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(.35)' },
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+      ], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+      webs.forEach((web, ring) => animations.push(web.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: 360, delay: 120 + ring * 60, easing: 'ease-out', fill: 'backwards' })));
+      const step = Math.min(22, 220 / count);
       reveal.forEach(({ button, line, dx, dy }, i) => {
-        const timing = { duration: 320, delay: Math.min(i * 32, 400), easing: 'cubic-bezier(.22,.75,.25,1)', fill: 'backwards' };
-        if (button.animate) animations.push(button.animate([
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 },
+        const delay = 50 + i * step;
+        animations.push(line.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+          { duration: 300, delay, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+        animations.push(button.animate([
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.2)`, opacity: 0 },
           { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-        ], timing));
-        if (line.animate) animations.push(line.animate([
-          { strokeDashoffset: '1', opacity: 0 }, { strokeDashoffset: '0', opacity: 1 },
-        ], timing));
+        ], { duration: 460, delay, easing: 'cubic-bezier(.34,1.42,.64,1)', fill: 'backwards' }));
       });
     }
-    this._spider = { element:layer, positions, animations, reveal, parking, ids: sorted.map(p => String(p.userData.id)) };
+    this._spider = { element: layer, positions, animations, reveal, webs, plate, hub, parking, origin: [ox, oy], ids: sorted.map(p => String(p.userData.id)) };
   }
   setUserLocation(lat, lng, { accuracy, heading } = {}) {
     const coordinates = [lng, lat];

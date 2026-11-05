@@ -34,7 +34,7 @@ The only build step is `scripts/build-config.mjs` (see *Secrets & config* below)
 All modules are loaded as plain `<script>` tags at the bottom of `index.html`. **Load order matters** — each module depends on the ones before it. The 2GIS MapGL loader and `@2gis/mapgl-clusterer` load from CDN just before `map-config.js`:
 
 ```
-i18n → api → parking → geolocation → finder → [2GIS mapgl + clusterer] → config → map → ui → notifications → router → analytics → parking-session → pwa → app
+i18n → api → parking → geolocation → finder → [2GIS mapgl + clusterer] → config → map → ui → notifications → router → analytics → parking-session → pwa → glass → app
 ```
 
 Each module exposes a global singleton:
@@ -47,7 +47,8 @@ Each module exposes a global singleton:
 | `js/geolocation.js` | `geoLocation` | Browser geolocation wrapper; Haversine distance helpers (`GeoLocation.distanceBetween`, `GeoLocation.formatDistance`) |
 | `js/finder.js` | `stationFinder` | Nearest-station sorting (by distance or weighted score) |
 | `js/config.js` | `window.NUR_MAP_CONFIG`, `window.NUR_ANALYTICS_TOKEN` | **Generated, git-ignored.** 2GIS key + default center, Cloudflare beacon token. Never edit or commit; regenerate with `scripts/build-config.mjs` |
-| `js/map.js` | `stationMap` | 2GIS MapGL map: two clusterers (stations / parking), parking strips as polylines, "spider" expansion of co-located markers, cards, route line (`drawOSRMRoute`) |
+| `js/map.js` | `stationMap` | 2GIS MapGL map: two clusterers (stations / parking), parking strips as polylines, the group "spider", cards, route line (`drawOSRMRoute`) |
+| `js/glass.js` | `liquidGlass` | Edge refraction for the glass chrome (port of Glisse, MIT): draws a displacement map per `[data-glass]` element and sets `--glass-refract: url(#…)`. Chromium only; elsewhere it does nothing and the CSS blur stands alone. `app.init()` calls `liquidGlass.attach()` after the map exists |
 | `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar (`setStatsMode('ev'\|'parking')`), toast, route panel, lens indicator (`moveIndicator`); also exports `parseSchedule()` and `walkingEta()` |
 | `js/notifications.js` | `stationNotifications` | Web Notifications API; fires on busy→free transitions within radius |
 | `js/router.js` | `stationRouter` | In-app driving routes via OSRM (`router.project-osrm.org`); `routeTo(station)` draws route + panel, `refreshFromCurrent()` live re-routes. Stale responses are discarded: the latest destination always wins, and `clear()` cannot be undone by a late reply |
@@ -57,6 +58,8 @@ Each module exposes a global singleton:
 | `js/app.js` | `app` | Boot controller; wires all modules together; location consent gate (`neru-loc-consent`); 30s station auto-refresh (also on `visibilitychange`/`online`); adaptive live re-route while a route is active |
 
 **Coordinates:** the app uses `[lat, lng]` everywhere internally; `js/map.js` converts to MapGL's `[lng, lat]` at the SDK boundary. Keep that conversion in one place.
+
+**Station spider** (`_openGroup` / `_spiderLayout` / `_closeSpider` in `js/map.js`): tapping a cluster of ≤20 opens its stations as a web around it. The hub is drawn exactly over the WebGL cluster — use the clusterer's own `cluster.clusters.get(id).coordinates`, never the tap's `lngLat` — at the same 43px size and colour, so the two read as one circle. If the web would not fit between the header and the dock the **map pans** and the web opens on `moveend`; the hub is never shifted off its cluster (that was the "two circles" bug). Layout: one ring up to ~14, two rings when that is ≥10px smaller, ring capacity by chord (not arc), markers 36→32→28px as space requires. Motion is WAAPI transform/opacity only.
 
 **Theme:** the app is **light-only**. `index.html` hard-codes `data-theme="light"`. There is no theme toggle and no `themechange` event any more.
 
@@ -112,12 +115,13 @@ After normalization, every station has:
 
 - Animations that run forever (live dots, pulses) animate only `transform`/`opacity` on a pseudo-element. Animating `box-shadow`/`filter` repaints on the main thread every frame and re-composites the glass (`backdrop-filter`) behind it.
 - Work driven by MapGL's `move` event goes through `requestAnimationFrame` (see `_schedulePositionCard`) and must not read layout after writing styles.
+- Refraction (`data-glass`) only on elements whose size is stable. A lens, a thumb or anything whose size animates must not get it — the map is drawn for one size and smears at another.
 - Do not rebuild WebGL objects (`mapgl.Circle`, `Polyline`) when their inputs did not change; compare a cheap key first.
 - Images ship at no more than ~2× their largest rendered size. `logo.png` is 768×512 — keep the 3:2 canvas, the CSS crops the wordmark from it.
 
 ## Docs
 
-`docs/` holds dated design and engineering notes (excluded from Vercel deploys via `.vercelignore`). Most useful before touching related code: `review-2026-11-05.md` (latest security/performance audit and open items), `map-provider.md` (2GIS integration decisions), `api-audit-2026-10-28.md` + `api-baseline-*.json` (feed quirks), `liquid-glass.md` (material system), `DESIGN.md` (native-app design brief for Stitch — deliberately differs from the web house style).
+`docs/` holds dated design and engineering notes (excluded from Vercel deploys via `.vercelignore`). Most useful before touching related code: `review-2026-11-05.md` (latest security/performance audit and open items), `map-provider.md` (2GIS integration decisions), `api-audit-2026-10-28.md` + `api-baseline-*.json` (feed quirks), `liquid-glass.md` (the Glisse port: what was taken, what was not, and why), `DESIGN.md` (native-app design brief for Stitch — deliberately differs from the web house style).
 
 `AGENTS.md` is a copy of this file for other coding agents; keep the two in sync.
 
@@ -166,14 +170,40 @@ every one of them. Because the app is now light-only, the
 in `:root` will show its dark value. Always add the light value in the same
 commit.
 
-**Selection is a lens.** The tab bar (`.tabbar-lens`) and both segmented
-controls (`.seg-indicator`) share one moving piece of glass: a positioner
-element that JS translates, wrapping a `.lens-body` that carries the
-nested `backdrop-filter`, the rim, a specular sweep and a prism rim that
-fades in only while travelling. Motion is `--lens-travel` (560ms) on
-`--nav-spring`, with a `scale(1.10, 0.88)` stretch and `--lens-skew` set
-from the direction of travel. Adding a third selectable control means
-reusing `.lens-body` and calling the same JS, not writing a new indicator.
+**Chrome glass (Liquid Glass layer).** Navigation chrome — header isles,
+`.map-stats`, tab bar, search/locate buttons, zoom — uses a second tier of
+the same system, defined in the *LIQUID GLASS* block at the very end of
+`css/style.css` and scoped under `body.lg`. It is a port of Glisse
+(github.com/0kzh/glisse, MIT): clear glass with little frost, bent at the rim
+by `js/glass.js`. Content panes (cards, sheets, modals) stay on `--mat-*`.
+
+| Token | Use |
+|-------|-----|
+| `--glass-fill` / `--glass-fill-pressed` | clear glass fill at rest / pressed |
+| `--glass-blur` | its `backdrop-filter`; always write `var(--glass-blur) var(--glass-refract,)` so Chromium adds refraction |
+| `--glass-rim` + `--glass-drop` | light along one axis (top-left and bottom-right edges) + hairline, and the shadow that separates white glass from a pale map |
+| `--glass-ink` / `--glass-ink-2` | labels and icons on glass |
+| `--glass-selection` | the tab bar's grey selection pill |
+| `--glass-track` / `--glass-thumb` / `--glass-thumb-shadow` | segmented control track and white thumb (iOS) |
+| `--glass-lens` / `--glass-lens-drop` | a lifted (held) lens |
+| `--glass-accent` | selected tab tint; brand green, parking blue on `body[data-mode="parking"]` |
+| `--switch-off` / `--switch-on` | switch track |
+| `--spring-select` / `-lift` / `-switch` / `-press` (+ `-ms`) | Glisse's springs sampled into CSS `linear()` — use these, not new cubic-beziers |
+
+The rest of the old nav cascade is overridden, not deleted: when changing the
+chrome, edit this block. Its selectors start with `:root[data-theme] body.lg`
+so they outrank the earlier passes (some reach `(1,5,0)`).
+
+**Selection is a lens.** The tab bar (`.tabbar-lens`) and every segmented
+control (`.seg-indicator`) share one moving piece of glass: a positioner
+that JS translates, wrapping a `.lens-body`. At rest it is iOS's grey pill
+(tab bar) or white thumb (segmented). `ui.bindLensPress()` moves it under the
+finger on press and adds `.is-held`, which lifts it into a clear lens —
+grown by Glisse's 24×16px via `--lift-x`/`--lift-y` (a scale, set by
+`_setLift()` from the lens box) — and re-syncs it with the real selection
+after the click. Dragging (`.is-dragging`) uses the same lifted look. Travel
+is `--spring-select` (260ms) with only a hint of stretch. Adding a selectable
+control means reusing `.lens-body` and `bindLensPress`, not a new indicator.
 
 ### Workflow
 When user asks for UI work, follow this order:
