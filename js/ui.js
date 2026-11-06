@@ -82,6 +82,21 @@ class UI {
       this.moveTabLens({ instant: true });
     });
     this.watchTabLens();
+    // Held selection lifts into a lens (Liquid Glass): the tab bar and every
+    // segmented control share one behaviour.
+    this.bindLensPress(this.tabbar, this.tabLens, {
+      glow: true,
+      item: '.tabbar-item',
+      preview: (item) => this.moveTabLens({ target: item }),
+      resync: () => this.moveTabLens(),
+    });
+    document.querySelectorAll('.segmented').forEach((seg) => {
+      this.bindLensPress(seg, seg.querySelector('.seg-indicator'), {
+        item: '.seg-btn',
+        preview: (btn) => this.moveIndicator(seg, btn),
+        resync: () => this.moveIndicator(seg),
+      });
+    });
     // Language change re-flows widths — re-measure after DOM updates. The tab
     // lens is sized off its label, so a new language resizes it too.
     window.addEventListener('langchange', () => {
@@ -193,10 +208,10 @@ class UI {
    * way it is going and its rim disperses while it moves. Two selections in
    * one app should not move in two different ways.
    */
-  moveIndicator(segEl) {
+  moveIndicator(segEl, target = null) {
     if (!segEl) return;
     const indicator = segEl.querySelector('.seg-indicator');
-    const active = segEl.querySelector('.seg-btn.is-active');
+    const active = target || segEl.querySelector('.seg-btn.is-active');
     if (!indicator || !active) return;
 
     const { offsetLeft, offsetWidth } = active;
@@ -215,6 +230,7 @@ class UI {
 
     indicator.style.transform = `translate3d(${offsetLeft}px, 0, 0)`;
     indicator.style.width = `${offsetWidth}px`;
+    this._setLift(indicator, offsetWidth, indicator.offsetHeight);
     this._segX.set(segEl, offsetLeft);
   }
 
@@ -265,12 +281,12 @@ class UI {
    * Animating from wherever the lens happened to sit before a re-measure is
    * a slide the user never asked for.
    */
-  moveTabLens({ instant = false } = {}) {
+  moveTabLens({ instant = false, target = null } = {}) {
     const bar = this.tabbar;
     const lens = this.tabLens;
     if (!bar || !lens) return;
 
-    const item = bar.querySelector('.tabbar-item.is-active');
+    const item = target || bar.querySelector('.tabbar-item.is-active');
     // The bar is display:none on desktop, so everything measures 0. Bail and
     // let the ResizeObserver place it if the viewport ever narrows.
     if (!item || !bar.offsetWidth) return;
@@ -305,8 +321,63 @@ class UI {
       lens.style.setProperty('--lens-x', `${x}px`);
     }
 
+    this._setLift(lens, width, lens.offsetHeight);
     this._lensX = x;
     bar.classList.add('is-lens-ready');
+  }
+
+  /** Held, a lens grows by Glisse's 24×16px — as a scale, from its own box. */
+  _setLift(lens, width, height) {
+    if (!width || !height) return;
+    lens.style.setProperty('--lift-x', (1 + 24 / width).toFixed(4));
+    lens.style.setProperty('--lift-y', (1 + 16 / height).toFixed(4));
+  }
+
+  /**
+   * Press-and-hold lifts the selection: the pill (or thumb) moves under the
+   * finger and becomes a clear lens over the control, then settles when the
+   * finger lets go. A quick tap still shows the lift for a beat, so the press
+   * is never invisible. After release the lens is re-synced with whatever is
+   * actually selected, so a press whose click changed nothing (a layer that
+   * has not loaded yet) slides back instead of staying on the wrong item.
+   * `glow` also lights the bar from inside under the finger.
+   */
+  bindLensPress(control, lens, { glow = false, item = 'button', preview = null, resync = null } = {}) {
+    if (!control || !lens) return;
+    const MIN_HOLD = 140;
+    let downAt = 0;
+    let timer = null;
+    const down = (e) => {
+      if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      const pressed = e.target.closest(item);
+      if (!pressed || !control.contains(pressed)) return;
+      clearTimeout(timer);
+      downAt = performance.now();
+      if (preview && !pressed.classList.contains('is-active')) preview(pressed);
+      lens.classList.add('is-held');
+      if (glow) {
+        const box = control.getBoundingClientRect();
+        control.style.setProperty('--press-x', `${((e.clientX - box.left) / box.width) * 100}%`);
+        control.classList.add('is-pressed');
+      }
+    };
+    const up = () => {
+      if (!downAt) return;
+      const wait = Math.max(0, MIN_HOLD - (performance.now() - downAt));
+      downAt = 0;
+      clearTimeout(timer);
+      // After this gesture's click has run.
+      if (resync) setTimeout(resync, 0);
+      timer = setTimeout(() => {
+        lens.classList.remove('is-held');
+        control.classList.remove('is-pressed');
+      }, wait);
+    };
+    control.addEventListener('pointerdown', down);
+    control.addEventListener('pointerup', up);
+    control.addEventListener('pointercancel', up);
+    control.addEventListener('pointerleave', up);
+    window.addEventListener('blur', up);
   }
 
   /** Keep the lens on its tab through rotation, resize and desktop→phone. */

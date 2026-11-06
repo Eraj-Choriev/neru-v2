@@ -360,17 +360,28 @@ body {
 }
 
 .stat-live-dot {
+  position: relative;
   width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--volt-500);
-  box-shadow: 0 0 0 0 var(--volt-glow);
+}
+/* The pulse is a scaled ring, not an animated box-shadow: transform + opacity
+   run on the compositor, while a box-shadow keyframe repaints this always-on
+   dot — and the blurred glass behind it — on every frame. */
+.stat-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(123, 255, 190, 0.5);
   animation: livePulse 2.4s var(--ease-out) infinite;
+  pointer-events: none;
 }
 
 @keyframes livePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.5); }
-  70%  { box-shadow: 0 0 0 8px rgba(123, 255, 190, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0); }
+  0%   { transform: scale(1);    opacity: 1; }
+  70%  { transform: scale(3.67); opacity: 0; }
+  100% { transform: scale(3.67); opacity: 0; }
 }
 
 @media (max-width: 640px) { .map-stats { display: none; } }
@@ -1405,16 +1416,25 @@ body {
 
 /* Live pip on a free connector */
 .conn-pip {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--volt-500);
   flex-shrink: 0;
+}
+.conn-pip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(123, 255, 190, 0.55);
   animation: connPip 2s var(--ease-io) infinite;
+  pointer-events: none;
 }
 @keyframes connPip {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 255, 190, 0.55); }
-  50%      { box-shadow: 0 0 0 5px rgba(123, 255, 190, 0); }
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(2.43); opacity: 0; }
 }
 
 .conn-body {
@@ -1542,7 +1562,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .conn-meter-fill { animation-duration: 1ms; }
-  .conn-pip { animation: none; }
+  .conn-pip, .conn-pip::after, .stat-live-dot::after, .route-icon::after { animation: none; }
 }
 
 /* Station-level wait banner — shown when all connectors are busy */
@@ -2126,6 +2146,11 @@ body.sidebar-open { overflow: hidden; }
   transition: opacity 320ms var(--ease-out), visibility 320ms;
 }
 .loading-overlay.visible { opacity: 1; visibility: visible; }
+/* The loader's ripples animate box-shadow and filter — main-thread work that
+   keeps ticking under visibility:hidden. Freeze them once the overlay is gone. */
+.loading-overlay:not(.visible) *,
+.loading-overlay:not(.visible) *::before,
+.loading-overlay:not(.visible) *::after { animation-play-state: paused; }
 
 .loader-wrap {
   display: flex;
@@ -2973,12 +2998,23 @@ body.sidebar-open { overflow: hidden; }
   color: var(--ink-900);
   flex-shrink: 0;
   box-shadow: 0 4px 14px -4px var(--volt-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+/* Halo as a compositor-only ring (was an animated box-shadow repaint). */
+.route-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(123, 255, 190, 0.12);
+  opacity: 0;
   animation: routeIconPulse 2.8s var(--ease-io) infinite;
+  pointer-events: none;
 }
 
 @keyframes routeIconPulse {
-  0%, 100% { box-shadow: 0 4px 14px -4px var(--volt-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
-  50%       { box-shadow: 0 4px 20px -4px var(--volt-glow), inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 4px rgba(123,255,190,0.12); }
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 1; }
 }
 
 .route-info {
@@ -7098,18 +7134,6 @@ body[data-mode="parking"] {
   --dock-clearance: calc(var(--dock-bottom) + var(--dock-height) + 8px);
 }
 #map { position: absolute; inset: 0; height: 100%; }
-.nur-spider { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-.nur-spider svg { position: absolute; width: 100%; height: 100%; overflow: visible; }
-.nur-spider line { stroke: #66766c; stroke-width: 1.5px; }
-.nur-spider-marker {
-  position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
-  width: 44px; height: 44px; border-radius: 50%; border: 2px solid white;
-  background: var(--pin-color); color: white; font: 600 15px/1 system-ui;
-  box-shadow: 0 2px 8px #0003;
-}
-.nur-spider-marker:hover { filter: brightness(1.15); }
-.nur-spider-marker:active { transform: translate(-50%, -50%) scale(.94); }
-.nur-spider-marker:focus-visible { outline: 3px solid var(--text-1); outline-offset: 3px; }
 .nur-map-zoom {
   position: fixed; z-index: 900; right: max(16px, env(safe-area-inset-right)); bottom: calc(26px + var(--safe-bottom));
   background: var(--mat-regular); backdrop-filter: var(--mat-blur-reg);
@@ -7236,16 +7260,6 @@ body[data-mode="parking"] {
 }
 :root[data-theme="light"] .nur-map-card .conn--free,
 :root[data-theme="light"] .card .conn--free { background: rgba(210, 241, 224, .42); }
-.nur-spider-marker { width: var(--spider-size, 44px); height: var(--spider-size, 44px); }
-.nur-spider-center {
-  position: absolute; z-index: 1; transform: translate(-50%, -50%);
-  display: grid; place-items: center; width: 44px; height: 44px;
-  padding: 0; border: 2px solid white; border-radius: 50%;
-  background: #15834b; color: white; font: 600 15px/1 system-ui;
-  box-shadow: 0 2px 8px #0003; pointer-events: auto; cursor: pointer;
-}
-.nur-spider-center:hover { filter: brightness(1.15); }
-.nur-spider-center:focus-visible { outline: 3px solid var(--text-1); outline-offset: 3px; }
 
 /* Keep the plug icon and its physical connector number visible together. */
 .nur-map-card .conn, .card .conn { grid-template-columns: 40px auto minmax(0, 1fr); }
@@ -7287,3 +7301,423 @@ body[data-mode="parking"] {
 .nur-group-nav button:focus-visible { outline: 2px solid var(--volt-600); outline-offset: 2px; }
 .nur-group-nav + .nur-map-card-body .popup-content { padding-top: 12px; }
 @media (prefers-reduced-motion: reduce) { .nur-group-nav button { transition: none; } }
+
+/* ============================================================
+   STATION SPIDER — a group opened as a web around its cluster
+   The hub sits exactly over the WebGL cluster (same 43px disc, same 3px
+   white ring), so the cluster and the hub are one circle. Markers unfold
+   from it on a spring (js/map.js), transform + opacity only.
+   ============================================================ */
+.nur-spider { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.nur-spider svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+/* Frosted plate under the web: the same thin material as every other pane,
+   lit by the shared rim, so the group reads as one object on the map. */
+.nur-spider-plate {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* Regular material, with light pooled in the middle: the cluster the hub
+     replaces still sits in the map under the glass, and blurred it would
+     bleed a coloured stain around the hub. */
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.92) 0 24px, rgba(255, 255, 255, 0) 64px),
+    var(--mat-regular);
+  backdrop-filter: var(--mat-blur-reg);
+  -webkit-backdrop-filter: var(--mat-blur-reg);
+  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
+}
+.nur-spider-web { fill: none; stroke: rgba(13, 18, 32, 0.14); stroke-width: 1px; }
+.nur-spider-leg {
+  stroke: rgba(13, 18, 32, 0.34);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+}
+
+.nur-spider-marker,
+.nur-spider-hub {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pin-color);
+  color: #fff;
+  font: 600 15px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), filter 200ms ease;
+}
+.nur-spider-marker {
+  width: var(--spider-size, 36px);
+  height: var(--spider-size, 36px);
+  box-shadow: inset 0 0 0 2.5px #fff, 0 3px 10px rgba(13, 18, 32, 0.24);
+  font-size: 14px;
+}
+/* 44px hit area around a 28–36px pin (HIG), without spacing the web out. */
+.nur-spider-marker::before {
+  content: '';
+  position: absolute;
+  inset: calc((44px - var(--spider-size, 36px)) / -2);
+  border-radius: 50%;
+}
+.nur-spider-hub {
+  z-index: 1;
+  width: 43px;
+  height: 43px;
+  box-shadow: inset 0 0 0 3px #fff, 0 4px 14px rgba(13, 18, 32, 0.26);
+  font-size: 14px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .nur-spider-marker:hover,
+  .nur-spider-hub:hover { filter: brightness(1.1); }
+}
+.nur-spider-marker:active,
+.nur-spider-hub:active { transform: translate(-50%, -50%) scale(0.9); }
+.nur-spider-marker:focus-visible,
+.nur-spider-hub:focus-visible { outline: 3px solid var(--text-1); outline-offset: 3px; }
+@media (prefers-reduced-transparency: reduce) {
+  .nur-spider-plate { background: rgba(250, 251, 253, 0.96); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nur-spider-marker, .nur-spider-hub { transition: none; }
+}
+
+/* ============================================================
+   LIQUID GLASS — the chrome, after Apple's iOS 26 material
+   ------------------------------------------------------------
+   Ported from Glisse (https://github.com/0kzh/glisse, MIT © 2026
+   Kelvin Zhang) onto this app's own system: clear glass with little
+   frost, bent at the rim by js/glass.js where the browser can, lit
+   along one axis, with the selection as a pill that lifts into a lens
+   while it is held. Motion uses Glisse's springs, converted to CSS
+   linear() curves so it runs on the compositor.
+
+   Everything here is scoped under body.lg and placed last, because the
+   chrome above is the sum of several older passes; this layer is the one
+   that decides how it looks. Light values are the ones the app renders
+   (it is light-only); :root keeps dark equivalents for completeness.
+   ============================================================ */
+:root {
+  --glass-fill: rgba(40, 40, 44, 0.58);
+  --glass-fill-pressed: rgba(70, 70, 76, 0.66);
+  --glass-blur: blur(8px) saturate(1.8);
+  --glass-rim:
+    inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, 0.34),
+    inset -1.5px -1.5px 1px -1px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.10);
+  --glass-drop: 0 10px 30px -10px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --glass-ink: rgba(255, 255, 255, 0.92);
+  --glass-ink-2: rgba(235, 235, 245, 0.62);
+  --glass-selection: rgba(255, 255, 255, 0.14);
+  --glass-lens: rgba(255, 255, 255, 0.06);
+  --glass-lens-drop: 0 7px 14px rgba(0, 0, 0, 0.3);
+  --glass-track: rgba(118, 118, 128, 0.24);
+  --glass-thumb: rgba(235, 235, 245, 0.32);
+  --glass-thumb-shadow: none;
+  --switch-off: rgba(120, 120, 128, 0.32);
+  --switch-on: #30d158;
+  --glass-accent: #3fe0a6;
+
+  /* Glisse's springs (stiffness / damping), sampled into linear(). */
+  --spring-select: linear(0, 0.0553, 0.1827, 0.3189, 0.463, 0.58, 0.6868, 0.7654, 0.8323, 0.8788, 0.9165, 0.9417, 0.96, 0.974, 0.9829, 0.9895, 0.9935, 0.9964, 0.998, 0.9991, 0.9997, 1, 1); /* 1024/58.9 */
+  --spring-select-ms: 260ms;
+  --spring-lift: linear(0, 0.0575, 0.1781, 0.3085, 0.4463, 0.5695, 0.6734, 0.7521, 0.8192, 0.8706, 0.909, 0.9355, 0.9563, 0.9711, 0.9813, 0.9883, 0.9926, 0.9958, 0.9978, 0.999, 0.9996, 1.0001, 1); /* 676/47.8 */
+  --spring-lift-ms: 300ms;
+  --spring-switch: linear(0, 0.1582, 0.3703, 0.5507, 0.6779, 0.7732, 0.838, 0.8861, 0.9187, 0.9428, 0.9592, 0.9713, 0.9798, 0.9856, 0.9899, 0.9928, 0.9949, 0.9964, 0.9974, 0.9982, 0.9987, 0.9991, 1); /* 1000/80 */
+  --spring-switch-ms: 420ms;
+  --spring-press: linear(0, 0.1147, 0.3409, 0.5967, 0.8126, 0.959, 1.049, 1.0868, 1.0899, 1.0739, 1.0508, 1.0284, 1.0115, 0.9998, 0.9936, 0.9917, 0.9922, 0.9941, 0.9961, 0.998, 0.9994, 1.0003, 1); /* 515/27.3, touch */
+  --spring-press-ms: 480ms;
+}
+:root[data-theme="light"] {
+  /* Clear glass: a little white, a little frost. The refraction and the
+     rim carry the material, so the map stays readable through it. */
+  --glass-fill: rgba(255, 255, 255, 0.6);
+  --glass-fill-pressed: rgba(236, 236, 240, 0.86);
+  --glass-blur: blur(8px) saturate(1.8) brightness(1.03);
+  /* Light along one axis: the top-left and bottom-right of every pane
+     catch it, as Liquid Glass does, with a hairline holding the shape. */
+  --glass-rim:
+    inset 1.5px 1.5px 1px -1px rgba(255, 255, 255, 0.98),
+    inset -1.5px -1.5px 1px -1px rgba(255, 255, 255, 0.78),
+    inset 0 0 0 0.5px rgba(13, 18, 32, 0.13);
+  /* On a pale map white glass needs its shadow to separate it. */
+  --glass-drop: 0 8px 26px -8px rgba(13, 18, 32, 0.26), 0 1px 3px rgba(13, 18, 32, 0.08);
+  --glass-ink: rgba(13, 18, 32, 0.88);
+  --glass-ink-2: rgba(60, 60, 67, 0.62);
+  --glass-selection: rgba(13, 18, 32, 0.075);
+  --glass-lens: rgba(255, 255, 255, 0.14);
+  --glass-lens-drop: 0 7px 14px rgba(13, 18, 32, 0.14);
+  --glass-track: rgba(118, 118, 128, 0.13);
+  --glass-thumb: #ffffff;
+  --glass-thumb-shadow: 0 3px 8px rgba(13, 18, 32, 0.12), 0 3px 1px rgba(13, 18, 32, 0.04);
+  --switch-off: rgba(120, 120, 128, 0.20);
+  --switch-on: #0eb780;
+  /* The selected tab's tint: the brand green, the parking blue in parking. */
+  --glass-accent: #06795a;
+}
+:root[data-theme] body.lg[data-mode="parking"] { --glass-accent: #0a6c96; }
+
+/* ---- Navigation bar: no band of its own, as in iOS 26 ----
+   The controls float on the map; a soft fade under the status bar keeps
+   the top edge legible. One layer of glass, never glass on glass. */
+:root[data-theme] body.lg .header {
+  background: linear-gradient(to bottom, rgba(244, 247, 248, 0.88) 0%, rgba(244, 247, 248, 0.5) 52%, rgba(244, 247, 248, 0) 100%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border: 0;
+  pointer-events: none;
+}
+:root[data-theme] body.lg .header .isle { pointer-events: auto; }
+
+/* ---- The glass ---- */
+:root[data-theme] body.lg :is(.header .isle, .map-stats, .tabbar-dock .tabbar, .tabbar-dock .tabbar-search, .loc-btn, .nur-map-zoom) {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur) var(--glass-refract,);
+  box-shadow: var(--glass-rim), var(--glass-drop);
+  border: 0;
+}
+
+/* Pressed glass grows under the finger and springs back (Glisse's press). */
+:root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn, .header .logo.isle) {
+  transition:
+    scale var(--spring-press-ms) var(--spring-press),
+    background-color 200ms ease,
+    color 200ms ease;
+}
+:root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn, .header .logo.isle):active {
+  scale: 1.1;
+  background: var(--glass-fill-pressed);
+  transition-duration: 160ms, 0s, 0s;
+}
+:root[data-theme] body.lg .nur-map-zoom button { transition: background-color 200ms ease; }
+:root[data-theme] body.lg .nur-map-zoom button:active { background: var(--glass-selection); opacity: 1; transition-duration: 0s; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn, .header .logo.isle):hover { background: var(--glass-fill-pressed); }
+  :root[data-theme] body.lg .nur-map-zoom button:hover { background: var(--glass-selection); }
+}
+:root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn) { color: var(--glass-ink); }
+
+/* ---- Tab bar ---- */
+:root[data-theme] body.lg .tabbar-dock .tabbar {
+  --tab-color-inactive: var(--glass-ink);
+  --tab-label-inactive: var(--glass-ink);
+  --tab-color-active: var(--glass-accent);
+  --tab-label-active: var(--glass-accent);
+  --badge-lift: 0px;
+  --badge-ink: var(--glass-accent);
+  --lens-travel: var(--spring-select-ms);
+  --nav-spring: var(--spring-select);
+  /* The lens lifts past the bar's edges while held; clipping it would cut
+     exactly the part that reads as glass. */
+  overflow: visible;
+}
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-label {
+  font: 600 11px/1.1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-item:not(.is-active) .tabbar-label { font-weight: 500; }
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-item.is-active .tabbar-label { font-weight: 600; }
+
+/* Selected: the filled symbol in the accent, as iOS draws a selected tab.
+   While the lens is carried, the selection belongs to the tab under it. */
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-item.is-active .tabbar-badge,
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-badge { color: var(--glass-accent); }
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-item.is-active .tabbar-ic--solid,
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-ic--solid { opacity: 1; transform: none; }
+:root[data-theme] body.lg .tabbar-dock .tabbar .tabbar-item.is-active .tabbar-ic--line,
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-ic--line { opacity: 0; }
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-under-lens .tabbar-label { color: var(--glass-accent); font-weight: 600; }
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-active:not(.is-under-lens) .tabbar-badge { color: var(--glass-ink); }
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-active:not(.is-under-lens) .tabbar-ic--solid { opacity: 0; }
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-active:not(.is-under-lens) .tabbar-ic--line { opacity: 1; }
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-carrying .tabbar-item.is-active:not(.is-under-lens) .tabbar-label { color: var(--glass-ink); font-weight: 500; }
+
+/* Where the finger is, the bar lights up from inside. */
+:root[data-theme] body.lg .tabbar-dock .tabbar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle 150px at var(--press-x, 50%) 50%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.12) 55%, transparent 80%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+:root[data-theme] body.lg .tabbar-dock .tabbar.is-pressed::after { opacity: 1; transition-duration: 90ms; }
+
+/* ---- The selection: a pill at rest, a lens while held ----
+   Shared by the tab bar and every segmented control (.lens-body). At rest
+   it is iOS's grey pill (tab bar) or white thumb (segmented); held or
+   dragged it lifts — grows by Glisse's 24×16px, clears, and casts a
+   shadow — and settles back on release. */
+:root[data-theme] body.lg .tabbar-dock .tabbar-lens .lens-body {
+  background: var(--glass-selection);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  transform: none;
+  transition:
+    transform var(--spring-lift-ms) var(--spring-lift),
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) {
+  background: var(--glass-track);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  --lens-travel: var(--spring-select-ms);
+  --nav-spring: var(--spring-select);
+}
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) .seg-indicator {
+  background: none;
+  box-shadow: none;
+  top: 0;
+  bottom: 0;
+  height: auto;
+}
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) .seg-indicator .lens-body {
+  inset: 2px;
+  border-radius: 999px;
+  background: var(--glass-thumb);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--glass-thumb-shadow);
+  transform: none;
+  transition:
+    transform var(--spring-lift-ms) var(--spring-lift),
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) .seg-btn {
+  font: 500 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  color: var(--glass-ink);
+}
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) .seg-btn.is-active {
+  font-weight: 600;
+  color: rgba(13, 18, 32, 0.96);
+}
+
+/* The desktop filter is a segmented control that is also its own island:
+   glass underneath, the track tint on top of it. */
+:root[data-theme] body.lg .header #filter-seg.isle {
+  background: linear-gradient(var(--glass-track) 0 0), var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur) var(--glass-refract,);
+  box-shadow: var(--glass-rim), var(--glass-drop);
+}
+
+/* Held / dragged: the lens. Scale, not size, so it stays on the compositor;
+   JS supplies --lift-x/--lift-y from the lens's own box. */
+:root[data-theme] body.lg :is(.tabbar-dock .tabbar-lens.is-held, .tabbar-dock .tabbar-lens.is-dragging) .lens-body,
+:root[data-theme] body.lg .header :is(#lang-seg, #filter-seg, #map-mode-seg) .seg-indicator.is-held .lens-body {
+  transform: scale(var(--lift-x, 1.2), var(--lift-y, 1.25));
+  background: var(--glass-lens);
+  backdrop-filter: saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: saturate(1.7) brightness(1.06);
+  box-shadow: var(--glass-rim), var(--glass-lens-drop);
+}
+/* Travel: Glisse's lens slides without bending; keep only a hint of it. */
+@keyframes lensStretch {
+  0%   { transform: scale(1, 1); }
+  40%  { transform: scale(1.04, 0.96); }
+  100% { transform: scale(1, 1); }
+}
+:root[data-theme] body.lg .is-traveling > .lens-body::after { opacity: 0.28; }
+
+/* ---- Switch, as iOS 26's ----
+   A capsule track and a white pill; held, the pill swells into clear glass
+   over the track. The bell stays in it — this switch has no label. */
+:root[data-theme] body.lg .header .isle-tools .notif-switch,
+:root[data-theme] body.lg .header .isle-tools .notif-switch:not(.is-active),
+:root[data-theme] body.lg .header .isle-tools .notif-switch.is-active {
+  width: 64px;
+  height: 44px;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+:root[data-theme] body.lg .notif-switch .notif-switch-track {
+  inset: auto;
+  left: 2px;
+  top: 50%;
+  width: 60px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 14px;
+  overflow: visible;
+  background: var(--switch-off);
+  transition: background-color 220ms ease;
+}
+:root[data-theme] body.lg .notif-switch.is-active .notif-switch-track { background: var(--switch-on); }
+:root[data-theme] body.lg .header .notif-switch .notif-switch-thumb,
+:root[data-theme] body.lg .header .notif-switch:not(.is-active) .notif-switch-thumb,
+:root[data-theme] body.lg .header .notif-switch.is-active .notif-switch-thumb {
+  top: 2px;
+  left: 2px;
+  width: 36px;
+  height: 24px;
+  border-radius: 12px;
+  background: #fff;
+  color: #8a91a3;
+  box-shadow: 0 3px 8px rgba(13, 18, 32, 0.15), 0 1px 1px rgba(13, 18, 32, 0.06);
+  transform: none;
+  translate: 0 0;
+  transition:
+    translate var(--spring-switch-ms) var(--spring-switch),
+    scale var(--spring-lift-ms) var(--spring-lift),
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    color 200ms ease;
+}
+:root[data-theme] body.lg .header .notif-switch.is-active .notif-switch-thumb {
+  translate: 20px 0;
+  color: var(--switch-on);
+}
+:root[data-theme] body.lg .header .notif-switch:active .notif-switch-thumb {
+  scale: 1.42 1.4;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: saturate(1.7) brightness(1.08);
+  -webkit-backdrop-filter: saturate(1.7) brightness(1.08);
+  box-shadow: var(--glass-rim), 0 6px 16px rgba(13, 18, 32, 0.16);
+}
+:root[data-theme] body.lg .notif-switch .notif-switch-bell { width: 13px; height: 13px; }
+:root[data-theme] body.lg .notif-switch .notif-switch-slash { width: 15px; box-shadow: 0 0 0 1.5px #fff; }
+:root[data-theme] body.lg .notif-switch:focus-visible { outline: 2px solid var(--switch-on); outline-offset: 2px; border-radius: 14px; }
+
+/* ---- Accessibility ---- */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] body.lg :is(.header .isle, .map-stats, .tabbar-dock .tabbar, .tabbar-dock .tabbar-search, .loc-btn, .nur-map-zoom) {
+    background: rgba(250, 251, 253, 0.97);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :root[data-theme] body.lg .header { background: rgba(244, 247, 248, 0.96); }
+  :root[data-theme] body.lg :is(.tabbar-dock .tabbar-lens.is-held, .tabbar-dock .tabbar-lens.is-dragging) .lens-body,
+  :root[data-theme] body.lg .header .seg-indicator.is-held .lens-body,
+  :root[data-theme] body.lg .header .notif-switch:active .notif-switch-thumb {
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn, .header .logo.isle),
+  :root[data-theme] body.lg .tabbar-dock .tabbar-lens .lens-body,
+  :root[data-theme] body.lg .header .seg-indicator .lens-body,
+  :root[data-theme] body.lg .header .notif-switch .notif-switch-thumb { transition-duration: 1ms; }
+  :root[data-theme] body.lg :is(.tabbar-dock .tabbar-search, .loc-btn, .header .logo.isle):active { scale: 1; }
+  :root[data-theme] body.lg :is(.tabbar-dock .tabbar-lens.is-held, .tabbar-dock .tabbar-lens.is-dragging) .lens-body,
+  :root[data-theme] body.lg .header .seg-indicator.is-held .lens-body { transform: none; }
+  :root[data-theme] body.lg .header .notif-switch:active .notif-switch-thumb { scale: 1; }
+}

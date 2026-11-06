@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NŪR — Feature Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
@@ -1700,7 +1700,16 @@
 </div>
 
 <!-- Cloudflare Web Analytics -->
-<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "564d13df8dba417a9193fe33cef8e220"}'></script>
+<script src="js/config.js"></script>
+<script>
+  if (window.NUR_ANALYTICS_TOKEN && location.protocol === 'https:') {
+    const beacon = document.createElement('script');
+    beacon.defer = true;
+    beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    beacon.dataset.cfBeacon = JSON.stringify({ token: window.NUR_ANALYTICS_TOKEN });
+    document.head.appendChild(beacon);
+  }
+</script>
 <!-- End Cloudflare Web Analytics -->
 
 </body>

@@ -8,25 +8,26 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v53';
+const CACHE = 'nur-shell-v55';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=53',
-  '/js/i18n.js?v=53',
-  '/js/api.js?v=53',
-  '/js/parking.js?v=53',
-  '/js/geolocation.js?v=53',
-  '/js/finder.js?v=53',
-  '/js/map-config.js?v=53',
-  '/js/map.js?v=53',
-  '/js/ui.js?v=53',
-  '/js/notifications.js?v=53',
-  '/js/router.js?v=53',
-  '/js/analytics.js?v=53',
-  '/js/parking-session.js?v=53',
-  '/js/pwa.js?v=53',
-  '/js/app.js?v=53',
+  '/css/style.css?v=55',
+  '/js/i18n.js?v=55',
+  '/js/api.js?v=55',
+  '/js/parking.js?v=55',
+  '/js/geolocation.js?v=55',
+  '/js/finder.js?v=55',
+  '/js/config.js?v=55',
+  '/js/map.js?v=55',
+  '/js/ui.js?v=55',
+  '/js/notifications.js?v=55',
+  '/js/router.js?v=55',
+  '/js/analytics.js?v=55',
+  '/js/parking-session.js?v=55',
+  '/js/pwa.js?v=55',
+  '/js/glass.js?v=55',
+  '/js/app.js?v=55',
   '/logo.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
@@ -75,14 +76,10 @@ self.addEventListener('fetch', (event) => {
   const networkOnly =
     url.hostname.endsWith('.2gis.com') ||
     url.hostname.endsWith('.2gis.ru') ||
-    url.hostname.endsWith('openfreemap.org') ||
     url.hostname.includes('parking.dc.tj') ||
-    url.hostname.includes('corsproxy.io') ||
     url.hostname.includes('allorigins.win') ||
     url.hostname.includes('router.project-osrm.org') ||
-    url.hostname.includes('cloudflareinsights.com') ||
-    url.hostname.includes('basemaps.cartocdn.com') ||
-    url.hostname === 'tile.openstreetmap.org';
+    url.hostname.includes('cloudflareinsights.com');
 
   if (networkOnly) return;
 

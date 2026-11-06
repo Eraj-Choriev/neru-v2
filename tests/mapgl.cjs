@@ -33,24 +33,65 @@ test('parking refresh reuses geometry and hiding it releases all strips',()=>{
   s.parkingVisible=false;s._syncParking();assert.equal(first.destroyed,true);assert.equal(s.parkingLines.length,0);
 });
 
-test('20 expanded points form an evenly spaced circle inside the usable phone viewport',()=>{
-  for (const [width,height] of [[320,568],[414,896],[896,414]]) {
-    const {s,c}=setup();
-    const element=()=>({style:{},append(){},setAttribute(){},querySelectorAll(){return []},remove(){this.removed=true;}});
-    c.document={createElement:element,createElementNS:element,querySelector:selector=>({getBoundingClientRect:()=>selector==='.header'?{bottom:112}:{top:height-82,height:64}})};
-    s.container={getBoundingClientRect:()=>({left:0,top:0,width,height,bottom:height}),parentNode:{append(){}}};
-    s.map.project=()=>[width/2,height/2];
-    const stations=Array.from({length:20},(_,i)=>({...station,id:String(i)}));
-    s.stations=new Map(stations.map(s=>[s.id,s]));
-    s._openGroup(stations.map(s=>({coordinates:[s.lng,s.lat],userData:{id:s.id}})),false);
-    const positions=[...s._spider.positions.values()];
-    assert.equal(positions.length,20);
-    for(const [i,p] of positions.entries()) {
-      assert.ok(p[0]>=22&&p[0]<=width-22&&p[1]>=134&&p[1]<=height-104);
-      if (i > 0) { const prev=positions[i-1]; assert.ok(Math.abs(Math.hypot(p[0]-prev[0],p[1]-prev[1])-Math.hypot(positions[1][0]-positions[0][0],positions[1][1]-positions[0][1])) < 0.001); }
+function spiderSetup(width,height,origin=[width/2,height/2]) {
+  const {s,c}=setup();
+  c.setTimeout=()=>0; // the pan fallback timer; moveend is driven by hand
+  const element=()=>({style:{},append(){},setAttribute(){},querySelectorAll(){return []},remove(){this.removed=true;}});
+  c.document={createElement:element,createElementNS:element,querySelector:selector=>({getBoundingClientRect:()=>selector==='.header'?{bottom:112}:{top:height-82,height:64}})};
+  s.container={getBoundingClientRect:()=>({left:0,top:0,width,height,bottom:height}),parentNode:{append(){}}};
+  s.map.project=()=>origin;
+  return {s,c};
+}
+const group=(s,n)=>{
+  const stations=Array.from({length:n},(_,i)=>({...station,id:String(i)}));
+  s.stations=new Map(stations.map(x=>[x.id,x]));
+  return stations.map(x=>({coordinates:[x.lng,x.lat],userData:{id:x.id}}));
+};
+
+test('a group opens as a compact web: no overlaps, hub clear, tighter than the old single circle',()=>{
+  for (const n of [2,5,8,12,14,16,20]) {
+    const {s}=spiderSetup(414,896);
+    s._openGroup(group(s,n),false);
+    const [ox,oy]=s._spider.origin;
+    const layout=s._spiderLayout(n);
+    const pts=[...s._spider.positions.values()];
+    assert.equal(pts.length,n);
+    for (const [i,p] of pts.entries()) {
+      const r=Math.hypot(p[0]-ox,p[1]-oy);
+      assert.ok(r>=21.5+layout.size/2+6,`n=${n}: marker ${i} touches the hub`);
+      for (const q of pts.slice(i+1)) assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=layout.size+5.9,`n=${n}: markers overlap`);
     }
-    const layer=s._spider.element;s._closeSpider();assert.equal(layer.removed,true);assert.equal(s._spider,null);
+    // The previous layout put 12 markers on a 100px ring and 20 on 134px.
+    assert.ok(layout.extent<=(n<=8?73.5:n<=12?100:126),`n=${n}: web too wide (${layout.extent})`);
   }
+});
+
+test('the hub sits exactly on the cluster, never nudged beside it',()=>{
+  const {s}=spiderSetup(414,896,[207.25,401.5]);
+  s._openGroup(group(s,12),false);
+  assert.deepEqual([...s._spider.origin],[207.25,401.5]);
+  assert.match(s._spider.hub.style.cssText,/left:207\.25px;top:401\.5px/);
+});
+
+test('a web that would spill off-screen pans the map, then opens over the moved cluster',()=>{
+  const {s}=spiderSetup(390,844,[20,300]);
+  let center=null,handlers={};
+  Object.assign(s.map,{getCenter:()=>[68.7,38.5],unproject:p=>p,setCenter(c){center=c;},on(ev,fn){handlers[ev]=fn;},off(ev){delete handlers[ev];}});
+  s._openGroup(group(s,8),false);
+  assert.equal(s._spider,undefined,'must not open before the camera moves');
+  assert.ok(center&&center[0]<20,'map must move so the cluster comes right');
+  s.map.project=()=>[120,300];
+  handlers.moveend();
+  assert.deepEqual([...s._spider.origin],[120,300]);
+  assert.equal(handlers.moveend,undefined,'listener removed');
+});
+
+test('landscape phones still fit 20 markers by shrinking them, all inside the usable area',()=>{
+  const {s}=spiderSetup(896,414,[448,226]);
+  s._openGroup(group(s,20),false);
+  assert.ok(s._spider,'opened without needing a pan');
+  for (const p of s._spider.positions.values()) assert.ok(p[0]>=8&&p[0]<=888&&p[1]>=120&&p[1]<=324,`outside: ${p}`);
+  const layer=s._spider.element;s._closeSpider();assert.equal(layer.removed,true);assert.equal(s._spider,null);
 });
 
 test('closing a spider cancels pending reveal animations and is safe to repeat',()=>{
