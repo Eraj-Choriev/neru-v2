@@ -46,7 +46,7 @@ Each module exposes a global singleton:
 | `js/parking.js` | `parkingAPI` | Paid-parking zones (`getMarkerParking`, ~243 static strips). Fetched once, cached 24h in `localStorage` (`nur-parking-v1`) — not part of the 30s refresh. Holds the `PARKING` constants (tariff, free minutes, fine indicator, SMS/support numbers) that timer, popups and rules sheet all share |
 | `js/geolocation.js` | `geoLocation` | Browser geolocation wrapper; Haversine distance helpers (`GeoLocation.distanceBetween`, `GeoLocation.formatDistance`) |
 | `js/finder.js` | `stationFinder` | Nearest-station sorting (by distance or weighted score) |
-| `js/config.js` | `window.NUR_MAP_CONFIG`, `window.NUR_ANALYTICS_TOKEN` | **Generated, git-ignored.** 2GIS key + default center, Cloudflare beacon token. Never edit or commit; regenerate with `scripts/build-config.mjs` |
+| `js/config.js` | `window.NUR_MAP_CONFIG`, `window.NUR_ANALYTICS_TOKEN` | **Generated** by `scripts/build-config.mjs`: 2GIS key + default center, Cloudflare beacon token. Temporarily **committed** (see *Secrets & config*); never hand-edit it |
 | `js/map.js` | `stationMap` | 2GIS MapGL map: two clusterers (stations / parking), parking strips as polylines, the group "spider", cards, route line (`drawOSRMRoute`) |
 | `js/glass.js` | `liquidGlass` | Edge refraction for the glass chrome (port of Glisse, MIT): draws a displacement map per `[data-glass]` element and sets `--glass-refract: url(#…)`. Chromium only; elsewhere it does nothing and the CSS blur stands alone. `app.init()` calls `liquidGlass.attach()` after the map exists |
 | `js/ui.js` | `ui` | Sidebar, filter segmented controls, stats bar (`setStatsMode('ev'\|'parking')`), toast, route panel, lens indicator (`moveIndicator`); also exports `parseSchedule()` and `walkingEta()` |
@@ -65,8 +65,9 @@ Each module exposes a global singleton:
 
 ## Secrets & config
 
-- Keys live only in `.env` (local, git-ignored, also in `.vercelignore`) and in Vercel → Project Settings → Environment Variables (Production **and** Preview). `.env.example` documents the names: `NUR_2GIS_KEY` (required), `NUR_CF_BEACON_TOKEN` (optional; empty disables analytics).
-- `vercel.json` runs `node scripts/build-config.mjs` as `buildCommand` (`outputDirectory: "."`). It writes `js/config.js` and **exits 1 if `NUR_2GIS_KEY` is missing or malformed**, so a misconfigured deploy fails and Vercel keeps the previous one live.
+- **Current, temporary state:** the Vercel project has no environment variables yet, so `js/config.js` is committed with the current keys and deploys use it as is. The owner chose this on 2026-11-06 to see changes deployed; the target is the env-only setup below.
+- Target setup: keys live only in `.env` (local, git-ignored, also in `.vercelignore`) and in Vercel → Project Settings → Environment Variables (Production **and** Preview). `.env.example` documents the names: `NUR_2GIS_KEY` (required), `NUR_CF_BEACON_TOKEN` (optional; empty disables analytics). To finish the move: add both variables in Vercel, rotate the 2GIS key, then `git rm --cached js/config.js` and add `js/config.js` back to `.gitignore`.
+- `vercel.json` runs `node scripts/build-config.mjs` as `buildCommand` (`outputDirectory: "."`). With `NUR_2GIS_KEY` set it regenerates `js/config.js` (env wins over the committed file); without it, it keeps the committed file; with neither, or with a malformed key, it **exits 1**, so a broken deploy fails and Vercel keeps the previous one live.
 - Both values still reach the browser — that is inherent to a browser map key and a web-analytics beacon. Their real protection is the Referer allow-list in the 2GIS Platform Manager and Cloudflare's site binding. Never put a true server-side secret in `config.js`; that would need a serverless function.
 - Third-party scripts with a pinned version carry SRI (`integrity` + `crossorigin`). When bumping `@2gis/mapgl-clusterer`, recompute: `curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A`. The 2GIS loader (`mapgl.2gis.com/api/js/v1`) is unversioned, so it cannot have SRI.
 

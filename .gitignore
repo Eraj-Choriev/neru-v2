@@ -6,8 +6,8 @@ brag-output*/
 build-premium-film.py
 navbar-fixed.png
 
-# Secrets and the config generated from them (scripts/build-config.mjs)
+# Secrets (scripts/build-config.mjs reads them). js/config.js is committed for
+# now, so deploys work before the Vercel project has its env vars.
 .env
 .env.*
 !.env.example
-js/config.js
