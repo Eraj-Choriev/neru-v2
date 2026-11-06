@@ -843,23 +843,22 @@ class UI {
     const distEl = document.getElementById('route-distance');
     const durEl  = document.getElementById('route-duration');
 
-    if (destEl) destEl.textContent = station.name;
+    // Called on every GPS fix while driving: write only what changed, so the
+    // live region is not re-announced each second with the same numbers.
+    const set = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
+    set(destEl, station.name);
 
-    if (distEl) {
-      const f = GeoLocation.formatDistance(distance / 1000);
-      distEl.textContent = `${f.value} ${i18n.t(f.unit)}`;
-    }
+    const f = GeoLocation.formatDistance(distance / 1000);
+    set(distEl, `${f.value} ${i18n.t(f.unit)}`);
 
-    if (durEl) {
-      const mins = Math.round(duration / 60);
-      if (mins < 60) {
-        durEl.textContent = `${mins} ${i18n.t('minSuffix')}`;
-      } else {
-        const h = Math.floor(mins / 60), m = mins % 60;
-        durEl.textContent = m
-          ? `${h}${i18n.t('hrSuffix')} ${m}${i18n.t('minSuffix')}`
-          : `${h} ${i18n.t('hrSuffix')}`;
-      }
+    const mins = Math.max(1, Math.round(duration / 60));
+    if (mins < 60) {
+      set(durEl, `${mins} ${i18n.t('minSuffix')}`);
+    } else {
+      const h = Math.floor(mins / 60), m = mins % 60;
+      set(durEl, m
+        ? `${h}${i18n.t('hrSuffix')} ${m}${i18n.t('minSuffix')}`
+        : `${h} ${i18n.t('hrSuffix')}`);
     }
 
     panel.classList.add('is-active');

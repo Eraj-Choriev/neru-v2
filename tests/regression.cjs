@@ -84,3 +84,20 @@ test('data warning waits for stale station data and distinguishes feeds',()=>{
  stationAPI.lastError=new Error('network');
  assert.equal(vm.runInContext('app.getDataStatusKey()',c),'dataUnavailable');
 });
+
+test('a route request locates the user and starts live tracking, even after "find nearest" without consent',async()=>{
+ let tracking=0,routed=0,closed=0,toast=null;
+ const geo={isLocated:false,userAccuracy:12,userHeading:null,getUserLocation:async()=>{geo.isLocated=true;return {lat:38.56,lng:68.77};},getPosition:()=>({isLocated:geo.isLocated,lat:38.56,lng:68.77})};
+ const c=context(['js/app.js'],{document:{addEventListener(){},getElementById:()=>null},localStorage:{getItem:()=>null,setItem(){}},
+  geoLocation:geo,stationAPI:{getStationById:id=>({id,lat:38.57,lng:68.79})},
+  ui:{sidebarOpen:false,closeSidebar(){},showToast(m){toast=m;}},i18n:{t:k=>k},
+  stationRouter:{activeRoute:null,async routeTo(s){routed++;this.activeRoute={station:s};}},
+  stationMap:{popupId:'7',setUserLocation(){},closePopup(){closed++;}}});
+ vm.runInContext('app.startLiveTracking=()=>{__t()}',Object.assign(c,{__t:()=>tracking++}));
+ await vm.runInContext('app.handleRouteRequest({stationId:7})',c);
+ assert.equal(routed,1);assert.equal(tracking,1,'live tracking must start');assert.equal(closed,1,'the routed station card closes');
+ // No location at all: no route, a clear message.
+ geo.isLocated=false;geo.getUserLocation=async()=>{throw new Error('denied');};routed=0;
+ await vm.runInContext('app.handleRouteRequest({stationId:7})',c);
+ assert.equal(routed,0);assert.equal(toast,'locationUnavailable');
+});
