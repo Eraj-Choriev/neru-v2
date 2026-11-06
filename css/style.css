@@ -7424,6 +7424,9 @@ body[data-mode="parking"] {
   --switch-off: rgba(120, 120, 128, 0.32);
   --switch-on: #30d158;
   --glass-accent: #3fe0a6;
+  --glass-sheet: rgba(28, 30, 36, 0.62);
+  --glass-sheet-blur: blur(24px) saturate(1.6);
+  --glass-scrim: rgba(0, 0, 0, 0.28);
 
   /* Glisse's springs (stiffness / damping), sampled into linear(). */
   --spring-select: linear(0, 0.0553, 0.1827, 0.3189, 0.463, 0.58, 0.6868, 0.7654, 0.8323, 0.8788, 0.9165, 0.9417, 0.96, 0.974, 0.9829, 0.9895, 0.9935, 0.9964, 0.998, 0.9991, 0.9997, 1, 1); /* 1024/58.9 */
@@ -7436,11 +7439,14 @@ body[data-mode="parking"] {
   --spring-press-ms: 480ms;
 }
 :root[data-theme="light"] {
-  /* Clear glass: a little white, a little frost. The refraction and the
-     rim carry the material, so the map stays readable through it. */
-  --glass-fill: rgba(255, 255, 255, 0.6);
-  --glass-fill-pressed: rgba(236, 236, 240, 0.86);
-  --glass-blur: blur(8px) saturate(1.8) brightness(1.03);
+  /* One neutral glass for every bar, top and bottom. Dense enough that
+     the map under it barely shifts its tone (a beige street block and a
+     white park must not make two bars look like two materials), clear
+     enough that the map still reads through; moderate saturation for the
+     same reason. The rim and the edge refraction carry the material. */
+  --glass-fill: rgba(246, 247, 250, 0.74);
+  --glass-fill-pressed: rgba(234, 236, 241, 0.9);
+  --glass-blur: blur(12px) saturate(1.4);
   /* Light along one axis: the top-left and bottom-right of every pane
      catch it, as Liquid Glass does, with a hairline holding the shape. */
   --glass-rim:
@@ -7451,24 +7457,31 @@ body[data-mode="parking"] {
   --glass-drop: 0 8px 26px -8px rgba(13, 18, 32, 0.26), 0 1px 3px rgba(13, 18, 32, 0.08);
   --glass-ink: rgba(13, 18, 32, 0.88);
   --glass-ink-2: rgba(60, 60, 67, 0.62);
-  --glass-selection: rgba(13, 18, 32, 0.075);
+  --glass-selection: rgba(118, 118, 128, 0.16);
   --glass-lens: rgba(255, 255, 255, 0.14);
   --glass-lens-drop: 0 7px 14px rgba(13, 18, 32, 0.14);
-  --glass-track: rgba(118, 118, 128, 0.13);
+  --glass-track: rgba(118, 118, 128, 0.16);
   --glass-thumb: #ffffff;
   --glass-thumb-shadow: 0 3px 8px rgba(13, 18, 32, 0.12), 0 3px 1px rgba(13, 18, 32, 0.04);
   --switch-off: rgba(120, 120, 128, 0.20);
   --switch-on: #0eb780;
   /* The selected tab's tint: the brand green, the parking blue in parking. */
   --glass-accent: #06795a;
+  /* Sheets opened from the chrome (Analytics): glass the map reads through,
+     over a light dim rather than a frosted wall. */
+  --glass-sheet: rgba(246, 247, 250, 0.64);
+  --glass-sheet-blur: blur(24px) saturate(1.6);
+  --glass-scrim: rgba(13, 18, 32, 0.14);
 }
 :root[data-theme] body.lg[data-mode="parking"] { --glass-accent: #0a6c96; }
 
 /* ---- Navigation bar: no band of its own, as in iOS 26 ----
-   The controls float on the map; a soft fade under the status bar keeps
-   the top edge legible. One layer of glass, never glass on glass. */
+   The controls float straight on the map, exactly as the tab bar does, so
+   top and bottom glass sit on the same backdrop and read as one material.
+   Only a notch (safe-area inset) gets a solid strip behind the status bar.
+   One layer of glass, never glass on glass. */
 :root[data-theme] body.lg .header {
-  background: linear-gradient(to bottom, rgba(244, 247, 248, 0.88) 0%, rgba(244, 247, 248, 0.5) 52%, rgba(244, 247, 248, 0) 100%);
+  background: linear-gradient(to bottom, rgba(246, 247, 250, 0.94) var(--safe-top, 0px), rgba(246, 247, 250, 0) calc(var(--safe-top, 0px) + 1px));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: none;
@@ -7635,6 +7648,134 @@ body[data-mode="parking"] {
 }
 :root[data-theme] body.lg .is-traveling > .lens-body::after { opacity: 0.28; }
 
+/* ---- Analytics: a button that looks like one ----
+   It was a bare 17px glyph among the switches. Now a tinted pill in the
+   brand colour with its name beside it (icon-only where the header is
+   tight); the label also gives it an accessible name in every language. */
+:root[data-theme] body.lg .header .isle-tools #an-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: 36px;
+  padding: 0 16px 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(14, 183, 128, 0.16);
+  color: #06795a;
+  box-shadow: inset 0 0 0 0.5px rgba(6, 121, 90, 0.22), inset 1px 1px 1px -0.5px rgba(255, 255, 255, 0.9);
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none;
+  transition:
+    background-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    scale var(--spring-press-ms) var(--spring-press);
+}
+:root[data-theme] body.lg .header .isle-tools #an-trigger svg { flex: none; width: 18px; height: 18px; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme] body.lg .header .isle-tools #an-trigger:hover { background: rgba(14, 183, 128, 0.26); transform: none; }
+}
+:root[data-theme] body.lg .header .isle-tools #an-trigger:active {
+  scale: 0.95;
+  background: rgba(14, 183, 128, 0.32);
+  transition-duration: 0s, 120ms;
+}
+:root[data-theme] body.lg .header .isle-tools #an-trigger:focus-visible { outline: 2px solid #06795a; outline-offset: 2px; }
+/* Phones (and short landscape screens) reach analytics from the tab bar. */
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
+  :root[data-theme] body.lg .header .isle-tools #an-trigger { display: none; }
+}
+/* Tight header (narrow laptops, tablets): keep the pill and the colour, drop the word. */
+@media (max-width: 1099px) {
+  :root[data-theme] body.lg .header .isle-tools #an-trigger { width: 36px; padding: 0; justify-content: center; }
+  :root[data-theme] body.lg .header .isle-tools #an-trigger .an-trigger-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme] body.lg .header .isle-tools #an-trigger:active { scale: 1; }
+}
+
+/* ---- 769–900px (small tablets, split screens) ----
+   Three islands did not fit: the centre column was narrower than the
+   filter, which then spilled over the logo. Tighten every control a step
+   instead of dropping one — the same controls, smaller gaps. */
+@media (min-width: 769px) and (max-width: 900px) {
+  :root[data-theme] body.lg .header { column-gap: 8px; padding-left: 16px; padding-right: 16px; }
+  :root[data-theme] body.lg .header #filter-seg .seg-btn { padding: 0 9px; font-size: 12px; }
+  :root[data-theme] body.lg .header .isle-tools { gap: 4px; }
+  :root[data-theme] body.lg .header .isle-tools #map-mode-seg .seg-btn { padding: 0 10px; font-size: 12px; }
+  :root[data-theme] body.lg .header .logo.isle { padding: 0 12px; }
+}
+
+/* ---- Analytics sheet: glass over the map, as an iOS sheet ----
+   The map stays visible behind it — dimmed a little, not frosted out — and
+   the sheet itself is glass the map reads through. One blur, on the sheet;
+   the old full-screen 44px blur under it is gone (it was also the most
+   expensive layer on the page while open). */
+:root[data-theme] body.lg .an-modal {
+  background: var(--glass-scrim);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* The sheet scrolls, not the overlay: a sheet taller than the screen
+     loses its backdrop blur (the filter is computed for its whole box), and
+     then the map shows through the text. Bounded to the viewport, it stays
+     frosted wherever it is scrolled. */
+  overflow: hidden;
+}
+:root[data-theme] body.lg .an-modal .an-card {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  border-radius: 28px;
+  background: var(--glass-sheet);
+  -webkit-backdrop-filter: var(--glass-sheet-blur);
+  backdrop-filter: var(--glass-sheet-blur);
+  box-shadow: var(--glass-rim), 0 28px 70px -24px rgba(13, 18, 32, 0.42), 0 2px 6px rgba(13, 18, 32, 0.08);
+}
+:root[data-theme] body.lg .an-modal .an-tile {
+  background: rgba(255, 255, 255, 0.46);
+  box-shadow: inset 0 0 0 0.5px rgba(13, 18, 32, 0.07), inset 1px 1px 1px -0.5px rgba(255, 255, 255, 0.95);
+}
+:root[data-theme] body.lg .an-modal .an-close {
+  width: 36px; height: 36px;
+  background: rgba(118, 118, 128, 0.16);
+  color: var(--glass-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme] body.lg .an-modal .an-close:hover { background: rgba(118, 118, 128, 0.26); }
+}
+:root[data-theme] body.lg .an-modal .an-close:active { background: rgba(118, 118, 128, 0.32); }
+/* Live dot: a scaled ring, not a box-shadow keyframe (performance rule). */
+:root[data-theme] body.lg .an-modal .an-live { position: relative; animation: none; }
+:root[data-theme] body.lg .an-modal .an-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(14, 183, 128, 0.5);
+  animation: livePulse 2s var(--ease-io) infinite;
+  pointer-events: none;
+}
+/* Phones: the sheet ends above the tab bar, as an iOS sheet leaves the bar
+   in place. Glass laid over the bar's own labels would show them through. */
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
+  :root[data-theme] body.lg .an-modal {
+    bottom: calc(var(--dock-bottom) + var(--dock-height) + 4px);
+    height: auto;
+    padding-bottom: 12px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] body.lg .an-modal .an-card { background: #f6f7fa; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme] body.lg .an-modal .an-live::after { animation: none; }
+}
+
 /* ---- Switch, as iOS 26's ----
    A capsule track and a white pill; held, the pill swells into clear glass
    over the track. The bell stays in it — this switch has no label. */
@@ -7702,7 +7843,7 @@ body[data-mode="parking"] {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-  :root[data-theme] body.lg .header { background: rgba(244, 247, 248, 0.96); }
+  :root[data-theme] body.lg .header { background: none; }
   :root[data-theme] body.lg :is(.tabbar-dock .tabbar-lens.is-held, .tabbar-dock .tabbar-lens.is-dragging) .lens-body,
   :root[data-theme] body.lg .header .seg-indicator.is-held .lens-body,
   :root[data-theme] body.lg .header .notif-switch:active .notif-switch-thumb {

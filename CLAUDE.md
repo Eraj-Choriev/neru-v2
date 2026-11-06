@@ -79,7 +79,8 @@ Each module exposes a global singleton:
 4. `stationMap.renderStations()` loads markers into the 2GIS clusterer; identical snapshots skip the reload.
 5. "Find Nearest" dispatches `findNearest` → `app.handleFindNearest()` → `stationFinder.findNearestStations()` → `ui.openSidebar()`.
 6. Inter-module events (`window.dispatchEvent(new CustomEvent(...))`): `findNearest`, `filterChanged`, `langchange`, `stationsLoaded`, `stationsError`, `parkingLoaded`, `parkingError`, `parkingRulesRequest`, `routeRequest`, `popupClosed`.
-7. Stations auto-refresh every 30s (`REFRESH_MS`, `js/app.js`). While a route is active, `app` watches GPS and calls `stationRouter.refreshFromCurrent()` when the user drifts off the line or has moved enough — never more often than 6s, at least every 20s (`MIN_REROUTE_MS` / `MAX_REROUTE_MS`).
+7. A route request (`app.handleRouteRequest`) locates the user if needed and **always starts live tracking** before routing — otherwise a user who found a station via "find nearest" without startup consent got a route that never moved, re-routed or announced arrival. On success the routed station's card closes (the route panel names it).
+8. Stations auto-refresh every 30s (`REFRESH_MS`, `js/app.js`). While a route is active, `app` watches GPS and calls `stationRouter.refreshFromCurrent()` when the user drifts off the line or has moved enough — never more often than 6s, at least every 20s (`MIN_REROUTE_MS` / `MAX_REROUTE_MS`).
 
 ## PWA & Deployment
 
@@ -117,6 +118,7 @@ After normalization, every station has:
 - Animations that run forever (live dots, pulses) animate only `transform`/`opacity` on a pseudo-element. Animating `box-shadow`/`filter` repaints on the main thread every frame and re-composites the glass (`backdrop-filter`) behind it.
 - Work driven by MapGL's `move` event goes through `requestAnimationFrame` (see `_schedulePositionCard`) and must not read layout after writing styles.
 - Refraction (`data-glass`) only on elements whose size is stable. A lens, a thumb or anything whose size animates must not get it — the map is drawn for one size and smears at another.
+- Testing routes in the cloud sandbox: its proxy rejects browser URLs containing `;`, which every OSRM route URL has (`lng,lat;lng,lat`) — the browser sees a CORS failure. Production is unaffected (OSRM sends `Access-Control-Allow-Origin: *`). In Playwright, fulfil `**/router.project-osrm.org/**` with the same URL fetched by `curl`.
 - Do not rebuild WebGL objects (`mapgl.Circle`, `Polyline`) when their inputs did not change; compare a cheap key first.
 - Images ship at no more than ~2× their largest rendered size. `logo.png` is 768×512 — keep the 3:2 canvas, the CSS crops the wordmark from it.
 
@@ -189,7 +191,10 @@ by `js/glass.js`. Content panes (cards, sheets, modals) stay on `--mat-*`.
 | `--glass-lens` / `--glass-lens-drop` | a lifted (held) lens |
 | `--glass-accent` | selected tab tint; brand green, parking blue on `body[data-mode="parking"]` |
 | `--switch-off` / `--switch-on` | switch track |
+| `--glass-sheet` / `--glass-sheet-blur` / `--glass-scrim` | sheets opened from the chrome (Analytics): glass the map reads through, over a light dim — no full-screen blur. A sheet must scroll **inside itself** (`max-height: 100%; overflow-y: auto`): a sheet taller than the viewport loses its backdrop blur. On phones it ends above the tab bar, which stays live (tapping another tab closes it) |
 | `--spring-select` / `-lift` / `-switch` / `-press` (+ `-ms`) | Glisse's springs sampled into CSS `linear()` — use these, not new cubic-beziers |
+
+Top and bottom chrome must read as one material: the header has no band or fade of its own (only a solid strip inside a notch's safe area), so isles sit on the map exactly as the tab bar does. The header Analytics button is a tinted pill with its label (icon-only ≤1099px, hidden wherever the tab bar shows). At 769–900px the header tightens its controls rather than letting the isles overlap.
 
 The rest of the old nav cascade is overridden, not deleted: when changing the
 chrome, edit this block. Its selectors start with `:root[data-theme] body.lg`

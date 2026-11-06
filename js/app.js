@@ -225,7 +225,24 @@ class App {
     const station = stationAPI.getStationById(stationId);
     if (!station) return;
     if (ui.sidebarOpen) ui.closeSidebar();
+    // A route is only useful if it follows the car. Asking for one is
+    // explicit intent, so locate now if we have to, and make sure the GPS
+    // watch is running — "find nearest" and the startup consent card can
+    // both leave the app located without it, which drew a route that never
+    // moved, never re-routed and never announced arrival.
+    if (!geoLocation.isLocated) {
+      const located = await geoLocation.getUserLocation({ highAccuracy: true }).catch(() => null);
+      if (!located) {
+        ui.showToast(i18n.t('locationUnavailable'), 'warning', 3500);
+        return;
+      }
+      stationMap.setUserLocation(located.lat, located.lng, { accuracy: geoLocation.userAccuracy, heading: geoLocation.userHeading });
+      document.getElementById('loc-btn')?.classList.add('is-located');
+    }
+    this.startLiveTracking();
     await stationRouter.routeTo(station);
+    // The route panel names the destination; the card would only cover the line.
+    if (stationRouter.activeRoute && stationMap.popupId === String(station.id)) stationMap.closePopup();
     // Seed re-route throttle so we don't immediately re-fetch a route we just built.
     if (stationRouter.activeRoute) {
       this._lastReroute = Date.now();
@@ -246,6 +263,9 @@ class App {
     bar.addEventListener('click', (e) => {
       const item = e.target.closest('.tabbar-item');
       if (!item) return;
+      // On phones the analytics sheet stops above the tab bar, so the bar
+      // stays live under it: going to another tab closes the sheet first.
+      if (item.dataset.tab !== 'analytics' && stationAnalytics.isOpen()) stationAnalytics.close();
 
       switch (item.dataset.tab) {
         case 'ev':
@@ -272,6 +292,7 @@ class App {
     const search = document.getElementById('tab-find');
     search?.addEventListener('click', async () => {
       if (search.getAttribute('aria-busy') === 'true') return;
+      if (stationAnalytics.isOpen()) stationAnalytics.close();
       search.setAttribute('aria-busy', 'true');
       try {
         await this.handleFindNearest();
