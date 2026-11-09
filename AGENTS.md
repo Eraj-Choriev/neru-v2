@@ -27,7 +27,7 @@ node --test tests/*.cjs
 node --test --test-name-pattern="latest destination wins" tests/regression.cjs
 ```
 
-The only build step is `scripts/build-config.mjs` (see *Secrets & config* below); there is no bundler and no lint configuration. Tests (`tests/*.cjs`) load the browser scripts into a `node:vm` context with hand-rolled stubs (`fetch`, `mapgl`, `i18n`, DOM fragments) — there is no jsdom. `tests/regression.cjs` covers API/router/schedule/SW invariants; `tests/mapgl.cjs` covers `js/map.js` against a fake `mapgl`. One regression test asserts every local `js/`/`css/` URL in `index.html` appears in `sw.js`'s `SHELL`.
+The only build step is `scripts/build-config.mjs` (see *Secrets & config* below); there is no bundler and no lint configuration. Tests (`tests/*.cjs`) load the browser scripts into a `node:vm` context with hand-rolled stubs (`fetch`, `mapgl`, `i18n`, DOM fragments) — there is no jsdom. `tests/regression.cjs` covers API/router/schedule/SW invariants; `tests/mapgl.cjs` covers `js/map.js` against a fake `mapgl`; `tests/parking.cjs` covers the parking meter (paid-window billing, geofence entry/exit, history) with a fake clock. One regression test asserts every local `js/`/`css/` URL in `index.html` appears in `sw.js`'s `SHELL`.
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Each module exposes a global singleton:
 | `js/notifications.js` | `stationNotifications` | Web Notifications API; fires on busy→free transitions within radius |
 | `js/router.js` | `stationRouter` | In-app driving routes via OSRM (`router.project-osrm.org`); `routeTo(station)` draws route + panel, `refreshFromCurrent()` live re-routes. Stale responses are discarded: the latest destination always wins, and `clear()` cannot be undone by a late reply |
 | `js/analytics.js` | `stationAnalytics` | Local-only usage history: folds every poll into `localStorage` (`nur-analytics-v1`), derives trend/hour-of-day/per-station availability, and renders the Analytics modal |
-| `js/parking-session.js` | `parkingSession`, `parkingRules` | Geofenced parking meter: auto-starts when the device dwells near a strip (proximity + low speed + persistence, with hysteresis), warns before each hour; persisted in `nur-parking-session-v1`. Only runs while the page is open. `parkingRules` is the rules/fines modal |
+| `js/parking-session.js` | `parkingSession`, `parkingVoice`, `parkingHistory`, `parkingRules` | Geofenced parking meter. When the car stays put ≤25m from a strip for 60s (anchor drift ≤30m, so jams and short red lights don't count) it **asks** — card, OS notification with Start/Not-now buttons (relayed by `sw.js` as a `pk-action` message), voice. Accepting **backdates the start to arrival** (free 10 min run from entry). Billing (`compute`, `pkPaidMs`) counts only time inside the zone's paid window on Dushanbe time (UTC+5), so the free/paid state is dynamic. Ends `LEAVE_MS` after leaving, billed to the moment of leaving. Persisted in `nur-parking-session-v1`; manual start from the zone card (`parkingStartRequest`). `parkingVoice` = Web Speech alerts (`nur-voice-v1`; only while visible; Tajik speaks the Russian phrase — no tg voice exists; iOS unlocked by first tap). `parkingHistory` = finished sessions in `nur-parking-history-v1`, rendered into the Analytics sheet in parking mode (tab reads "History"). `parkingRules` is the rules/fines modal. Only runs while the page is open |
 | `js/pwa.js` | *(IIFE, no singleton)* | Registers `/sw.js`; drives the `#install-btn` install flow with per-browser hints (handles the iOS-Safari-only PWA install caveat) |
 | `js/app.js` | `app` | Boot controller; wires all modules together; location consent gate (`neru-loc-consent`); 30s station auto-refresh (also on `visibilitychange`/`online`); adaptive live re-route while a route is active |
 
@@ -78,7 +78,7 @@ Each module exposes a global singleton:
 3. Raw response is normalized via `stationAPI.normalizeStation()` (invalid coordinates → `null`, dropped).
 4. `stationMap.renderStations()` loads markers into the 2GIS clusterer; identical snapshots skip the reload.
 5. "Find Nearest" dispatches `findNearest` → `app.handleFindNearest()` → `stationFinder.findNearestStations()` → `ui.openSidebar()`.
-6. Inter-module events (`window.dispatchEvent(new CustomEvent(...))`): `findNearest`, `filterChanged`, `langchange`, `stationsLoaded`, `stationsError`, `parkingLoaded`, `parkingError`, `parkingRulesRequest`, `routeRequest`, `popupClosed`.
+6. Inter-module events (`window.dispatchEvent(new CustomEvent(...))`): `findNearest`, `filterChanged`, `langchange`, `stationsLoaded`, `stationsError`, `parkingLoaded`, `parkingError`, `parkingRulesRequest`, `parkingStartRequest`, `routeRequest`, `popupClosed`.
 7. A route request (`app.handleRouteRequest`) locates the user if needed and **always starts live tracking** before routing — otherwise a user who found a station via "find nearest" without startup consent got a route that never moved, re-routed or announced arrival. On success the routed station's card closes (the route panel names it).
 8. Stations auto-refresh every 30s (`REFRESH_MS`, `js/app.js`). While a route is active, `app` watches GPS and calls `stationRouter.refreshFromCurrent()` when the user drifts off the line or has moved enough — never more often than 6s, at least every 20s (`MIN_REROUTE_MS` / `MAX_REROUTE_MS`).
 

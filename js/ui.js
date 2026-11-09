@@ -803,6 +803,17 @@ class UI {
     });
 
     document.body.dataset.mode = mode;
+
+    // In parking mode the Analytics sheet is the parking history, so every
+    // way into it is labelled that way.
+    const pk = mode === 'parking';
+    document.querySelector('#tab-analytics .tabbar-label')?.setAttribute('data-i18n', pk ? 'tabHistory' : 'tabAnalytics');
+    document.querySelector('#an-trigger .an-trigger-label')?.setAttribute('data-i18n', pk ? 'tabHistory' : 'analytics');
+    document.getElementById('an-trigger')?.setAttribute('data-i18n-title', pk ? 'pkHistoryTitle' : 'analytics');
+    document.getElementById('an-title')?.setAttribute('data-i18n', pk ? 'pkHistoryTitle' : 'analytics');
+    document.getElementById('an-subtitle')?.setAttribute('data-i18n', pk ? 'pkHistSubtitle' : 'anSubtitle');
+    if (typeof stationAnalytics !== 'undefined') stationAnalytics.refresh();
+
     const modeSwitch = document.getElementById('map-mode-seg');
     modeSwitch?.querySelectorAll('[data-map-mode]').forEach(button => {
       const selected = button.dataset.mapMode === mode;

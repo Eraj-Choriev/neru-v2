@@ -7862,3 +7862,130 @@ body[data-mode="parking"] {
   :root[data-theme] body.lg .header .seg-indicator.is-held .lens-body { transform: none; }
   :root[data-theme] body.lg .header .notif-switch:active .notif-switch-thumb { scale: 1; }
 }
+
+/* ============================================================
+   PARKING — voice toggle on the session card, history sheet
+   ============================================================
+   History lives in the Analytics sheet while the map is in parking mode,
+   so it reuses .an-sec / .an-tile and only adds the session rows. */
+
+.pk-voice-btn {
+  position: relative;
+  flex: none;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border: none;
+  border-radius: 10px;
+  background: var(--mat-thin);
+  box-shadow: var(--edge-ring);
+  color: var(--cyan-500);
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1), color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* 44px touch target around a 32px glyph */
+.pk-voice-btn::after { content: ''; position: absolute; inset: -6px; }
+.pk-voice-btn:hover { background: rgba(26, 156, 208, 0.12); }
+.pk-voice-btn:active { transform: scale(0.92); }
+.pk-voice-btn:focus-visible { outline: 2px solid var(--cyan-500); outline-offset: 2px; }
+.pk-voice-btn[hidden] { display: none; }
+.pk-voice-ic--off { display: none; }
+.pk-voice-btn.is-muted { color: var(--text-3); }
+.pk-voice-btn.is-muted .pk-voice-ic--on { display: none; }
+.pk-voice-btn.is-muted .pk-voice-ic--off { display: block; }
+
+.pk-hist-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.pk-hist-row {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 56px;
+  padding: 8px 8px 8px 0;
+  border-radius: 14px;
+  background: var(--mat-thin);
+  box-shadow: var(--edge-ring);
+}
+.pk-hist-row--live { padding-left: 16px; box-shadow: var(--edge-ring), inset 3px 0 0 var(--cyan-500); }
+.pk-hist-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  min-height: 44px; justify-content: center;
+  padding: 0 0 0 16px;
+  border: none; background: none; text-align: left;
+  font: inherit; color: inherit;
+  border-radius: 12px;
+}
+.pk-hist-row--live .pk-hist-main { padding-left: 0; }
+button.pk-hist-main { cursor: pointer; transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1); }
+button.pk-hist-main:hover .pk-hist-addr { color: var(--cyan-500); }
+button.pk-hist-main:active { opacity: 0.6; }
+button.pk-hist-main:focus-visible { outline: 2px solid var(--cyan-500); outline-offset: -2px; }
+.pk-hist-addr {
+  font-size: 15px; font-weight: 600; color: var(--text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pk-hist-meta {
+  font-size: 13px; color: var(--text-3);
+  font-feature-settings: 'tnum' on;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pk-hist-cost {
+  flex: none;
+  font-family: var(--f-mono); font-size: 13px; font-weight: 700;
+  color: var(--cyan-500);
+  font-feature-settings: 'tnum' on;
+}
+.pk-hist-del {
+  flex: none;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: none; border-radius: 12px;
+  background: none; color: var(--text-3);
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1), color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pk-hist-del:hover { background: rgba(255, 69, 58, 0.10); color: #d70015; }
+.pk-hist-del:active { background: rgba(255, 69, 58, 0.18); }
+.pk-hist-del:focus-visible { outline: 2px solid var(--cyan-500); outline-offset: -2px; }
+
+/* Voice setting — an iOS switch built on a real checkbox */
+.pk-voice-row {
+  display: flex; align-items: center; gap: 16px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: var(--mat-thin);
+  box-shadow: var(--edge-ring);
+  cursor: pointer;
+}
+.pk-voice-row.is-disabled { cursor: default; opacity: 0.6; }
+.pk-voice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pk-voice-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.pk-voice-hint { font-size: 13px; line-height: 1.4; color: var(--text-3); }
+.pk-switch {
+  appearance: none; -webkit-appearance: none;
+  position: relative; flex: none;
+  width: 51px; height: 31px; margin: 0;
+  border-radius: 16px;
+  background: var(--switch-off);
+  cursor: pointer;
+  transition: background-color 220ms ease;
+}
+.pk-switch::before {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 27px; height: 27px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(13, 18, 32, 0.15), 0 1px 1px rgba(13, 18, 32, 0.06);
+  transition: translate var(--spring-switch-ms, 420ms) var(--spring-switch, cubic-bezier(0.4, 0, 0.2, 1));
+}
+.pk-switch:checked { background: var(--switch-on); }
+.pk-switch:checked::before { translate: 20px 0; }
+.pk-switch:focus-visible { outline: 2px solid var(--switch-on); outline-offset: 2px; }
+.pk-switch:disabled { cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-switch::before, .pk-voice-btn, .pk-hist-addr { transition-duration: 1ms; }
+}
+/* The month summary is always three facts — keep them on one row */
+.an-tiles.pk-hist-tiles { grid-template-columns: repeat(3, 1fr); }
+.pk-hist-tiles .an-tile { padding: 12px 8px; }
+.pk-hist-tiles .an-tile-v { font-size: 17px; white-space: nowrap; }

@@ -407,7 +407,7 @@ class StationNotifications {
    * only way through, and it is also what lets the alert arrive while the app
    * is backgrounded. Try that first, fall back to the constructor on desktop.
    */
-  async notify(title, body, tag = 'nur') {
+  async notify(title, body, tag = 'nur', { actions = null, requireInteraction = false } = {}) {
     if (!this.isSupported() || Notification.permission !== 'granted') {
       this._log('log', `ℹ️ notify() skipped — permission="${this.isSupported() ? Notification.permission : 'unsupported'}"`);
       return false;
@@ -419,13 +419,16 @@ class StationNotifications {
       renotify: true,
       icon: 'logo.png',
       badge: 'logo.png',
+      requireInteraction,
     };
 
     try {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.ready;
         if (reg?.showNotification) {
-          await reg.showNotification(title, options);
+          // Buttons on the notification itself (Android/desktop Chrome; iOS
+          // ignores them). sw.js relays the press back to the page.
+          await reg.showNotification(title, actions?.length ? { ...options, actions } : options);
           return true;
         }
       }
@@ -434,12 +437,24 @@ class StationNotifications {
     }
 
     try {
+      // `actions` are only legal on persistent (SW) notifications — passing
+      // them to the constructor throws a TypeError.
       new Notification(title, options);
       return true;
     } catch (err) {
       this._log('error', '❌ Notification failed:', err.name, err.message);
       return false;
     }
+  }
+
+  /** Withdraw an OS notification that no longer applies (e.g. an unanswered parking question). */
+  async closeTag(tag) {
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      const reg = await navigator.serviceWorker.getRegistration?.();
+      const list = await reg?.getNotifications?.({ tag });
+      list?.forEach((n) => n.close());
+    } catch (_) {}
   }
 
   // ── Native OS notification (background fallback) ───────────────────────────

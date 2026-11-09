@@ -14,7 +14,7 @@
   <!-- Web fonts must not block first paint: load as print, switch to all once fetched (system fallback until then). -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=56">
+  <link rel="stylesheet" href="css/style.css?v=57">
 
   <!-- Favicon + PWA -->
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
@@ -315,7 +315,7 @@
       <div class="an-card">
         <header class="an-head">
           <div class="an-head-text">
-            <span class="an-eyebrow"><span class="an-live" aria-hidden="true"></span><span data-i18n="anSubtitle">По наблюдениям с вашего устройства</span></span>
+            <span class="an-eyebrow"><span class="an-live" aria-hidden="true"></span><span id="an-subtitle" data-i18n="anSubtitle">По наблюдениям с вашего устройства</span></span>
             <h2 class="an-title" id="an-title" data-i18n="analytics">Аналитика</h2>
           </div>
           <button class="an-close" id="an-close" aria-label="Close">
@@ -335,6 +335,10 @@
           <span class="pk-session-zone" id="pk-session-zone"></span>
           <span class="pk-session-addr" id="pk-session-addr"></span>
         </div>
+        <button class="pk-voice-btn" id="pk-voice" type="button" aria-pressed="true" aria-label="Voice" title="Voice">
+          <svg class="pk-voice-ic pk-voice-ic--on" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.2 6.5a8 8 0 0 1 0 11"/></svg>
+          <svg class="pk-voice-ic pk-voice-ic--off" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+        </button>
         <div class="pk-session-meter">
           <span class="pk-session-timer" id="pk-timer">00:00</span>
           <span class="pk-session-cost" id="pk-cost">0</span>
@@ -375,24 +379,24 @@
   </div>
 
   <!-- App Modules (order matters) -->
-  <script src="js/i18n.js?v=56"></script>
-  <script src="js/api.js?v=56"></script>
-  <script src="js/parking.js?v=56"></script>
-  <script src="js/geolocation.js?v=56"></script>
-  <script src="js/finder.js?v=56"></script>
+  <script src="js/i18n.js?v=57"></script>
+  <script src="js/api.js?v=57"></script>
+  <script src="js/parking.js?v=57"></script>
+  <script src="js/geolocation.js?v=57"></script>
+  <script src="js/finder.js?v=57"></script>
   <script src="https://mapgl.2gis.com/api/js/v1"></script>
   <!-- Pinned + SRI: a tampered CDN file is refused instead of executed. Update the hash when bumping the version. -->
   <script src="https://unpkg.com/@2gis/mapgl-clusterer@2.5.2/dist/clustering.js" integrity="sha384-/elyHJy00s/J+lL6X7H8JHc3Vy3xFMc25glgaVtMU7/Ko2tryYsOHi6V4Z71D0Rr" crossorigin="anonymous"></script>
-  <script src="js/config.js?v=56"></script>
-  <script src="js/map.js?v=56"></script>
-  <script src="js/ui.js?v=56"></script>
-  <script src="js/notifications.js?v=56"></script>
-  <script src="js/router.js?v=56"></script>
-  <script src="js/analytics.js?v=56"></script>
-  <script src="js/parking-session.js?v=56"></script>
-  <script src="js/pwa.js?v=56"></script>
-  <script src="js/glass.js?v=56"></script>
-  <script src="js/app.js?v=56"></script>
+  <script src="js/config.js?v=57"></script>
+  <script src="js/map.js?v=57"></script>
+  <script src="js/ui.js?v=57"></script>
+  <script src="js/notifications.js?v=57"></script>
+  <script src="js/router.js?v=57"></script>
+  <script src="js/analytics.js?v=57"></script>
+  <script src="js/parking-session.js?v=57"></script>
+  <script src="js/pwa.js?v=57"></script>
+  <script src="js/glass.js?v=57"></script>
+  <script src="js/app.js?v=57"></script>
   <script>
     // Token comes from js/config.js (generated from env); empty → no analytics.
     if (window.NUR_ANALYTICS_TOKEN && location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {

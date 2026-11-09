@@ -327,6 +327,12 @@ class StationAnalytics {
     const body = document.getElementById('an-body');
     if (!body) return;
 
+    // Parking mode: the same sheet holds the parking history instead.
+    if (document.body?.dataset?.mode === 'parking' && typeof parkingHistory !== 'undefined') {
+      parkingHistory.render(body);
+      return;
+    }
+
     const live = this.live;
     const cov = this.coverage();
     const t = (k) => i18n.t(k);
@@ -516,6 +522,7 @@ class StationAnalytics {
   }
 
   _tickCountdown() {
+    if (typeof parkingHistory !== 'undefined') parkingHistory.tickLive();
     const el = document.getElementById('an-countdown');
     if (!el || !app?.REFRESH_MS) return;
     const last = stationAPI.lastFetch ? new Date(stationAPI.lastFetch).getTime() : Date.now();

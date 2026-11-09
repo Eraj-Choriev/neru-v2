@@ -210,6 +210,10 @@ class App {
       window.addEventListener('langchange', () => requestAnimationFrame(() => ui.moveIndicator(modeSwitch)));
     }
     window.addEventListener('parkingRulesRequest', () => parkingRules.open());
+    window.addEventListener('parkingStartRequest', (e) => {
+      parkingSession.startManual(e.detail?.zoneId);
+      stationMap.closePopup();
+    });
     document.getElementById('pk-close')?.addEventListener('click', () => parkingRules.close());
     document.getElementById('pk-modal')?.addEventListener('click', (e) => {
       if (e.target.id === 'pk-modal') parkingRules.close();
