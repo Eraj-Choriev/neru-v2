@@ -101,3 +101,18 @@ test('a route request locates the user and starts live tracking, even after "fin
  await vm.runInContext('app.handleRouteRequest({stationId:7})',c);
  assert.equal(routed,0);assert.equal(toast,'locationUnavailable');
 });
+
+test('every rule that shows a modal keeps a [hidden] guard of equal weight', () => {
+ // A `display:` rule on .an-modal outranks the UA `[hidden]{display:none}`
+ // unless a guard with the same selector prefix exists: the closed sheet
+ // then sits invisibly over the whole app and swallows every tap.
+ const css = fs.readFileSync('css/style.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+ for (const m of css.matchAll(/([^{}]*\.an-modal)\s*\{([^}]*)\}/g)) {
+  if (!/(^|;|\s)display\s*:/.test(m[2])) continue;
+  for (const sel of m[1].split(',').map(x => x.trim()).filter(x => x.endsWith('.an-modal'))) {
+   const guard = sel + '[hidden]';
+   const re = new RegExp(guard.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{[^}]*display\\s*:\\s*none');
+   assert.ok(re.test(css), 'missing guard: ' + guard);
+  }
+ }
+});
