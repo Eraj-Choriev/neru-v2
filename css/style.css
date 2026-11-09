@@ -8003,6 +8003,13 @@ button.pk-hist-main:focus-visible { outline: 2px solid var(--cyan-500); outline-
    The sheet only moves (transform); the dim is a filter-free pseudo-element
    and is the only thing that fades. Earlier rules for .an-modal/.an-card are
    overridden here, so edit this block. */
+/* The guard must match the display rule's specificity. `hidden` is only a
+   UA-stylesheet display:none, so the display:flex below beat it and left
+   both closed sheets as invisible full-screen layers over the whole app —
+   the map, the header and every card stopped taking taps. */
+:root[data-theme] body.lg .an-modal[hidden] { display: none; }
+/* While sliding away (before `hidden` lands) it must not catch taps either. */
+:root[data-theme] body.lg .an-modal:not(.is-open) { pointer-events: none; }
 :root[data-theme] body.lg .an-modal {
   inset: 0;
   height: auto;
