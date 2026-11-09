@@ -213,6 +213,7 @@ class StationMap {
       if (!button) return;
       if (button.dataset.action === 'route') window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: button.dataset.stationId } }));
       if (button.dataset.action === 'zone-rules') window.dispatchEvent(new CustomEvent('parkingRulesRequest'));
+      if (button.dataset.action === 'zone-start') window.dispatchEvent(new CustomEvent('parkingStartRequest', { detail: { zoneId: button.dataset.id } }));
       if (button.dataset.action === 'select-station') this.openStationPopup(button.dataset.id);
       if (button.dataset.action === 'select-zone') this.openZonePopup(button.dataset.id);
     });
@@ -633,6 +634,10 @@ class StationMap {
          </div>`
       : '';
 
+    // Manual start: for when the geofence missed (weak GPS, location off) or
+    // the user said "not now" and changed their mind.
+    const canStart = typeof parkingSession !== 'undefined' && !parkingSession.isActive();
+
     return `
       <div class="popup-content popup-content--parking">
         <div class="popup-head">
@@ -663,9 +668,14 @@ class StationMap {
 
         <p class="pk-free-note">${esc(i18n.t('pkFreeMinutesNote'))}</p>
 
+        ${canStart ? `
+        <div class="popup-actions">
+          <button class="btn btn-primary" data-action="zone-start" data-id="${esc(zone.id)}">${esc(i18n.t('pkStartHere'))}</button>
+          <button class="btn btn-ghost" data-action="zone-rules">${esc(i18n.t('pkRules'))}</button>
+        </div>` : `
         <div class="popup-actions popup-actions--single">
           <button class="btn btn-primary" data-action="zone-rules">${esc(i18n.t('pkRules'))}</button>
-        </div>
+        </div>`}
       </div>
     `;
   }

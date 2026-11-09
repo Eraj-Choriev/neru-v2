@@ -8,26 +8,26 @@
 //  - Images / fonts: cache-first (effectively immutable).
 //  - Map tiles + API + analytics: never cached, always straight to network.
 
-const CACHE = 'nur-shell-v56';
+const CACHE = 'nur-shell-v59';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/style.css?v=56',
-  '/js/i18n.js?v=56',
-  '/js/api.js?v=56',
-  '/js/parking.js?v=56',
-  '/js/geolocation.js?v=56',
-  '/js/finder.js?v=56',
-  '/js/config.js?v=56',
-  '/js/map.js?v=56',
-  '/js/ui.js?v=56',
-  '/js/notifications.js?v=56',
-  '/js/router.js?v=56',
-  '/js/analytics.js?v=56',
-  '/js/parking-session.js?v=56',
-  '/js/pwa.js?v=56',
-  '/js/glass.js?v=56',
-  '/js/app.js?v=56',
+  '/css/style.css?v=59',
+  '/js/i18n.js?v=59',
+  '/js/api.js?v=59',
+  '/js/parking.js?v=59',
+  '/js/geolocation.js?v=59',
+  '/js/finder.js?v=59',
+  '/js/config.js?v=59',
+  '/js/map.js?v=59',
+  '/js/ui.js?v=59',
+  '/js/notifications.js?v=59',
+  '/js/router.js?v=59',
+  '/js/analytics.js?v=59',
+  '/js/parking-session.js?v=59',
+  '/js/pwa.js?v=59',
+  '/js/glass.js?v=59',
+  '/js/app.js?v=59',
   '/logo.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
@@ -56,8 +56,13 @@ self.addEventListener('activate', (event) => {
 // so the SW has to be the one that brings the app back to the front.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  // A button on the parking question ("Start" / "Not now"): hand it to the
+  // page, which owns the session. "Not now" does not need to bring it forward.
+  const action = event.action;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      if (action) list.forEach((client) => client.postMessage({ type: 'pk-action', action }));
+      if (action === 'pk-later' && list.length) return undefined;
       for (const client of list) {
         if ('focus' in client) return client.focus();
       }
