@@ -1119,20 +1119,19 @@ class ParkingRules {
     const modal = document.getElementById('pk-modal');
     if (!modal) return;
     this.render();
-    modal.hidden = false;
-    requestAnimationFrame(() => modal.classList.add('is-open'));
-    document.body.classList.add('an-open');
-    if (section === 'pay') {
-      document.getElementById('pk-pay-section')?.scrollIntoView({ block: 'start' });
-    }
+    const body = document.getElementById('pk-body');
+    ui.openSheet(modal, { onDismiss: () => this.close(), focus: document.getElementById('pk-close') });
+    if (!body) return;
+    // The body is the sheet's scroller; scrollIntoView could also shift the
+    // clipped sheet itself, so scroll it by hand.
+    const sec = section === 'pay' ? document.getElementById('pk-pay-section') : null;
+    body.scrollTop = sec
+      ? sec.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 8
+      : 0;
   }
 
   close() {
-    const modal = document.getElementById('pk-modal');
-    if (!modal) return;
-    modal.classList.remove('is-open');
-    document.body.classList.remove('an-open');
-    setTimeout(() => { if (!modal.classList.contains('is-open')) modal.hidden = true; }, 260);
+    ui.closeSheet(document.getElementById('pk-modal'));
   }
 
   isOpen() {

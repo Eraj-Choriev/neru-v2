@@ -241,22 +241,19 @@ class StationAnalytics {
   open() {
     const modal = document.getElementById('an-modal');
     if (!modal) return;
-    modal.hidden = false;
-    requestAnimationFrame(() => modal.classList.add('is-open'));
-    document.body.classList.add('an-open');
+    // Content first, then the sheet: it must never rise half-empty and
+    // change height on the way up.
     this.render();
+    const body = document.getElementById('an-body');
+    if (body && modal.hidden) body.scrollTop = 0;
+    ui.openSheet(modal, { onDismiss: () => this.close(), focus: document.getElementById('an-close') });
     clearInterval(this._timer);
     this._timer = setInterval(() => this._tickCountdown(), 1000);
-    document.getElementById('an-close')?.focus();
   }
 
   close() {
-    const modal = document.getElementById('an-modal');
-    if (!modal) return;
-    modal.classList.remove('is-open');
-    document.body.classList.remove('an-open');
     clearInterval(this._timer);
-    setTimeout(() => { if (!modal.classList.contains('is-open')) modal.hidden = true; }, 260);
+    ui.closeSheet(document.getElementById('an-modal'));
   }
 
   isOpen() {

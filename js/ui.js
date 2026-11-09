@@ -836,6 +836,97 @@ class UI {
   showLoading() { this.loadingOverlay?.classList.add('visible'); }
   hideLoading() { this.loadingOverlay?.classList.remove('visible'); }
 
+  // ── Bottom sheets (Analytics / History, Parking rules) ──────────────────
+  //
+  // Both open as one kind of sheet: it rises from the bottom (above the tab
+  // bar on phones), the map stays visible behind a light dim, and the sheet
+  // is glass the map reads through.
+  //
+  // Motion is transform-only on purpose. The previous fade animated opacity
+  // on the overlay and on the card, and Safari drops backdrop-filter while an
+  // element or any ancestor is fading — the glass rendered clear and then
+  // snapped to frosted at the end: the blink. The dim is a pseudo-element
+  // with no filter, so fading it is safe.
+
+  /** Open `modal`; `onDismiss` is how a drag or another sheet closes it. */
+  openSheet(modal, { onDismiss = null, focus = null } = {}) {
+    if (!modal) return;
+    document.querySelectorAll('.an-modal.is-open').forEach((other) => {
+      if (other !== modal) (other._onDismiss || (() => this.closeSheet(other)))();
+    });
+    modal._onDismiss = onDismiss || (() => this.closeSheet(modal));
+    clearTimeout(modal._sheetTimer);
+
+    const card = modal.querySelector('.an-card');
+    if (card) { card.style.transform = ''; card.style.transition = ''; }
+
+    if (modal.hidden) {
+      modal.hidden = false;
+      // Commit the closed pose first. A single rAF can land "shown" and
+      // "open" in the same style pass, which skips the slide entirely.
+      void modal.offsetHeight;
+    }
+    modal.classList.add('is-open');
+    document.body.classList.add('an-open');
+    this._bindSheetDrag(modal);
+    focus?.focus({ preventScroll: true });
+  }
+
+  closeSheet(modal) {
+    if (!modal || !modal.classList.contains('is-open')) return;
+    const card = modal.querySelector('.an-card');
+    // Hand a dragged card back to the stylesheet so it slides on from where
+    // the finger left it.
+    if (card) { card.style.transform = ''; card.style.transition = ''; }
+    modal.classList.remove('is-open');
+    if (!document.querySelector('.an-modal.is-open')) document.body.classList.remove('an-open');
+    clearTimeout(modal._sheetTimer);
+    modal._sheetTimer = setTimeout(() => {
+      if (!modal.classList.contains('is-open')) modal.hidden = true;
+    }, 360);
+  }
+
+  /** Pull the sheet down by its header to dismiss it, as on iOS. */
+  _bindSheetDrag(modal) {
+    if (modal._dragBound) return;
+    const card = modal.querySelector('.an-card');
+    const head = modal.querySelector('.an-head');
+    if (!card || !head) return;
+    modal._dragBound = true;
+
+    let id = null, startY = 0, dy = 0, t0 = 0;
+    const onDown = (e) => {
+      if (e.button > 0 || e.target.closest('button, a, input, label')) return;
+      // The header and the grabber strip above it are the handle.
+      if (!e.target.closest('.an-head') && e.clientY - card.getBoundingClientRect().top > 28) return;
+      id = e.pointerId; startY = e.clientY; dy = 0; t0 = performance.now();
+      card.setPointerCapture?.(id);
+      card.style.transition = 'none';
+    };
+    const onMove = (e) => {
+      if (e.pointerId !== id) return;
+      dy = e.clientY - startY;
+      // Upwards it only gives a little (rubber band); downwards it follows.
+      const y = dy >= 0 ? dy : -Math.sqrt(-dy) * 3;
+      card.style.transform = `translate3d(0, ${y}px, 0)`;
+    };
+    const onUp = (e) => {
+      if (e.pointerId !== id) return;
+      id = null;
+      const v = dy / Math.max(1, performance.now() - t0); // px per ms
+      if (dy > Math.min(140, card.offsetHeight * 0.25) || (dy > 24 && v > 0.5)) {
+        modal._onDismiss?.();
+      } else {
+        card.style.transition = '';
+        card.style.transform = '';
+      }
+    };
+    card.addEventListener('pointerdown', onDown);
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerup', onUp);
+    card.addEventListener('pointercancel', onUp);
+  }
+
   showToast(message, type = 'info', duration = 3000) {
     if (!this.toastEl) return;
     clearTimeout(this.toastTimeout);
