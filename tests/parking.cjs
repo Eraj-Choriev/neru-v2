@@ -169,3 +169,26 @@ test('a restored session does not replay warnings it slept through', () => {
   assert.equal(toasts.length, 0);
   assert.ok(run('parkingSession.session.warned.free'));
 });
+
+test('operator rule: free within 10 min, then whole hours counted from entry', () => {
+  const { run, clock } = setup();
+  const t0 = dsb(12);
+  clock.now = t0;
+  run(`parkingSession.start(parkingAPI.getZoneById(1))`);
+  const cost = (min) => { clock.now = t0 + min * 60000; return run('parkingSession.compute().cost'); };
+  assert.equal(cost(10), 0);
+  assert.equal(cost(11), 3);   // 11 minutes = the full first hour
+  assert.equal(cost(30), 3);
+  assert.equal(cost(60), 3);
+  assert.equal(cost(61), 6);   // hours run from entry, not from minute 10
+  assert.equal(cost(70), 6);   // the old meter said 3 here
+  assert.equal(cost(121), 9);
+});
+
+test('a stay whose time past the grace falls in the free night costs nothing', () => {
+  const { run, clock } = setup();
+  clock.now = dsb(21, 55);
+  run(`parkingSession.start(parkingAPI.getZoneById(1))`);
+  clock.now = dsb(22, 40);
+  assert.equal(run('parkingSession.compute().cost'), 0);
+});

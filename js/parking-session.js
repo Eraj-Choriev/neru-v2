@@ -446,13 +446,20 @@ class ParkingSession {
   }
 
   /**
-   * The operator's published rule: charging runs from the moment of entry,
-   * minus 10 free minutes, and any part-hour counts as a full hour
-   * ("использование парковки менее 60 минут подсчитывается за полный час").
+   * The operator's rule (neru.tj/question-parking): time is counted from the
+   * moment of entry; the first 10 minutes are a grace period; once they pass,
+   * the stay is paid for in whole hours *from entry*, and any part-hour is a
+   * full hour ("использование парковки менее 60 минут подсчитывается за
+   * полный час").
    *
-   * Only time inside the paid window (07:00–22:00) is billed. The previous
-   * build froze "free" or "paid" at the start, so a car left at 21:30 was
-   * billed all night and one left at 06:50 read "free" all morning.
+   *   leave within 10 min → 0
+   *   11 min … 60 min     → 1 hour  (3 TJS) — the 10 minutes are not deducted
+   *   61 min … 120 min    → 2 hours (6 TJS)
+   *
+   * An earlier build started the hours at minute 10, so 70 minutes read as
+   * one hour. Only time inside the paid window (07:00–22:00, Dushanbe time)
+   * counts: a stay whose time past the grace period all falls in the free
+   * night costs nothing, and the free/paid state is re-evaluated every tick.
    */
   compute(at = Date.now()) {
     if (!this.session) return null;
@@ -464,7 +471,10 @@ class ParkingSession {
     const graceEnd = startedAt + PARKING.FREE_MINUTES * 60000;
 
     const elapsedMs = Math.max(0, at - startedAt);
-    const paidMs = pkPaidMs(graceEnd, at, sch);
+    // Paid-window time after the grace period: zero means still free.
+    const overGraceMs = pkPaidMs(graceEnd, at, sch);
+    // Once billing applies, hours are counted from entry, grace included.
+    const paidMs = overGraceMs > 0 ? pkPaidMs(startedAt, at, sch) : 0;
     const billableHours = paidMs > 0 ? Math.ceil(paidMs / PK_HOUR_MS) : 0;
     const paidNow = pkPaidMs(at, at + 1000, sch) > 0;
 
@@ -474,6 +484,7 @@ class ParkingSession {
       elapsedMs,
       elapsedMin: elapsedMs / 60000,
       freeLeftMs: Math.max(0, graceEnd - at),
+      overGraceMs,
       paidMs,
       paidNow,
       billableHours,
@@ -510,10 +521,10 @@ class ParkingSession {
 
     // 1. Billing has begun — either the free 10 minutes ran out, or the paid
     //    window opened in the morning on a car parked overnight.
-    if (!warned.free && s.paidMs > 0) {
+    if (!warned.free && s.overGraceMs > 0) {
       warned.free = true;
       changed = true;
-      if (!silent && s.paidMs < STALE_MS) {
+      if (!silent && s.overGraceMs < STALE_MS) {
         const graceInPaid = pkPaidMs(this.session.startedAt + PARKING.FREE_MINUTES * 60000 - 1000,
           this.session.startedAt + PARKING.FREE_MINUTES * 60000, s.sch) > 0;
         const title = i18n.t(graceInPaid ? 'pkWarnFreeOverTitle' : 'pkWarnPaidStartTitle');
@@ -689,7 +700,8 @@ class ParkingSession {
           : i18n.t('pkFreeNow');
       } else if (s.freeLeftMs > 0) {
         const left = Math.ceil(s.freeLeftMs / 60000);
-        this._el.note.textContent = `${i18n.t('pkFreeLeft')}: ${left} ${i18n.t('minSuffix')}`;
+        this._el.note.textContent =
+          `${i18n.t('pkFreeLeft')}: ${left} ${i18n.t('minSuffix')} · ${i18n.t('pkThenFirstHour')} ${s.tariff} ${i18n.t('pkSomoni')}`;
       } else {
         const next = s.toNextHourMs != null ? Math.ceil(s.toNextHourMs / 60000) : null;
         this._el.note.textContent =
