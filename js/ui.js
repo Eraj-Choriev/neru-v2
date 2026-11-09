@@ -848,14 +848,33 @@ class UI {
   // snapped to frosted at the end: the blink. The dim is a pseudo-element
   // with no filter, so fading it is safe.
 
-  /** Open `modal`; `onDismiss` is how a drag or another sheet closes it. */
+  /** Open `modal`; `onDismiss` is how a drag, Back or another sheet closes it. */
   openSheet(modal, { onDismiss = null, focus = null } = {}) {
     if (!modal) return;
+    this._bindSheetGlobals();
+
+    // Switching sheets is one navigation step, not a close and an open: the
+    // history entry stays, and focus will go back to the original trigger.
+    let returnFocus = document.activeElement;
+    this._sheetSwitching = true;
     document.querySelectorAll('.an-modal.is-open').forEach((other) => {
-      if (other !== modal) (other._onDismiss || (() => this.closeSheet(other)))();
+      if (other === modal) return;
+      returnFocus = other._returnFocus || returnFocus;
+      (other._onDismiss || (() => this.closeSheet(other)))();
     });
+    this._sheetSwitching = false;
+
     modal._onDismiss = onDismiss || (() => this.closeSheet(modal));
     clearTimeout(modal._sheetTimer);
+    if (!modal.classList.contains('is-open')) {
+      modal._returnFocus = returnFocus && !modal.contains(returnFocus) ? returnFocus : null;
+    }
+
+    // A sheet is a step in navigation: the phone's Back gesture (and the
+    // browser's Back) must close it, not leave the app underneath.
+    if (!history.state?.nurSheet) {
+      try { history.pushState({ ...(history.state || {}), nurSheet: true }, ''); } catch (_) {}
+    }
 
     const card = modal.querySelector('.an-card');
     if (card) { card.style.transform = ''; card.style.transition = ''; }
@@ -879,40 +898,91 @@ class UI {
     // the finger left it.
     if (card) { card.style.transform = ''; card.style.transition = ''; }
     modal.classList.remove('is-open');
-    if (!document.querySelector('.an-modal.is-open')) document.body.classList.remove('an-open');
     clearTimeout(modal._sheetTimer);
     modal._sheetTimer = setTimeout(() => {
       if (!modal.classList.contains('is-open')) modal.hidden = true;
     }, 360);
+
+    if (this._sheetSwitching) return;
+    if (!document.querySelector('.an-modal.is-open')) {
+      document.body.classList.remove('an-open');
+      // Closed by ✕, scrim, drag or Esc: drop the entry Back would have used.
+      if (!this._sheetFromPop && history.state?.nurSheet) {
+        this._sheetPendingBack = true;
+        try { history.back(); } catch (_) { this._sheetPendingBack = false; }
+      }
+      // Focus goes back to whatever opened the sheet (WAI-ARIA dialog
+      // pattern) — unless the user has already moved on, e.g. tapped a tab.
+      const back = modal._returnFocus;
+      modal._returnFocus = null;
+      const now = document.activeElement;
+      if (back?.isConnected && (!now || now === document.body || modal.contains(now))) {
+        back.focus?.({ preventScroll: true });
+      }
+    }
   }
 
-  /** Pull the sheet down by its header to dismiss it, as on iOS. */
+  /** One-time listeners shared by every sheet: Back, and Tab kept inside. */
+  _bindSheetGlobals() {
+    if (this._sheetGlobals) return;
+    this._sheetGlobals = true;
+
+    window.addEventListener('popstate', () => {
+      // Our own history.back() after a ✕/scrim/drag close — nothing to do.
+      if (this._sheetPendingBack) { this._sheetPendingBack = false; return; }
+      const open = [...document.querySelectorAll('.an-modal.is-open')];
+      if (!open.length) return;
+      this._sheetFromPop = true;
+      try { open.forEach((m) => (m._onDismiss || (() => this.closeSheet(m)))()); }
+      finally { this._sheetFromPop = false; }
+    });
+
+    // aria-modal promises that focus stays in the dialog; keep the promise.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const modal = document.querySelector('.an-modal.is-open');
+      if (!modal) return;
+      const items = [...modal.querySelectorAll(
+        'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      )].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!modal.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+  }
+
+  /**
+   * The sheet follows the finger: pulled down by its header — or, as on iOS,
+   * by its content once that is scrolled to the top — and released, it
+   * either closes (far or fast enough) or springs back.
+   */
   _bindSheetDrag(modal) {
     if (modal._dragBound) return;
     const card = modal.querySelector('.an-card');
     const head = modal.querySelector('.an-head');
+    const body = modal.querySelector('.an-body');
     if (!card || !head) return;
     modal._dragBound = true;
 
-    let id = null, startY = 0, dy = 0, t0 = 0;
-    const onDown = (e) => {
-      if (e.button > 0 || e.target.closest('button, a, input, label')) return;
-      // The header and the grabber strip above it are the handle.
-      if (!e.target.closest('.an-head') && e.clientY - card.getBoundingClientRect().top > 28) return;
-      id = e.pointerId; startY = e.clientY; dy = 0; t0 = performance.now();
-      card.setPointerCapture?.(id);
-      card.style.transition = 'none';
-    };
-    const onMove = (e) => {
-      if (e.pointerId !== id) return;
-      dy = e.clientY - startY;
+    let startY = 0, dy = 0, t0 = 0;
+    const begin = (y) => { startY = y; dy = 0; t0 = performance.now(); card.style.transition = 'none'; };
+    const follow = (y) => {
+      dy = y - startY;
       // Upwards it only gives a little (rubber band); downwards it follows.
-      const y = dy >= 0 ? dy : -Math.sqrt(-dy) * 3;
-      card.style.transform = `translate3d(0, ${y}px, 0)`;
+      const off = dy >= 0 ? dy : -Math.sqrt(-dy) * 3;
+      card.style.transform = `translate3d(0, ${off}px, 0)`;
     };
-    const onUp = (e) => {
-      if (e.pointerId !== id) return;
-      id = null;
+    const release = () => {
       const v = dy / Math.max(1, performance.now() - t0); // px per ms
       if (dy > Math.min(140, card.offsetHeight * 0.25) || (dy > 24 && v > 0.5)) {
         modal._onDismiss?.();
@@ -921,10 +991,55 @@ class UI {
         card.style.transform = '';
       }
     };
-    card.addEventListener('pointerdown', onDown);
-    card.addEventListener('pointermove', onMove);
-    card.addEventListener('pointerup', onUp);
-    card.addEventListener('pointercancel', onUp);
+
+    // Header: pointer events (mouse, pen, touch). touch-action:none in CSS.
+    let id = null;
+    card.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || e.target.closest('button, a, input, label')) return;
+      if (!e.target.closest('.an-head') && e.clientY - card.getBoundingClientRect().top > 28) return;
+      id = e.pointerId;
+      card.setPointerCapture?.(id);
+      begin(e.clientY);
+    });
+    card.addEventListener('pointermove', (e) => { if (e.pointerId === id) follow(e.clientY); });
+    const up = (e) => { if (e.pointerId !== id) return; id = null; release(); };
+    card.addEventListener('pointerup', up);
+    card.addEventListener('pointercancel', up);
+
+    // Content: a downward pull while already at the top moves the sheet
+    // instead of rubber-banding the list. Touch events, because only a
+    // non-passive touchmove can take the gesture away from the scroller.
+    if (!body) return;
+    let touch = null; // { y, x, dragging }
+    body.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { touch = null; return; }
+      touch = { y: e.touches[0].clientY, x: e.touches[0].clientX, dragging: false };
+    }, { passive: true });
+    body.addEventListener('touchmove', (e) => {
+      if (!touch) return;
+      const t = e.touches[0];
+      if (!touch.dragging) {
+        const ddy = t.clientY - touch.y;
+        const ddx = Math.abs(t.clientX - touch.x);
+        if (ddy > 6 && ddy > ddx && body.scrollTop <= 0) {
+          touch.dragging = true;
+          begin(t.clientY);
+        } else if (Math.abs(ddy) > 6 || ddx > 6) {
+          touch = null; // an ordinary scroll or a sideways swipe
+          return;
+        } else {
+          return;
+        }
+      }
+      e.preventDefault();
+      follow(t.clientY);
+    }, { passive: false });
+    const touchEnd = () => {
+      if (touch?.dragging) release();
+      touch = null;
+    };
+    body.addEventListener('touchend', touchEnd);
+    body.addEventListener('touchcancel', touchEnd);
   }
 
   showToast(message, type = 'info', duration = 3000) {

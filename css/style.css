@@ -8127,3 +8127,22 @@ button.pk-hist-main:focus-visible { outline: 2px solid var(--cyan-500); outline-
 /* A toast raised while a sheet is open sits on the sheet, not behind its
    glass (where it read as a dark smudge through the frost). */
 body.an-open .toast { z-index: 5300; }
+
+/* Desktop: a centred dialog, not a drawer (the responsive pattern: sheet on
+   the phone, dialog where there is room). Same glass, same transform-only
+   motion — it rises from below the window — so nothing blinks here either.
+   No grabber: a mouse closes it with ✕, the dim or Esc. */
+@media (min-width: 769px) and (min-height: 501px) {
+  :root[data-theme] body.lg .an-modal {
+    justify-content: center;
+    padding: calc(32px + var(--safe-top)) 32px calc(32px + var(--safe-bottom));
+  }
+  :root[data-theme] body.lg .an-modal .an-card {
+    max-height: min(100%, 820px);
+    border-radius: 28px;
+    transform: translate3d(0, calc(50vh + 50%), 0);
+  }
+  :root[data-theme] body.lg .an-modal .an-head { cursor: default; padding-top: 24px; }
+  :root[data-theme] body.lg .an-modal .an-head::before { display: none; }
+}
+:root[data-theme] body.lg .an-modal .an-close:focus-visible { outline: 2px solid var(--glass-accent); outline-offset: 2px; }
