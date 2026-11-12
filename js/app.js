@@ -14,7 +14,12 @@ class App {
     try {
       // Initialize UI
       ui.init();
-      ui.showLoading();
+      ui.showLoading('loadingStations', 'loadingStationsDetail');
+      this.bindEvents();
+
+      // Start the station request before MapGL setup so the network and map
+      // initialization run in parallel instead of one after the other.
+      const stationRequest = stationAPI.fetchStations();
 
       // Initialize map
       stationMap.init('map');
@@ -26,11 +31,10 @@ class App {
         stationNotifications.init();
       }
 
-      this.bindEvents();
-
       // Independent feeds: a slow station API must not delay parking.
       this.loadParking();
-      await this.loadStations();
+      await this.loadStations(stationRequest);
+      ui.hideLoading();
 
       // Location is gated behind a first-visit consent card, so the native
       // browser prompt only fires once the user has opted in.
@@ -42,7 +46,6 @@ class App {
       }
       // consent === 'denied' → stay location-less; the location button re-offers it
 
-      ui.hideLoading();
       this.initialized = true;
 
       // Start auto-refresh
@@ -60,8 +63,8 @@ class App {
     }
   }
 
-  async loadStations() {
-    const stations = await stationAPI.fetchStations();
+  async loadStations(stationRequest = stationAPI.fetchStations()) {
+    const stations = await stationRequest;
     if (stationAPI.lastFetch && stationAPI.lastFetch !== this._processedSnapshot) {
       this._processedSnapshot = stationAPI.lastFetch;
       const filtered = ui.applyFilter(stations);
@@ -161,7 +164,8 @@ class App {
     ['stationsLoaded', 'stationsError', 'parkingLoaded', 'parkingError', 'langchange']
       .forEach(event => window.addEventListener(event, updateStatus));
     document.getElementById('data-retry')?.addEventListener('click', () => {
-      this.loadStations();
+      ui.showLoading('loadingStations', 'loadingStationsDetail');
+      this.loadStations().finally(() => ui.hideLoading());
       this.loadParking();
     });
     // Find nearest button
@@ -179,7 +183,6 @@ class App {
     // Station load error
     window.addEventListener('stationsError', () => {
       if (!stationAPI.lastFetch) ui.showToast(i18n.t('errorLoading'), 'error');
-      ui.hideLoading();
     });
 
     // In-app route request (from popup or sidebar card)
@@ -323,7 +326,7 @@ class App {
 
   /** Fly to the closest paid parking strip and open its card. */
   async handleFindNearestZone() {
-    ui.showLoading();
+    ui.showLoading('findingNearestZone', 'loadingLocationDetail');
     try {
       const loc = await geoLocation
         .getUserLocation({ force: false, maxAgeMs: 30000 })
@@ -366,7 +369,7 @@ class App {
     // no charger is drawn would be a button lying about what it does.
     if (ui.statsMode === 'parking') return this.handleFindNearestZone();
 
-    ui.showLoading();
+    ui.showLoading('findingNearest', 'loadingLocationDetail');
     try {
       const [loc] = await Promise.all([
         geoLocation.getUserLocation({ force: false, maxAgeMs: 30000 }).catch(() => null),
@@ -482,7 +485,7 @@ class App {
       localStorage.setItem(this.CONSENT_KEY, choice);
       close();
       if (choice !== 'granted') return;
-      ui.showLoading();
+      ui.showLoading('gettingLocation', 'loadingLocationDetail');
       const located = await this.acquireLocation();
       ui.hideLoading();
       if (located && typeof stationNotifications !== 'undefined') {

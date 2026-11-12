@@ -69,6 +69,7 @@ class UI {
     this.currentFilter = 'all';
     this.toastTimeout = null;
     this.statsMode = 'ev'; // 'ev' | 'parking'
+    this.loadingTimer = null;
   }
 
   init() {
@@ -118,6 +119,8 @@ class UI {
     this.statsFree = document.getElementById('stat-free');
     this.lastUpdateEl = document.getElementById('last-update');
     this.loadingOverlay = document.getElementById('loading-overlay');
+    this.loadingTitle = this.loadingOverlay?.querySelector('.loading-title');
+    this.loadingDetail = this.loadingOverlay?.querySelector('.loading-detail');
     this.toastEl = document.getElementById('toast');
 
     this.filterSeg = document.getElementById('filter-seg');
@@ -833,8 +836,27 @@ class UI {
     }
   }
 
-  showLoading() { this.loadingOverlay?.classList.add('visible'); }
-  hideLoading() { this.loadingOverlay?.classList.remove('visible'); }
+  showLoading(titleKey = 'loading', detailKey = 'loadingDetail') {
+    if (!this.loadingOverlay) return;
+    clearTimeout(this.loadingTimer);
+    if (this.loadingTitle) {
+      this.loadingTitle.dataset.i18n = titleKey;
+      this.loadingTitle.textContent = i18n.t(titleKey);
+    }
+    if (this.loadingDetail) {
+      this.loadingDetail.dataset.i18n = detailKey;
+      this.loadingDetail.textContent = i18n.t(detailKey);
+    }
+    if (this.loadingOverlay.classList.contains('visible')) return;
+    // Avoid flashing a status panel when a quick request finishes immediately.
+    this.loadingTimer = setTimeout(() => this.loadingOverlay?.classList.add('visible'), 140);
+  }
+
+  hideLoading() {
+    clearTimeout(this.loadingTimer);
+    this.loadingTimer = null;
+    this.loadingOverlay?.classList.remove('visible');
+  }
 
   // ── Bottom sheets (Analytics / History, Parking rules) ──────────────────
   //
