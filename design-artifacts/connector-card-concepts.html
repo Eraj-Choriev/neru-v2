@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>NŪR · варианты карточек коннекторов</title>
+<style>
+  :root { color-scheme: light; --ink:#15202d; --muted:#647284; --green:#087b57; --green-2:#19b783; --amber:#9b5a00; --amber-bg:#fff1d7; --blue:#235c91; --blue-bg:#e8f2ff; --coral:#a43d3d; --coral-bg:#fff0ed; --hair:rgba(41,61,69,.14); --surface:rgba(244,248,246,.84); }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; padding:40px 32px 52px; color:var(--ink); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(120deg,#c8e4ef 0 20%,#e9eee5 20% 62%,#f3ebd8 62%); }
+  .board { max-width:1420px; margin:auto; }
+  .intro { display:flex; justify-content:space-between; align-items:end; gap:24px; margin:0 4px 28px; }
+  .eyebrow { color:#567062; font:700 11px/1.2 -apple-system,sans-serif; letter-spacing:.13em; text-transform:uppercase; }
+  h1 { margin:8px 0 0; font-size:30px; line-height:1.12; letter-spacing:-.035em; }
+  .intro p { max-width:390px; margin:0; color:#536273; }
+  .options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:start; }
+  .option { min-width:0; }
+  .option-label { display:flex; align-items:center; gap:10px; margin:0 4px 12px; color:#445366; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .option-label b { display:grid; width:26px; height:26px; place-items:center; border-radius:50%; background:rgba(255,255,255,.6); color:var(--ink); font-size:12px; }
+  .station { overflow:hidden; border-radius:30px; padding:22px; background:rgba(231,239,238,.84); -webkit-backdrop-filter:blur(22px) saturate(155%); backdrop-filter:blur(22px) saturate(155%); box-shadow:inset 0 1px rgba(255,255,255,.95),inset 0 -1px rgba(81,101,109,.18),0 16px 44px rgba(43,62,69,.13); }
+  .station-top { display:flex; justify-content:space-between; gap:12px; align-items:start; }
+  .live { display:inline-flex; align-items:center; gap:7px; color:#607081; font:700 10px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; text-transform:uppercase; }
+  .live-dot { width:8px; height:8px; flex:0 0 auto; border-radius:50%; background:var(--green-2); box-shadow:0 0 0 4px rgba(25,183,131,.12); }
+  h2 { margin:8px 0 0; max-width:calc(100% - 25px); font-size:21px; line-height:1.18; letter-spacing:-.025em; }
+  .close { width:36px; height:36px; display:grid; place-items:center; border:0; border-radius:50%; background:rgba(255,255,255,.38); color:#344353; font-size:23px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; padding:15px 0 13px; margin-top:15px; border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); }
+  .chip { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:6px 11px; border-radius:999px; background:rgba(255,255,255,.64); color:#273647; font-size:12px; font-weight:650; }
+  .chip svg { width:15px; height:15px; }
+  .chip.power { color:var(--green); background:rgba(24,183,128,.1); }
+  .schedule { display:flex; align-items:center; gap:7px; margin:13px 0 6px; color:#354456; font-size:13px; }
+  .schedule svg { width:17px; height:17px; color:#778696; }
+  .section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:17px 0 9px; }
+  .section-title { color:#667587; font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
+  .availability { color:var(--green); font-size:12px; font-weight:700; }
+  .rows { display:grid; gap:8px; }
+  .row { position:relative; min-height:64px; display:grid; grid-template-columns:40px minmax(0,1fr) auto; align-items:center; gap:11px; padding:10px 12px; border-radius:17px; background:rgba(255,255,255,.4); box-shadow:inset 0 1px rgba(255,255,255,.9),inset 0 -1px rgba(72,94,92,.12); }
+  .row.free { background:rgba(215,244,228,.58); }
+  .row.charging { background:rgba(255,248,230,.62); }
+  .row.starting { background:rgba(232,242,255,.68); }
+  .row.busy { background:rgba(255,239,235,.58); }
+  .plug { display:grid; width:40px; height:40px; place-items:center; border-radius:13px; background:rgba(16,177,123,.13); color:var(--green); }
+  .charging .plug { background:var(--amber-bg); color:var(--amber); }
+  .starting .plug { background:var(--blue-bg); color:var(--blue); }
+  .busy .plug { background:var(--coral-bg); color:var(--coral); }
+  .plug svg { width:22px; height:22px; }
+  .connector-name { min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .connector-name strong { font-size:15px; line-height:1.15; }
+  .connector-name small { color:#69788a; font-size:11px; }
+  .state { display:inline-flex; align-items:center; justify-content:flex-end; gap:6px; color:var(--green); font-size:13px; font-weight:700; white-space:nowrap; }
+  .charging .state { color:var(--amber); }
+  .starting .state { color:var(--blue); }
+  .busy .state { color:var(--coral); }
+  .state svg { width:16px; height:16px; flex:none; }
+  .actions { display:grid; grid-template-columns:1fr 48px; gap:8px; margin-top:14px; }
+  .route { min-height:48px; display:flex; justify-content:center; align-items:center; gap:9px; border-radius:16px; background:linear-gradient(110deg,#d2f0df,#c4e8d8); color:#087b57; box-shadow:inset 0 1px rgba(255,255,255,.9),inset 0 -1px rgba(8,123,87,.24); font-weight:700; }
+  .route svg { width:18px; height:18px; }
+  .external { display:grid; place-items:center; border-radius:16px; background:rgba(255,255,255,.4); color:#536273; box-shadow:inset 0 1px rgba(255,255,255,.85),inset 0 -1px rgba(72,94,92,.12); }
+  .external svg { width:19px; height:19px; }
+  .note { margin:12px 4px 0; color:#566578; font-size:12px; line-height:1.45; }
+
+  /* Direction B: dense two-column tiles for connector-heavy stations. */
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tile { min-height:102px; display:flex; flex-direction:column; justify-content:space-between; padding:11px; border-radius:17px; background:rgba(255,255,255,.42); box-shadow:inset 0 1px rgba(255,255,255,.9),inset 0 -1px rgba(72,94,92,.12); }
+  .tile.free { background:rgba(215,244,228,.62); }
+  .tile.charging { background:rgba(255,248,230,.7); }
+  .tile-top { display:flex; align-items:center; justify-content:space-between; }
+  .tile .plug { width:34px; height:34px; border-radius:11px; }
+  .tile .plug svg { width:20px; height:20px; }
+  .tile strong { font-size:15px; }
+  .tile .state { justify-content:flex-start; font-size:12px; }
+  .tile .state svg { width:15px; height:15px; }
+  .mini-meter { height:4px; overflow:hidden; border-radius:5px; background:rgba(155,90,0,.14); }
+  .mini-meter i { display:block; width:74%; height:100%; border-radius:inherit; background:#d88a17; }
+
+  /* Direction C: compact status-forward rows; device state is readable without color. */
+  .list-row { display:grid; grid-template-columns:38px minmax(0,1fr); gap:10px; padding:11px 4px; border-bottom:1px solid var(--hair); }
+  .list-row:last-child { border-bottom:0; }
+  .list-row .plug { width:38px; height:38px; border-radius:12px; }
+  .list-content { min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .list-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .list-top strong { font-size:14px; }
+  .tag { display:inline-flex; align-items:center; gap:5px; min-height:25px; padding:3px 8px; border-radius:999px; background:rgba(16,177,123,.12); color:var(--green); font-size:11px; font-weight:700; white-space:nowrap; }
+  .list-row.charging .tag { background:var(--amber-bg); color:var(--amber); }
+  .list-row.starting .tag { background:var(--blue-bg); color:var(--blue); }
+  .list-row.busy .tag { background:var(--coral-bg); color:var(--coral); }
+  .list-row .sub { color:#6b7888; font-size:11px; }
+  .charge-line { display:flex; align-items:center; gap:8px; }
+  .charge-line .mini-meter { flex:1; }
+  .charge-line small { color:#785008; font-size:11px; font-weight:700; }
+
+  @media(max-width:1050px) { body { padding:28px 18px; } .options { grid-template-columns:1fr; max-width:520px; margin:auto; } .intro { max-width:520px; margin:0 auto 24px; align-items:start; flex-direction:column; } }
+  @media(max-width:380px) { body { padding:18px 12px; } .station { padding:18px; } .row { grid-template-columns:36px minmax(0,1fr) auto; gap:8px; padding:9px; } .plug { width:36px; height:36px; } .state { font-size:12px; } }
+</style>
+</head>
+<body>
+<main class="board">
+  <header class="intro">
+    <div><div class="eyebrow">NŪR · карта зарядных станций</div><h1>Три варианта блока коннекторов</h1></div>
+    <p>Одна и та же станция и статусы — разная плотность и акцент. Цвет всегда подкреплён текстом и пиктограммой.</p>
+  </header>
+  <section class="options">
+    <article class="option">
+      <div class="option-label"><b>A</b> Чистый список · рекомендую</div>
+      <div class="station">
+        <div class="station-top"><div><div class="live"><i class="live-dot"></i> Сейчас свободна</div><h2>ул. Х. Шерози · AVESTO GROUP №1</h2></div><span class="close">×</span></div>
+        <div class="meta"><span class="chip power"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 13h6l-1 9 10-12h-6z"/></svg>60 кВт</span><span class="chip">◷ 08:00–22:00</span></div>
+        <div class="section-head"><span class="section-title">Разъёмы</span><span class="availability">1 из 2 свободен</span></div>
+        <div class="rows">
+          <div class="row free"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><span class="connector-name"><strong>Разъём №1</strong></span><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Свободен</span></div>
+          <div class="row charging"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><span class="connector-name"><strong>Разъём №2</strong><small>Подключён · зарядка</small></span><span class="state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m13 2-8 12h6l-1 8 9-13h-6z"/></svg>74%</span></div>
+        </div>
+        <div class="actions"><div class="route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4l3-6 3 4h6"/><path d="m16 12 4 4-4 4"/></svg>Маршрут&nbsp; →</div><div class="external"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></div></div>
+      </div>
+      <p class="note">Сохраняет знакомую вертикальную структуру. Мгновенно видны номер, статус и заряд без лишней декоративности.</p>
+    </article>
+    <article class="option">
+      <div class="option-label"><b>B</b> Компактная сетка</div>
+      <div class="station">
+        <div class="station-top"><div><div class="live"><i class="live-dot"></i> Сейчас свободна</div><h2>ул. Х. Шерози · AVESTO GROUP №1</h2></div><span class="close">×</span></div>
+        <div class="meta"><span class="chip power"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 13h6l-1 9 10-12h-6z"/></svg>60 кВт</span><span class="chip">◷ 08:00–22:00</span></div>
+        <div class="section-head"><span class="section-title">Разъёмы</span><span class="availability">1 из 2 свободен</span></div>
+        <div class="tiles">
+          <div class="tile free"><div class="tile-top"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><strong>№1</strong></div><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Свободен</span></div>
+          <div class="tile charging"><div class="tile-top"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><strong>№2</strong></div><span class="state"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m13 2-8 12h6l-1 8 9-13h-6z"/></svg>Заряжается · 74%</span><span class="mini-meter"><i></i></span></div>
+        </div>
+        <div class="actions"><div class="route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4l3-6 3 4h6"/><path d="m16 12 4 4-4 4"/></svg>Маршрут&nbsp; →</div><div class="external"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></div></div>
+      </div>
+      <p class="note">Хорошо, если у станции обычно 3–4 разъёма. При двух разъёмах сетка может смотреться пустовато.</p>
+    </article>
+    <article class="option">
+      <div class="option-label"><b>C</b> Статус в фокусе</div>
+      <div class="station">
+        <div class="station-top"><div><div class="live"><i class="live-dot"></i> Сейчас свободна</div><h2>ул. Х. Шерози · AVESTO GROUP №1</h2></div><span class="close">×</span></div>
+        <div class="meta"><span class="chip power"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 13h6l-1 9 10-12h-6z"/></svg>60 кВт</span><span class="chip">◷ 08:00–22:00</span></div>
+        <div class="section-head"><span class="section-title">Разъёмы</span><span class="availability">1 из 2 свободен</span></div>
+        <div>
+          <div class="list-row free"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><div class="list-content"><div class="list-top"><strong>Разъём №1</strong><span class="tag"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Свободен</span></div><span class="sub">Можно подключиться сейчас</span></div></div>
+          <div class="list-row charging"><span class="plug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/></svg></span><div class="list-content"><div class="list-top"><strong>Разъём №2</strong><span class="tag"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="m13 2-8 12h6l-1 8 9-13h-6z"/></svg>Заряжается</span></div><div class="charge-line"><span class="mini-meter"><i></i></span><small>74%</small></div></div></div>
+        </div>
+        <div class="actions"><div class="route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4l3-6 3 4h6"/><path d="m16 12 4 4-4 4"/></svg>Маршрут&nbsp; →</div><div class="external"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></div></div>
+      </div>
+      <p class="note">Самый полезный для занятых станций: процент заряда отделён от статуса и быстро сканируется.</p>
+    </article>
+  </section>
+</main>
+</body>
+</html>

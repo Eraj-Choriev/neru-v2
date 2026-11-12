@@ -7278,6 +7278,39 @@ body[data-mode="parking"] {
   background: rgba(245, 250, 247, .55);
   box-shadow: var(--edge-rim), 0 3px 10px rgba(38, 54, 48, .12);
 }
+
+/* Connector list: make each socket's identity and live state scan at a glance. */
+.nur-map-card .conn-section-head, .card .conn-section-head {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 14px 4px 8px;
+  color: var(--text-2);
+  font: 650 13px/1.35 var(--f-body);
+}
+.nur-map-card .conn-list, .card .conn-list { margin: 0 0 14px; }
+.nur-map-card .conn-number, .card .conn-number {
+  font-size: 14px;
+  letter-spacing: -.01em;
+}
+.nur-map-card .conn-state, .card .conn-state {
+  gap: 7px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.nur-map-card .conn-state-icon, .card .conn-state-icon {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+}
+:root[data-theme="light"] .nur-map-card .conn--charging,
+:root[data-theme="light"] .card .conn--charging { background: rgba(255, 244, 220, .42); }
+:root[data-theme="light"] .nur-map-card .conn--busy,
+:root[data-theme="light"] .card .conn--busy { background: rgba(255, 232, 232, .38); }
+:root[data-theme="light"] .nur-map-card .conn-state--charging,
+:root[data-theme="light"] .card .conn-state--charging { color: #925500; }
+:root[data-theme="light"] .nur-map-card .conn-state--busy,
+:root[data-theme="light"] .card .conn-state--busy { color: #a51f2b; }
 .header .notif-switch:not(.is-active) .notif-switch-thumb { background: rgba(226, 236, 232, .68); }
 @media (prefers-reduced-transparency: reduce) {
   :root[data-theme="light"] .header #lang-seg .seg-indicator .lens-body,
@@ -7311,22 +7344,6 @@ body[data-mode="parking"] {
 .nur-spider { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
 .nur-spider svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 
-/* Frosted plate under the web: the same thin material as every other pane,
-   lit by the shared rim, so the group reads as one object on the map. */
-.nur-spider-plate {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  /* Regular material, with light pooled in the middle: the cluster the hub
-     replaces still sits in the map under the glass, and blurred it would
-     bleed a coloured stain around the hub. */
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.92) 0 24px, rgba(255, 255, 255, 0) 64px),
-    var(--mat-regular);
-  backdrop-filter: var(--mat-blur-reg);
-  -webkit-backdrop-filter: var(--mat-blur-reg);
-  box-shadow: var(--edge-rim), var(--rim-shadow-sm);
-}
 .nur-spider-web { fill: none; stroke: rgba(13, 18, 32, 0.14); stroke-width: 1px; }
 .nur-spider-leg {
   stroke: rgba(13, 18, 32, 0.34);
@@ -7382,9 +7399,6 @@ body[data-mode="parking"] {
 .nur-spider-hub:active { transform: translate(-50%, -50%) scale(0.9); }
 .nur-spider-marker:focus-visible,
 .nur-spider-hub:focus-visible { outline: 3px solid var(--text-1); outline-offset: 3px; }
-@media (prefers-reduced-transparency: reduce) {
-  .nur-spider-plate { background: rgba(250, 251, 253, 0.96); backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
 @media (prefers-reduced-motion: reduce) {
   .nur-spider-marker, .nur-spider-hub { transition: none; }
 }

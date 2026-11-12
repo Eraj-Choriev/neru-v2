@@ -385,10 +385,6 @@ class StationMap {
       line.animate([{ opacity: 1 }, { opacity: 0 }], { ...fold, duration: 160 }),
     ]);
     for (const web of spider.webs || []) closing.push(web.animate([{ opacity: 1 }, { opacity: 0 }], { ...fold, duration: 160 }));
-    if (spider.plate) closing.push(spider.plate.animate([
-      { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
-      { opacity: 0, transform: 'translate(-50%, -50%) scale(.55)' },
-    ], { ...fold, duration: 260, delay: 40 }));
     Promise.all(closing.map(animation => animation.finished.catch(() => {}))).then(() => spider.element.remove());
   }
 
@@ -408,13 +404,13 @@ class StationMap {
       bottom: (dock?.height ? dock.top - bounds.top : bounds.height) - 8,
     };
     const layout = this._spiderLayout(sorted.length, Math.min(area.right - area.left, area.bottom - area.top) / 2);
-    const plateR = layout.extent + 10;
+    const fitRadius = layout.extent + 10;
     const origin = this.map.project(coordinates);
 
     // Fit the web on screen by moving the map, then open over the cluster's
     // new position.
-    const need = (lo, hi, at) => at - plateR < lo && at + plateR > hi ? (lo + hi) / 2 - at
-      : at - plateR < lo ? lo - (at - plateR) : at + plateR > hi ? hi - (at + plateR) : 0;
+    const need = (lo, hi, at) => at - fitRadius < lo && at + fitRadius > hi ? (lo + hi) / 2 - at
+      : at - fitRadius < lo ? lo - (at - fitRadius) : at + fitRadius > hi ? hi - (at + fitRadius) : 0;
     const dx = need(area.left, area.right, origin[0]), dy = need(area.top, area.bottom, origin[1]);
     if (!panned && (Math.abs(dx) > 1 || Math.abs(dy) > 1) && this.map.unproject && this.map.getCenter) {
       const token = this._pendingGroup = {};
@@ -435,12 +431,6 @@ class StationMap {
     const count = sorted.length;
     const hubColor = color || (parking ? '#087eac' : sorted.some(p => p.userData?.free) ? '#15834b' : '#c44343');
     const layer = document.createElement('div'); layer.className = 'nur-spider';
-
-    // Frosted plate: lifts the web off the map's own labels and lines.
-    const plate = document.createElement('div');
-    plate.className = 'nur-spider-plate';
-    plate.style.cssText = `left:${ox}px;top:${oy}px;width:${plateR * 2}px;height:${plateR * 2}px`;
-    layer.append(plate);
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); layer.append(svg);
     const ns = svg.namespaceURI;
@@ -491,10 +481,6 @@ class StationMap {
         { transform: 'translate(-50%, -50%) scale(1.05)', offset: .7 },
         { transform: 'translate(-50%, -50%) scale(1)' },
       ], { duration: 420, easing: 'ease-out' }));
-      animations.push(plate.animate([
-        { opacity: 0, transform: 'translate(-50%, -50%) scale(.35)' },
-        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
-      ], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
       webs.forEach((web, ring) => animations.push(web.animate([{ opacity: 0 }, { opacity: 1 }],
         { duration: 360, delay: 120 + ring * 60, easing: 'ease-out', fill: 'backwards' })));
       const step = Math.min(22, 220 / count);
@@ -508,7 +494,7 @@ class StationMap {
         ], { duration: 460, delay, easing: 'cubic-bezier(.34,1.42,.64,1)', fill: 'backwards' }));
       });
     }
-    this._spider = { element: layer, positions, animations, reveal, webs, plate, hub, parking, origin: [ox, oy], ids: sorted.map(p => String(p.userData.id)) };
+    this._spider = { element: layer, positions, animations, reveal, webs, hub, parking, origin: [ox, oy], ids: sorted.map(p => String(p.userData.id)) };
   }
   setUserLocation(lat, lng, { accuracy, heading } = {}) {
     const coordinates = [lng, lat];
@@ -758,10 +744,10 @@ class StationMap {
       if (c.isAvailable) {
         return `
           <div class="conn conn--free">
-            <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
+            <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
             <span class="conn-state">
-              <span class="conn-pip" aria-hidden="true"></span>
+              <svg class="conn-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
               ${escHtml(i18n.t('available'))}
             </span>
           </div>`;
@@ -772,11 +758,11 @@ class StationMap {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         return `
           <div class="conn conn--charging">
-            <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
+            <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
             <div class="conn-body">
               <div class="conn-line">
-                <span class="conn-state conn-state--charging">${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
+                <span class="conn-state conn-state--charging"><svg class="conn-state-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 13h6l-1 9 11-13h-7z"/></svg>${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
               </div>
               <div class="conn-gauge">
                 <div class="conn-meter" role="progressbar" aria-valuenow="${level}" aria-valuemin="0" aria-valuemax="100" aria-label="${escHtml(i18n.t('chargeLabel'))}">
@@ -790,11 +776,14 @@ class StationMap {
 
       return `
         <div class="conn conn--busy">
-          <span class="conn-id" role="img" aria-label="${escHtml(i18n.t('connector'))} ${escHtml(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number" aria-hidden="true">#${escHtml(c.id)}</span>
-          <span class="conn-state conn-state--busy">${escHtml(i18n.t('occupied'))}</span>
+          <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
+          <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
+          <span class="conn-state conn-state--busy"><svg class="conn-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>${escHtml(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
+    const connSectionHead = station.connectors.length
+      ? `<div class="conn-section-head"><span>${escHtml(i18n.t('connectors'))}</span></div>`
+      : '';
 
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -825,6 +814,7 @@ class StationMap {
 
         ${scheduleRow}
         ${typeof stationAnalytics !== 'undefined' ? stationAnalytics.stationHistoryHtml(station.id) : ''}
+        ${connSectionHead}
         <div class="conn-list">${connRows}</div>
 
         <div class="popup-actions">
