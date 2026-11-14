@@ -9,6 +9,7 @@ class StationMap {
     this.parkingLines = [];
     this._icons = new Map();
     this._followUser = false;
+    this.trafficEnabled = false;
   }
 
   init(containerId = 'map') {
@@ -26,6 +27,7 @@ class StationMap {
       copyright: 'topRight',
       controlsLayoutPadding: { top: 96, right: 16, bottom: 88, left: 16 },
     });
+    this._bindTrafficToggle();
     this.stationCluster = this._cluster(false);
     this.parkingCluster = this._cluster(true);
     const zoom = document.createElement('div');
@@ -68,6 +70,31 @@ class StationMap {
       if (e.key === 'Escape') { this.closePopup(); this._closeSpider(); }
     });
     return this.map;
+  }
+
+  _bindTrafficToggle() {
+    const button = document.getElementById('traffic-toggle');
+    if (!button || !this.map) return;
+    const sync = (enabled) => {
+      this.trafficEnabled = Boolean(enabled);
+      button.setAttribute('aria-pressed', String(this.trafficEnabled));
+      button.classList.toggle('is-active', this.trafficEnabled);
+      const label = i18n.t(this.trafficEnabled ? 'trafficHide' : 'trafficShow');
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    };
+    button.addEventListener('click', () => {
+      const enabled = typeof this.map.isTrafficOn === 'function'
+        ? !this.map.isTrafficOn()
+        : !this.trafficEnabled;
+      if (enabled) this.map.showTraffic();
+      else this.map.hideTraffic();
+      sync(enabled);
+    });
+    this.map.on('trafficshow', () => sync(true));
+    this.map.on('traffichide', () => sync(false));
+    window.addEventListener('langchange', () => sync(this.trafficEnabled));
+    sync(typeof this.map.isTrafficOn === 'function' ? this.map.isTrafficOn() : false);
   }
 
   _icon(color, glyph = 'bolt') {

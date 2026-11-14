@@ -7420,6 +7420,41 @@ body[data-mode="parking"] {
 }
 :root[data-theme] body.lg[data-mode="parking"] { --glass-accent: #0a6c96; }
 
+/* Traffic visibility control: a compact companion to map zoom. */
+.traffic-toggle {
+  position: fixed;
+  z-index: 900;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(126px + var(--safe-bottom));
+  min-width: 96px;
+  height: 44px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--glass-ink);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur) var(--glass-refract,);
+  box-shadow: var(--glass-rim), var(--glass-drop);
+  font: 600 12px/1 var(--f-body);
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease, scale var(--spring-press-ms) var(--spring-press);
+}
+.traffic-toggle svg { flex: none; }
+.traffic-toggle.is-active { color: #075f47; background: rgba(219, 245, 232, 0.92); }
+.traffic-toggle:active { scale: .97; }
+.traffic-toggle:focus-visible { outline: 2px solid var(--glass-accent); outline-offset: 3px; }
+@media (max-width: 768px), (max-width: 1024px) and (max-height: 500px) {
+  .traffic-toggle { bottom: calc(var(--dock-clearance) + 100px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .traffic-toggle { transition: none; }
+}
+
 /* ---- Navigation bar: no band of its own, as in iOS 26 ----
    The controls float straight on the map, exactly as the tab bar does, so
    top and bottom glass sit on the same backdrop and read as one material.

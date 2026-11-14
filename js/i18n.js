@@ -6,6 +6,9 @@ const translations = {
   tj: {
     zoomIn: 'Наздик кардан',
     zoomOut: 'Дур кардан',
+    traffic: 'Трафик',
+    trafficShow: 'Нишон додани вазъи роҳ',
+    trafficHide: 'Пинҳон кардани вазъи роҳ',
     dataUnavailable: 'Маълумоти истгоҳҳо ё таваққуфгоҳҳо нав намешавад. Маълумоти пешина метавонад кӯҳна бошад.',
     dataRetry: 'Такрор',
     dataRetrying: 'Маълумот бор мешавад…',
@@ -377,6 +380,9 @@ const translations = {
   ru: {
     zoomIn: 'Приблизить',
     zoomOut: 'Отдалить',
+    traffic: 'Пробки',
+    trafficShow: 'Показать дорожную ситуацию',
+    trafficHide: 'Скрыть дорожную ситуацию',
     dataUnavailable: 'Данные станций или парковок не обновляются. Ранее загруженные данные могут быть устаревшими.',
     dataRetry: 'Повторить',
     dataRetrying: 'Загружаем данные…',
@@ -748,6 +754,9 @@ const translations = {
   en: {
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
+    traffic: 'Traffic',
+    trafficShow: 'Show traffic conditions',
+    trafficHide: 'Hide traffic conditions',
     dataUnavailable: 'Station or parking updates are unavailable. Previously loaded data may be outdated.',
     dataRetry: 'Retry',
     dataRetrying: 'Loading data…',
