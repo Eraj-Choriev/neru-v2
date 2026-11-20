@@ -688,7 +688,7 @@ class ParkingSession {
     if (this._el.timer) this._el.timer.textContent = this._formatClock(s.elapsedMs);
 
     if (this._el.eyebrow) {
-      this._el.eyebrow.textContent = s.paidNow ? i18n.t('pkMeterRunning') : i18n.t('pkFreeNow');
+      this._el.eyebrow.textContent = s.paidNow ? i18n.t('pkPaidTime') : i18n.t('pkFreeNow');
     }
 
     if (this._el.cost) this._el.cost.textContent = `${s.cost} ${i18n.t('pkSomoni')}`;

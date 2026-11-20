@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NerU v2 (current display name **NŪR** — see `manifest.webmanifest`, `index.html` meta/logo; the repo directory and git history retain "NerU v2") is a static, no-build frontend web app for drivers in Dushanbe, Tajikistan. It has two map modes, switched by `#map-mode-seg`: **EV charging stations** (live connector status) and **paid kerbside parking zones** (static list, plus a geofenced parking timer). It is plain HTML/CSS/JS with no framework, bundler, or package manager — serve it with any static server. It ships as an installable PWA (service worker + manifest) and deploys to Vercel.
+NerU v2 (current display name **NŪR** — see `manifest.webmanifest`, `index.html` meta/logo; the repo directory and git history retain "NerU v2") is a static, no-build frontend web app for drivers in Dushanbe, Tajikistan. It has two map modes, switched by `#map-mode-seg`: **EV charging stations** (live connector status) and **paid kerbside parking zones** (API-driven regional list, plus a geofenced parking timer). It is plain HTML/CSS/JS with no framework, bundler, or package manager — serve it with any static server. It ships as an installable PWA (service worker + manifest) and deploys to Vercel.
 
 ```bash
 # One-time: API keys live in .env (git-ignored), never in source
@@ -43,7 +43,7 @@ Each module exposes a global singleton:
 |------|-----------|----------------|
 | `js/i18n.js` | `i18n` | TJ/RU/EN translations; `data-i18n` DOM attribute updates |
 | `js/api.js` | `stationAPI` | Charger feed from `api.parking.dc.tj` — direct fetch and CORS proxy are **raced** (`Promise.any`), losers aborted; concurrent callers share one in-flight promise; on failure keeps the last good snapshot and `lastFetch`. Station normalization; also exports `chargingEta()` |
-| `js/parking.js` | `parkingAPI` | Paid-parking zones (`getMarkerParking`, ~243 static strips). Fetched once, cached 24h in `localStorage` (`nur-parking-v1`) — not part of the 30s refresh. Holds the `PARKING` constants (tariff, free minutes, fine indicator, SMS/support numbers) that timer, popups and rules sheet all share |
+| `js/parking.js` | `parkingAPI` | Paid-parking zones (`getMarkerParking`). Fetched once, cached 24h in `localStorage` (`nur-parking-v2`) — not part of the 30s refresh. Region names and totals come from all API rows' `city` values; the parking sheet shows zone, space and accessible-space counts, notes rows without map geometry, and filters the map by region. Holds the `PARKING` constants (tariff, free minutes, fine indicator, SMS/support numbers) that timer, popups and rules sheet all share |
 | `js/geolocation.js` | `geoLocation` | Browser geolocation wrapper; Haversine distance helpers (`GeoLocation.distanceBetween`, `GeoLocation.formatDistance`) |
 | `js/finder.js` | `stationFinder` | Nearest-station sorting (by distance or weighted score) |
 | `js/config.js` | `window.NUR_MAP_CONFIG`, `window.NUR_ANALYTICS_TOKEN` | **Generated** by `scripts/build-config.mjs`: 2GIS key + default center, Cloudflare beacon token. Temporarily **committed** (see *Secrets & config*); never hand-edit it |

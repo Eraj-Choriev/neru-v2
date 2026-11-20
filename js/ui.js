@@ -69,6 +69,7 @@ class UI {
     this.currentFilter = 'all';
     this.toastTimeout = null;
     this.statsMode = 'ev'; // 'ev' | 'parking'
+    this.currentParkingRegion = null;
     this.loadingTimer = null;
   }
 
@@ -76,6 +77,7 @@ class UI {
     this.cacheElements();
     this.bindEvents();
     i18n.updateDOM();
+    this._syncFindLabels();
     // Position the segmented indicators and the tab lens once fonts/layout settle
     requestAnimationFrame(() => {
       this.moveIndicator(this.filterSeg);
@@ -101,6 +103,10 @@ class UI {
     // Language change re-flows widths — re-measure after DOM updates. The tab
     // lens is sized off its label, so a new language resizes it too.
     window.addEventListener('langchange', () => {
+      this._syncFindLabels();
+      if (typeof parkingAPI !== 'undefined') {
+        this.renderParkingRegions(parkingAPI.getRegions(), this.currentParkingRegion);
+      }
       requestAnimationFrame(() => {
         this.moveIndicator(this.filterSeg);
         this.moveIndicator(this.langSeg);
@@ -129,6 +135,14 @@ class UI {
     this.langBtns = this.langSeg?.querySelectorAll('.lang-btn') || [];
 
     this.statsBusy = document.getElementById('stat-busy');
+
+    this.pkRegionTrigger = document.getElementById('pk-region-trigger');
+    this.pkRegionCurrent = document.getElementById('pk-region-current');
+    this.pkRegionCount = document.getElementById('pk-region-count');
+    this.pkRegionsModal = document.getElementById('pk-regions-modal');
+    this.pkRegionsBody = document.getElementById('pk-regions-body');
+    this.pkRegionsUpdated = document.getElementById('pk-regions-updated');
+    this.pkRegionsClose = document.getElementById('pk-regions-close');
 
     this.tabbar = document.getElementById('tabbar');
     this.tabLens = document.getElementById('tab-lens');
@@ -180,6 +194,23 @@ class UI {
       if (action === 'route' && id) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
+      }
+    });
+
+    this.pkRegionTrigger?.addEventListener('click', () => this.openParkingRegions());
+    this.pkRegionsClose?.addEventListener('click', () => this.closeParkingRegions());
+    this.pkRegionsModal?.addEventListener('click', (e) => {
+      if (e.target === this.pkRegionsModal) this.closeParkingRegions();
+    });
+    this.pkRegionsBody?.addEventListener('click', (e) => {
+      const option = e.target.closest('[data-region-key]');
+      if (!option) return;
+      const region = option.dataset.regionKey === '*' ? null : option.dataset.regionKey;
+      window.dispatchEvent(new CustomEvent('parkingRegionRequest', { detail: { region } }));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.pkRegionsModal?.classList.contains('is-open')) {
+        this.closeParkingRegions();
       }
     });
 
@@ -784,6 +815,99 @@ class UI {
     this._writeStats(pstats.zones, pstats.places, pstats.accessible);
   }
 
+  renderParkingRegions(regions = parkingAPI.getRegions(), currentRegion = this.currentParkingRegion) {
+    this.currentParkingRegion = currentRegion;
+    const selected = regions.find((region) => region.key === currentRegion);
+    const selectedName = selected?.name || i18n.t('pkAllRegions');
+    const selectedStats = selected || parkingAPI.getStats();
+    const locale = ({ tj: 'tg-TJ', ru: 'ru-RU', en: 'en-US' })[i18n.getLang()] || 'ru-RU';
+    const number = (value) => new Intl.NumberFormat(locale).format(Number(value) || 0);
+
+    if (this.pkRegionCurrent) this.pkRegionCurrent.textContent = selectedName;
+    if (this.pkRegionCount) this.pkRegionCount.textContent = number(selectedStats.zones);
+    if (this.pkRegionTrigger) {
+      this.pkRegionTrigger.setAttribute('aria-label', `${i18n.t('pkRegionFilter')}: ${selectedName}. ${number(selectedStats.zones)} ${i18n.t('pkZonesLabel')}`);
+      this.pkRegionTrigger.setAttribute('aria-expanded', String(this.pkRegionsModal?.classList.contains('is-open')));
+    }
+    this.pkRegionsClose?.setAttribute('aria-label', i18n.t('pkCloseRegions'));
+
+    if (this.pkRegionsUpdated) {
+      if (parkingAPI.lastFetch) {
+        const time = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Dushanbe', hour: '2-digit', minute: '2-digit',
+        }).format(parkingAPI.lastFetch);
+        this.pkRegionsUpdated.textContent = `${i18n.t('pkRegionUpdated')} ${time}`;
+      } else {
+        this.pkRegionsUpdated.textContent = i18n.t('pkRegionNoUpdate');
+      }
+    }
+    if (!this.pkRegionsBody) return;
+
+    const total = parkingAPI.getStats();
+    const renderOption = (key, name, stats) => {
+      const pressed = currentRegion === key;
+      const dataKey = key === null ? '*' : key;
+      const unmapped = Math.max(0, stats.zones - (stats.mappedZones ?? stats.zones));
+      const label = `${name}. ${number(stats.zones)} ${i18n.t('pkZonesLabel')}; ${number(stats.places)} ${i18n.t('pkPlaces')}; ${number(stats.accessible)} ${i18n.t('pkAccessible')}${unmapped ? `; ${number(unmapped)} ${i18n.t('pkUnmappedShort')}` : ''}.`;
+      const metrics = [
+        ['zones', stats.zones, 'pkZonesLabel'],
+        ['places', stats.places, 'pkPlaces'],
+        ['accessible', stats.accessible, 'pkAccessible'],
+      ].map(([kind, value, labelKey]) => `
+        <span class="pk-region-metric pk-region-metric--${kind}">
+          <strong>${number(value)}</strong><span>${esc(i18n.t(labelKey))}</span>
+        </span>`).join('');
+      return `
+        <button class="pk-region-option${pressed ? ' is-selected' : ''}" type="button"
+                data-region-key="${esc(dataKey)}" aria-pressed="${pressed}" aria-label="${esc(label)}">
+          <span class="pk-region-option-head">
+            <span class="pk-region-option-name">${esc(name)}</span>
+            <span class="pk-region-option-check" aria-hidden="true">
+              <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-8"/></svg>
+            </span>
+          </span>
+          <span class="pk-region-option-metrics">${metrics}</span>
+          ${unmapped ? `<span class="pk-region-map-note">${number(unmapped)} ${esc(i18n.t('pkUnmappedShort'))}</span>` : ''}
+        </button>`;
+    };
+
+    const options = [renderOption(null, i18n.t('pkAllRegions'), total),
+      ...regions.map((region) => renderOption(region.key, region.name, region))].join('');
+    const summary = `
+      <section class="pk-region-summary" aria-label="${esc(i18n.t('pkRegionsTitle'))}">
+        <div class="pk-region-summary-main">
+          <span class="pk-region-summary-value">${number(total.zones)}</span>
+          <span class="pk-region-summary-label">${esc(i18n.t('pkZonesLabel'))}</span>
+        </div>
+        <div class="pk-region-summary-secondary">
+          <span><strong>${number(total.places)}</strong><span>${esc(i18n.t('pkPlaces'))}</span></span>
+          <span><strong>${number(total.accessible)}</strong><span>${esc(i18n.t('pkAccessible'))}</span></span>
+        </div>
+      </section>`;
+    const unmapped = Math.max(0, total.zones - (total.mappedZones ?? total.zones));
+    const dataNote = unmapped
+      ? `<p class="pk-region-data-note">${number(unmapped)} ${esc(i18n.t('pkUnmappedRecords'))}</p>`
+      : '';
+    const empty = regions.length ? '' : `<p class="pk-region-empty">${esc(i18n.t('pkRegionEmpty'))}</p>`;
+    this.pkRegionsBody.innerHTML = `${summary}${dataNote}<h3 class="pk-region-section-title">${esc(i18n.t('pkChooseRegion'))}</h3>${empty}<div class="pk-region-options">${options}</div>`;
+  }
+
+  openParkingRegions() {
+    if (!this.pkRegionsModal) return;
+    this.renderParkingRegions(parkingAPI.getRegions(), this.currentParkingRegion);
+    this.openSheet(this.pkRegionsModal, {
+      onDismiss: () => this.closeParkingRegions(),
+      focus: this.pkRegionsClose,
+    });
+    this.pkRegionTrigger?.setAttribute('aria-expanded', 'true');
+  }
+
+  closeParkingRegions() {
+    if (!this.pkRegionsModal?.classList.contains('is-open')) return;
+    this.pkRegionTrigger?.setAttribute('aria-expanded', 'false');
+    this.closeSheet(this.pkRegionsModal);
+  }
+
   _writeStats(total, mid, right) {
     if (this.statsTotal) this.statsTotal.textContent = total;
     if (this.statsFree)  this.statsFree.textContent  = mid;
@@ -810,6 +934,8 @@ class UI {
     // In parking mode the Analytics sheet is the parking history, so every
     // way into it is labelled that way.
     const pk = mode === 'parking';
+    this.fabBtn?.querySelector('.fab-text-full')?.setAttribute('data-i18n', pk ? 'findNearestParking' : 'findNearest');
+    document.getElementById('tab-find-label')?.setAttribute('data-i18n', pk ? 'findNearestParking' : 'findNearestStation');
     document.querySelector('#tab-analytics .tabbar-label')?.setAttribute('data-i18n', pk ? 'tabHistory' : 'tabAnalytics');
     document.querySelector('#an-trigger .an-trigger-label')?.setAttribute('data-i18n', pk ? 'tabHistory' : 'analytics');
     document.getElementById('an-trigger')?.setAttribute('data-i18n-title', pk ? 'pkHistoryTitle' : 'analytics');
@@ -828,6 +954,14 @@ class UI {
     document.getElementById('filter-seg')?.setAttribute('aria-disabled', String(mode === 'parking'));
     this.syncTabToMode();
     i18n.updateDOM();
+    this._syncFindLabels();
+  }
+
+  _syncFindLabels() {
+    const key = this.statsMode === 'parking' ? 'findNearestParking' : 'findNearestStation';
+    const label = i18n.t(key);
+    this.fabBtn?.setAttribute('aria-label', label);
+    document.getElementById('tab-find')?.setAttribute('aria-label', label);
   }
 
   updateLastRefresh(date) {

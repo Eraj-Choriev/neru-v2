@@ -8,6 +8,7 @@ class App {
     this.REFRESH_MS = 30000; // 30 seconds
     this.initialized = false;
     this.CONSENT_KEY = 'neru-loc-consent'; // 'granted' | 'denied' | null (unasked)
+    this._parkingRegion = null;
   }
 
   async init() {
@@ -107,13 +108,23 @@ class App {
     }
 
     const zones = await parkingAPI.fetchZones();
-    if (!zones.length) return;
+    const regions = parkingAPI.getRegions();
+    if (this._parkingRegion !== null && !regions.some((region) => region.key === this._parkingRegion)) {
+      this._parkingRegion = null;
+    }
+    ui.renderParkingRegions(regions, this._parkingRegion);
+    if (!zones.length) {
+      if (this._parkingVisible) ui.updateParkingStats(parkingAPI.getMappedStats(this._parkingRegion));
+      return;
+    }
 
     stationMap.renderParkingZones(zones);
+    stationMap.setParkingRegion(this._parkingRegion);
     stationMap.setParkingVisible(this._parkingVisible === true);
+    ui.renderParkingRegions(regions, this._parkingRegion);
     if (this._parkingVisible) {
       ui.setStatsMode('parking');
-      ui.updateParkingStats(parkingAPI.getStats());
+      ui.updateParkingStats(parkingAPI.getMappedStats(this._parkingRegion));
     }
   }
 
@@ -134,14 +145,31 @@ class App {
     // follows the layer instead of contradicting it.
     stationMap.setParkingVisible(next);
     if (ui.sidebarOpen) ui.closeSidebar();
+    if (!next) ui.closeParkingRegions();
     ui.setStatsMode(next ? 'parking' : 'ev');
-    if (next) ui.updateParkingStats(parkingAPI.getStats());
+    if (next) {
+      ui.renderParkingRegions(parkingAPI.getRegions(), this._parkingRegion);
+      ui.updateParkingStats(parkingAPI.getMappedStats(this._parkingRegion));
+    }
     else ui.updateStats(stationAPI.getStats());
 
     document.getElementById('pk-toggle')?.classList.toggle('is-active', next);
     document.getElementById('pk-toggle')?.setAttribute('aria-pressed', String(next));
 
     ui.showToast(i18n.t(next ? 'pkZonesOn' : 'pkZonesOff'), 'info', 2000);
+  }
+
+  selectParkingRegion(region) {
+    const key = region === null ? null : String(region).trim();
+    const regions = parkingAPI.getRegions();
+    if (key !== null && !regions.some((item) => item.key === key)) return;
+
+    this._parkingRegion = key;
+    stationMap.setParkingRegion(key);
+    ui.updateParkingStats(parkingAPI.getMappedStats(key));
+    ui.renderParkingRegions(regions, key);
+    if (key !== null) stationMap.focusParkingRegion(parkingAPI.getZonesForRegion(key));
+    ui.closeParkingRegions();
   }
 
   getDataStatusKey() {
@@ -202,6 +230,9 @@ class App {
     window.addEventListener('langchange', () => stationAnalytics.refresh());
 
     // Parking zones — layer toggle, rules sheet, and routing to a zone
+    window.addEventListener('parkingRegionRequest', (e) => {
+      this.selectParkingRegion(e.detail?.region ?? null);
+    });
     this.bindTabBar();
     const modeSwitch = document.getElementById('map-mode-seg');
     modeSwitch?.addEventListener('click', e => {

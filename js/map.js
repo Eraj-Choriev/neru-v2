@@ -5,6 +5,7 @@ class StationMap {
     this.stations = new Map();
     this.zones = new Map();
     this.parkingVisible = false;
+    this.parkingRegion = null;
     this.stationsVisible = true;
     this.parkingLines = [];
     this._icons = new Map();
@@ -175,7 +176,10 @@ class StationMap {
   }
 
   _syncParking() {
-    const zones = this.parkingVisible ? [...this.zones.values()] : [];
+    const zones = this.parkingVisible
+      ? [...this.zones.values()].filter((zone) => this.parkingRegion === null ||
+        String(zone.city || '').trim() === this.parkingRegion)
+      : [];
     const signature = JSON.stringify(zones.map(z => [z.id, z.lat, z.lng, z.a, z.b]));
     if (signature === this._parkingSignature) return;
     this._parkingSignature = signature;
@@ -200,6 +204,37 @@ class StationMap {
     this.setStationsVisible(!on);
     this._syncParking();
     this.closePopup();
+  }
+  setParkingRegion(region = null) {
+    const next = region === null ? null : String(region).trim();
+    if (next === this.parkingRegion) return;
+    this._closeSpider();
+    this.closePopup();
+    this.parkingRegion = next;
+    this._syncParking();
+  }
+  focusParkingRegion(zones) {
+    if (!zones?.length || !this.map) return;
+    this._closeSpider();
+    this.closePopup();
+    const points = zones.flatMap((zone) => [zone.a, zone.b, [zone.lat, zone.lng]])
+      .filter((point) => Array.isArray(point) && Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1])));
+    if (!points.length) return;
+    const lats = points.map((point) => Number(point[0]));
+    const lngs = points.map((point) => Number(point[1]));
+    if (typeof this.map.fitBounds === 'function') {
+      this.map.fitBounds({
+        southWest: [Math.min(...lngs), Math.min(...lats)],
+        northEast: [Math.max(...lngs), Math.max(...lats)],
+      }, {
+        padding: { top: 112, bottom: 184, left: 40, right: 40 },
+        maxZoom: 15,
+        animation: this._animation(),
+      });
+      return;
+    }
+    this.flyTo(lats.reduce((sum, value) => sum + value, 0) / lats.length,
+      lngs.reduce((sum, value) => sum + value, 0) / lngs.length, 14);
   }
   setStationsVisible(on) { this.stationsVisible = !!on; this._syncStations(); }
   isParkingVisible() { return this.parkingVisible; }
@@ -591,6 +626,7 @@ class StationMap {
     // wherever the user meets it.
     const sch = (typeof parseSchedule === 'function') ? parseSchedule(zone.schedule) : null;
     let scheduleRow = '';
+    let statusRow = '';
     const CLOCK_SVG = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
     if (sch || zone.schedule) {
       const time = sch ? (sch.is24 ? '24/7' : `${sch.open}–${sch.close}`) : zone.schedule;
@@ -600,14 +636,14 @@ class StationMap {
       } else if (sch) {
         // Outside the paid window the strip is simply free to use.
         badge = sch.isOpen
-          ? `<span class="open-now">${esc(i18n.t('pkPaidNow'))}</span>`
-          : `<span class="open-now">${esc(i18n.t('pkFreeNow'))}</span>`;
+          ? `<span class="open-now pk-status-paid">${esc(i18n.t('pkPaidNow'))}</span>`
+          : `<span class="open-now pk-status-free">${esc(i18n.t('pkFreeNow'))}</span>`;
       }
+      statusRow = badge ? `<div class="pk-current-status">${badge}</div>` : '';
       scheduleRow = `
         <div class="popup-schedule-row">
           <span class="popup-schedule-icon">${CLOCK_SVG}</span>
           <span class="popup-schedule-time">${esc(time)}</span>
-          ${badge}
         </div>`;
     }
 
@@ -662,6 +698,8 @@ class StationMap {
         </div>
 
         <div class="popup-divider"></div>
+
+        ${statusRow}
 
         <div class="chip-row">
           <div class="chip chip--tariff">

@@ -2,10 +2,10 @@
 // NŪR — Paid Parking Zones (api.parking.dc.tj)
 // ============================================
 //
-// Second feed from the same operator as the charger map. It is a *static*
-// reference list — 243 marked kerbside parking strips in Dushanbe, with no
-// live occupancy of any kind — so it is fetched once and cached for a day
-// rather than folded into the 30s station refresh.
+// Second feed from the same operator as the charger map. It is a static
+// reference list of kerbside parking strips with no live occupancy, so it is
+// fetched once and cached for a day rather than folded into the 30s station
+// refresh. Region names come from each record's `city` field.
 
 const PARKING_URL = 'https://api.parking.dc.tj/api/v1/getMarkerParking';
 
@@ -16,8 +16,11 @@ const PARKING_PROXIES = [
   'https://api.allorigins.win/raw?url=',
 ];
 
-const PARKING_CACHE_KEY = 'nur-parking-v1';
+const PARKING_CACHE_KEY = 'nur-parking-v2';
 const PARKING_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h — the list barely changes
+// A country-sized guard keeps valid regional coordinates while rejecting
+// corrupt points such as the feed's old 0.0 placeholders.
+const TAJIKISTAN_BOUNDS = { minLat: 36, maxLat: 42, minLng: 66, maxLng: 76 };
 
 // Public facts about the paid-parking scheme, from neru.tj/question-parking
 // and neru.tj/rule-fine-parking. Kept here so the timer, the popups and the
@@ -42,6 +45,8 @@ const M_PER_DEG_LNG = 111320 * Math.cos(38.56 * Math.PI / 180); // ≈ 87090
 class ParkingAPI {
   constructor() {
     this.zones = [];
+    this.regionStats = [];
+    this.apiRecordCount = 0;
     this.lastFetch = null;
     this.isLoading = false;
     this.lastError = null;
@@ -68,9 +73,13 @@ class ParkingAPI {
       const cached = this._readCache();
       if (cached) {
         this.zones = cached.zones;
+        this.regionStats = Array.isArray(cached.regionStats) ? cached.regionStats : [];
+        this.apiRecordCount = Number(cached.apiRecordCount) || this.zones.length;
         this.lastFetch = new Date(cached.ts);
         this._announce();
-        return this.zones;
+        // Old clients cached only normalized map zones. Show them immediately
+        // while refreshing once so the regional totals include every API row.
+        if (!cached._legacy) return this.zones;
       }
     }
 
@@ -104,6 +113,8 @@ class ParkingAPI {
 
         if (zones.length) {
           this.zones = zones;
+          this.regionStats = this._aggregateRegionStats(data.parks);
+          this.apiRecordCount = data.parks.length;
           this.lastFetch = new Date();
           this.lastError = null;
           this._writeCache();
@@ -122,6 +133,8 @@ class ParkingAPI {
       const stale = this._readCache({ ignoreTtl: true });
       if (stale) {
         this.zones = stale.zones;
+        this.regionStats = Array.isArray(stale.regionStats) ? stale.regionStats : [];
+        this.apiRecordCount = Number(stale.apiRecordCount) || this.zones.length;
         this.lastFetch = new Date(stale.ts);
         this._announce();
       } else {
@@ -210,13 +223,13 @@ class ParkingAPI {
     };
   }
 
-  /** Parse a lat/lng pair, rejecting the "0.0" placeholders and out-of-region values. */
+  /** Parse a lat/lng pair, rejecting placeholders and points outside Tajikistan. */
   _point(latRaw, lngRaw) {
     const lat = parseFloat(latRaw);
     const lng = parseFloat(lngRaw);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    // Dushanbe and its ring of districts — anything outside is corrupt.
-    if (lat < 37 || lat > 40 || lng < 67 || lng > 70) return null;
+    if (lat < TAJIKISTAN_BOUNDS.minLat || lat > TAJIKISTAN_BOUNDS.maxLat ||
+        lng < TAJIKISTAN_BOUNDS.minLng || lng > TAJIKISTAN_BOUNDS.maxLng) return null;
     return { lat, lng };
   }
 
@@ -224,12 +237,15 @@ class ParkingAPI {
 
   _readCache({ ignoreTtl = false } = {}) {
     try {
-      const raw = localStorage.getItem(PARKING_CACHE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.ts || !Array.isArray(parsed.zones) || !parsed.zones.length) return null;
-      if (!ignoreTtl && Date.now() - parsed.ts > PARKING_CACHE_TTL) return null;
-      return parsed;
+      for (const key of [PARKING_CACHE_KEY, 'nur-parking-v1']) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.ts || !Array.isArray(parsed.zones) || !parsed.zones.length) continue;
+        if (!ignoreTtl && Date.now() - parsed.ts > PARKING_CACHE_TTL) continue;
+        return { ...parsed, _legacy: key !== PARKING_CACHE_KEY };
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -240,6 +256,8 @@ class ParkingAPI {
       localStorage.setItem(PARKING_CACHE_KEY, JSON.stringify({
         ts: Date.now(),
         zones: this.zones,
+        regionStats: this.regionStats,
+        apiRecordCount: this.apiRecordCount,
       }));
     } catch (_) { /* quota — the map still works, it just refetches next time */ }
   }
@@ -252,11 +270,73 @@ class ParkingAPI {
     return this.zones.find((z) => String(z.id) === String(id)) || null;
   }
 
-  getStats() {
-    const zones = this.zones.length;
-    const places = this.zones.reduce((sum, z) => sum + (z.places || 0), 0);
-    const accessible = this.zones.reduce((sum, z) => sum + (z.accessiblePlaces || 0), 0);
-    return { zones, places, accessible };
+  getZonesForRegion(region = null) {
+    if (region === null) return this.zones;
+    const key = String(region).trim();
+    return this.zones.filter((zone) => String(zone.city || '').trim() === key);
+  }
+
+  _aggregateRegionStats(records) {
+    const regions = new Map();
+    for (const raw of records) {
+      const key = String(raw?.city || '').trim();
+      let region = regions.get(key);
+      if (!region) {
+        region = { key, name: key || (typeof i18n !== 'undefined' ? i18n.t('pkUnknownRegion') : 'Other'), zones: 0, places: 0, accessible: 0 };
+        regions.set(key, region);
+      }
+      const places = parseInt(raw?.all_place, 10);
+      const accessible = parseInt(raw?.invalid, 10);
+      region.zones += 1;
+      region.places += Number.isFinite(places) ? places : 0;
+      region.accessible += Number.isFinite(accessible) ? accessible : 0;
+    }
+    return [...regions.values()];
+  }
+
+  getStats(region = null) {
+    const key = region === null ? null : String(region).trim();
+    const source = key === null
+      ? this.regionStats
+      : this.regionStats.filter((item) => item.key === key);
+    const mappedZones = this.getZonesForRegion(key).length;
+    if (source.length) {
+      return {
+        zones: source.reduce((sum, item) => sum + item.zones, 0),
+        places: source.reduce((sum, item) => sum + item.places, 0),
+        accessible: source.reduce((sum, item) => sum + item.accessible, 0),
+        mappedZones,
+      };
+    }
+    const zones = this.getZonesForRegion(key);
+    return {
+      zones: zones.length,
+      places: zones.reduce((sum, z) => sum + (z.places || 0), 0),
+      accessible: zones.reduce((sum, z) => sum + (z.accessiblePlaces || 0), 0),
+      mappedZones,
+    };
+  }
+
+  getMappedStats(region = null) {
+    const zones = this.getZonesForRegion(region);
+    return {
+      zones: zones.length,
+      places: zones.reduce((sum, z) => sum + (z.places || 0), 0),
+      accessible: zones.reduce((sum, z) => sum + (z.accessiblePlaces || 0), 0),
+    };
+  }
+
+  /** Region rows are derived from the feed so new cities appear automatically. */
+  getRegions() {
+    const stats = this.regionStats.length
+      ? this.regionStats
+      : this._aggregateRegionStats(this.zones.map((zone) => ({
+        city: zone.city, all_place: zone.places, invalid: zone.accessiblePlaces,
+      })));
+    return stats.map((region) => ({
+      ...region,
+      mappedZones: this.getZonesForRegion(region.key).length,
+    })).sort((a, b) => b.zones - a.zones || a.name.localeCompare(b.name));
   }
 
   // ── Geometry ──────────────────────────────────────────────────────────────
