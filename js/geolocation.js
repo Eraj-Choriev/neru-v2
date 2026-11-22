@@ -15,6 +15,8 @@ class GeoLocation {
     this.userSpeed = null;      // m/s — null when unknown
     this.isLocated = false;
     this.watchId = null;
+    this._lastLocatedAt = 0;
+    this.lastWatchError = null;
     this._watchers = new Set(); // callbacks invoked on every position update
   }
   async getUserLocation({ force = false, maxAgeMs = 30000, highAccuracy = false } = {}) {
@@ -37,6 +39,7 @@ class GeoLocation {
         this.userSpeed = Number.isFinite(pos.coords.speed) ? pos.coords.speed : null;
         this.isLocated = true;
         this._lastLocatedAt = Date.now();
+        this.lastWatchError = null;
         resolve({ lat: this.userLat, lng: this.userLng, isLocated: this.isLocated });
       };
 
@@ -60,6 +63,8 @@ class GeoLocation {
       isLocated: this.isLocated,
       accuracy: this.userAccuracy,
       heading: this.userHeading,
+      locatedAt: this._lastLocatedAt || null,
+      ageMs: this._lastLocatedAt ? Date.now() - this._lastLocatedAt : Infinity,
     };
   }
 
@@ -67,7 +72,7 @@ class GeoLocation {
    * Continuous position updates via watchPosition.
    * Each update fires every subscribed callback with full position details.
    */
-  startWatching(callback) {
+  startWatching(callback, onError = null) {
     if (typeof callback === 'function') this._watchers.add(callback);
 
     if (this.watchId !== null || !('geolocation' in navigator)) return true;
@@ -81,6 +86,7 @@ class GeoLocation {
         this.userSpeed = Number.isFinite(pos.coords.speed) ? pos.coords.speed : null;
         this.isLocated = true;
         this._lastLocatedAt = Date.now();
+        this.lastWatchError = null;
 
         const snapshot = {
           lat: this.userLat,
@@ -93,6 +99,10 @@ class GeoLocation {
         this._watchers.forEach((cb) => { try { cb(snapshot); } catch (_) {} });
       },
       (err) => {
+        this.lastWatchError = err || new Error('Geolocation unavailable');
+        if (typeof onError === 'function') {
+          try { onError(err, this._lastLocatedAt ? Date.now() - this._lastLocatedAt : Infinity); } catch (_) {}
+        }
         // 1 = PERMISSION_DENIED — stop watching
         if (err?.code === 1) { this.isLocated = false; this.stopWatching(); }
       },

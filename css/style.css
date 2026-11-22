@@ -7238,6 +7238,57 @@ body[data-mode="parking"] {
 :root[data-theme="light"] .card .conn--charging { background: rgba(255, 244, 220, .42); }
 :root[data-theme="light"] .nur-map-card .conn--busy,
 :root[data-theme="light"] .card .conn--busy { background: rgba(255, 232, 232, .38); }
+
+/* A recommendation names one live connector in the existing station glass. */
+.nur-map-card .conn--target,
+.card .conn--target {
+  box-shadow: var(--edge-rim), inset 0 0 0 1px rgba(8, 123, 87, .28);
+}
+.nur-map-card .conn--target::after,
+.card .conn--target::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(8, 123, 87, .42);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+.nur-map-card .conn--target::after {
+  animation: connectorTargetReveal 900ms ease-out 1;
+}
+.nur-map-card .conn-number, .card .conn-number {
+  white-space: normal;
+  line-height: 1.2;
+}
+.conn-target-label {
+  display: block;
+  margin-top: 3px;
+  color: var(--volt-600);
+  font: 600 11px/1.2 var(--f-body);
+  letter-spacing: 0;
+  white-space: normal;
+}
+@keyframes connectorTargetReveal {
+  0% { transform: scale(.985); opacity: .8; }
+  100% { transform: scale(1.01); opacity: 0; }
+}
+
+.route-info { gap: 2px; }
+.route-target {
+  display: block;
+  max-width: 250px;
+  overflow: hidden;
+  color: var(--volt-600);
+  font: 600 11px/1.2 var(--f-body);
+  text-overflow: ellipsis;
+}
+.route-target:empty { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nur-map-card .conn--target::after,
+  .card .conn--target::after { animation: none; }
+}
 :root[data-theme="light"] .nur-map-card .conn-state--charging,
 :root[data-theme="light"] .card .conn-state--charging { color: #925500; }
 :root[data-theme="light"] .nur-map-card .conn-state--busy,

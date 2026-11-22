@@ -160,7 +160,7 @@ class StationNotifications {
 
   // ── Public: called after user location is obtained (location button tap) ─────
   // Shows free station cards regardless of whether the bell is toggled.
-  showNearbyNow() {
+  async showNearbyNow() {
     this._log('log', '📍 showNearbyNow() — location just obtained, scanning for free stations...');
 
     const pos = geoLocation.getPosition();
@@ -169,7 +169,24 @@ class StationNotifications {
       return;
     }
 
-    const stations = stationAPI.getStations();
+    let stations = stationAPI.getStations();
+    const snapshotBeforeRefresh = stationAPI.lastFetch;
+    const age = snapshotBeforeRefresh ? Date.now() - snapshotBeforeRefresh.getTime() : Infinity;
+    const refreshDue = age > 15000;
+    if (refreshDue) {
+      stations = await stationAPI.fetchStations().catch(() => stationAPI.getStations());
+      if (stationAPI.lastFetch && stationAPI.lastFetch !== snapshotBeforeRefresh && typeof app !== 'undefined') {
+        await app.loadStations(Promise.resolve(stations));
+      }
+    }
+
+    const latestAge = stationAPI.lastFetch ? Date.now() - stationAPI.lastFetch.getTime() : Infinity;
+    if (latestAge > 60000 || (refreshDue && stationAPI.lastError && latestAge > 15000)) {
+      this._log('warn', '⚠️ showNearbyNow(): connector snapshot is stale');
+      ui.showToast(i18n.t('stationStatusUnavailable'), 'warning', 4000);
+      return;
+    }
+
     if (!stations.length) {
       this._log('warn', '⚠️ showNearbyNow(): no stations loaded yet');
       return;
@@ -177,7 +194,12 @@ class StationNotifications {
 
     const available = stations
       .filter(s => s.lat && s.lng && s.hasAvailable)
-      .map(s => ({ ...s, _dist: GeoLocation.distanceBetween(pos.lat, pos.lng, s.lat, s.lng) }))
+      .map(s => ({
+        ...s,
+        _dist: GeoLocation.distanceBetween(pos.lat, pos.lng, s.lat, s.lng),
+        recommendedConnector: stationFinder.getRecommendedConnector(s),
+      }))
+      .filter(s => s.recommendedConnector)
       .filter(s => s._dist <= this.watchRadiusKm)
       .sort((a, b) => a._dist - b._dist);
 
@@ -304,18 +326,21 @@ class StationNotifications {
     this._ensureStack();
 
     // Trim oldest card if stack is full
-    const existing = this._stack.querySelectorAll('.neru-nc');
-    if (existing.length >= this._MAX_VISIBLE) {
-      this._dismissCard(existing[0], true);
+    const existing = Array.from(this._stack.querySelectorAll('.neru-nc'));
+    existing
+      .filter((card) => String(card.dataset.stationId) === String(station.id))
+      .forEach((card) => this._dismissCard(card, true));
+    const visible = this._stack.querySelectorAll('.neru-nc');
+    if (visible.length >= this._MAX_VISIBLE) {
+      this._dismissCard(visible[0], true);
     }
 
     const AUTO_DISMISS_MS = 9000;
     const distKmSafe = distKm ?? 0;
     const d        = GeoLocation.formatDistance(distKmSafe);
-    const walkMin  = Math.round(distKmSafe * 12);
-    const walkText = walkMin > 0 ? `~${walkMin} ${i18n.t('minSuffix')}` : '';
     const freeCount = station.freeConnectors ?? '?';
     const totalCount = station.totalConnectors ?? '?';
+    const targetConnectorId = (station.recommendedConnector || stationFinder.getRecommendedConnector(station))?.id;
 
     const card = document.createElement('div');
     card.className = 'neru-nc';
@@ -330,8 +355,8 @@ class StationNotifications {
     // map, so the second button was never needed.
     const meta = [
       `${this._esc(d.value)} ${this._esc(i18n.t(d.unit))}`,
-      walkText ? this._esc(walkText) : '',
       `${this._esc(freeCount)}/${this._esc(totalCount)} ${this._esc(i18n.t('available'))}`,
+      targetConnectorId == null ? '' : `${this._esc(i18n.t('recommendedConnector'))} #${this._esc(targetConnectorId)}`,
     ].filter(Boolean).join('<span class="neru-nc-dot">·</span>');
 
     card.innerHTML = `
@@ -348,7 +373,7 @@ class StationNotifications {
         <span class="neru-nc-meta">${meta}</span>
       </div>
       <div class="neru-nc-actions">
-        <button class="neru-nc-btn-route" type="button">
+        <button class="neru-nc-btn-route" type="button" aria-label="${this._esc(i18n.t('routeToConnector'))} #${this._esc(targetConnectorId ?? '')}">
           ${this._esc(i18n.t('routeLabel'))}
         </button>
       </div>
@@ -369,7 +394,9 @@ class StationNotifications {
     card.querySelector('.neru-nc-btn-route').addEventListener('click', () => {
       this._log('log', `🧭 "Route" clicked for "${station.name}"`);
       this._dismissCard(card);
-      window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: station.id } }));
+      window.dispatchEvent(new CustomEvent('routeRequest', {
+        detail: { stationId: station.id, connectorId: targetConnectorId },
+      }));
     });
 
     card.querySelector('.neru-nc-dismiss').addEventListener('click', () => {
@@ -462,11 +489,11 @@ class StationNotifications {
     this._log('log', `📣 Attempting native OS notification for "${station.name}"...`);
 
     const d        = GeoLocation.formatDistance(distKm);
-    const walkMin  = Math.round(distKm * 12);
-    const walkText = walkMin > 0 ? ` · ~${walkMin} ${i18n.t('minSuffix')}` : '';
+    const connectorId = stationFinder.getRecommendedConnector(station)?.id;
+    const targetText = connectorId == null ? '' : ` · ${i18n.t('recommendedConnector')} #${connectorId}`;
     const title    = `⚡ ${i18n.t('notifTitle')}`;
     const options  = {
-      body: `${station.name}\n${d.value} ${i18n.t(d.unit)}${walkText}`,
+      body: `${station.name}\n${d.value} ${i18n.t(d.unit)}${targetText}`,
       tag: `neru-${station.id}`,
       icon: 'data:image/svg+xml,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>'

@@ -9,6 +9,8 @@ class App {
     this.initialized = false;
     this.CONSENT_KEY = 'neru-loc-consent'; // 'granted' | 'denied' | null (unasked)
     this._parkingRegion = null;
+    this._recommendationGeneration = 0;
+    this._lastGpsWarning = 0;
   }
 
   async init() {
@@ -41,7 +43,9 @@ class App {
       // browser prompt only fires once the user has opted in.
       const consent = localStorage.getItem(this.CONSENT_KEY);
       if (consent === 'granted') {
-        this.acquireLocation();          // returning user — fetch straight away
+        this.acquireLocation().then((located) => {
+          if (located && typeof stationNotifications !== 'undefined') stationNotifications.showNearbyNow();
+        }); // returning user — resume nearby recommendations after consent
       } else if (consent == null) {
         this.showLocationConsent();      // first visit — ask first
       }
@@ -259,16 +263,49 @@ class App {
 
   }
 
-  async handleRouteRequest({ stationId }) {
+  async handleRouteRequest({ stationId, connectorId }) {
+    if (stationId == null) return;
+
+    // Refresh an aging connector snapshot before choosing a physical socket.
+    if (typeof stationAPI.fetchStations === 'function') {
+      const statusAge = stationAPI.lastFetch ? Date.now() - stationAPI.lastFetch.getTime() : Infinity;
+      const refreshDue = statusAge > 15000;
+      if (refreshDue) {
+        const snapshotBeforeRefresh = stationAPI.lastFetch;
+        const refreshed = await stationAPI.fetchStations().catch(() => null);
+        if (stationAPI.lastFetch && stationAPI.lastFetch !== snapshotBeforeRefresh && Array.isArray(refreshed)) {
+          await this.loadStations(Promise.resolve(refreshed));
+        }
+      }
+      const latestAge = stationAPI.lastFetch ? Date.now() - stationAPI.lastFetch.getTime() : Infinity;
+      if (latestAge > 60000 || (refreshDue && stationAPI.lastError && latestAge > 15000)) {
+        ui.showToast(i18n.t('stationStatusUnavailable'), 'warning', 4500);
+        return;
+      }
+    }
+
     const station = stationAPI.getStationById(stationId);
     if (!station) return;
-    if (ui.sidebarOpen) ui.closeSidebar();
+    const hasConnectorFinder = typeof stationFinder !== 'undefined';
+    const available = hasConnectorFinder ? stationFinder.getAvailableConnectors(station) : [];
+    const requestedId = connectorId == null || String(connectorId).trim() === '' ? null : String(connectorId);
+    let connector = !hasConnectorFinder ? null : requestedId == null
+      ? stationFinder.getRecommendedConnector(station)
+      : available.find((item) => String(item.id) === requestedId);
+    const targetChanged = requestedId != null && !connector;
+    if (targetChanged) connector = available[0] || null;
+    if (hasConnectorFinder && !connector) {
+      ui.showToast(i18n.t('noAvailableConnectors'), 'warning', 4000);
+      return;
+    }
+
     // A route is only useful if it follows the car. Asking for one is
     // explicit intent, so locate now if we have to, and make sure the GPS
     // watch is running — "find nearest" and the startup consent card can
     // both leave the app located without it, which drew a route that never
     // moved, never re-routed and never announced arrival.
-    if (!geoLocation.isLocated) {
+    const currentPosition = geoLocation.getPosition();
+    if (!currentPosition.isLocated || currentPosition.ageMs > 30000) {
       const located = await geoLocation.getUserLocation({ highAccuracy: true }).catch(() => null);
       if (!located) {
         ui.showToast(i18n.t('locationUnavailable'), 'warning', 3500);
@@ -277,15 +314,19 @@ class App {
       stationMap.setUserLocation(located.lat, located.lng, { accuracy: geoLocation.userAccuracy, heading: geoLocation.userHeading });
       document.getElementById('loc-btn')?.classList.add('is-located');
     }
+    if (ui.sidebarOpen) ui.closeSidebar();
     this.startLiveTracking();
-    await stationRouter.routeTo(station);
+    this._arrivalFixes = 0;
+    this._offRouteFixes = 0;
+    await stationRouter.routeTo(station, connector);
+    if (targetChanged && stationRouter.activeRoute?.connectorId === String(connector.id)) {
+      ui.showToast(i18n.t('connectorChanged'), 'info', 3500);
+    }
     // The route panel names the destination; the card would only cover the line.
     if (stationRouter.activeRoute && stationMap.popupId === String(station.id)) stationMap.closePopup();
     // Seed re-route throttle so we don't immediately re-fetch a route we just built.
     if (stationRouter.activeRoute) {
       this._lastReroute = Date.now();
-      const p = geoLocation.getPosition();
-      this._lastReroutePos = p.isLocated ? { lat: p.lat, lng: p.lng } : null;
     }
   }
 
@@ -396,16 +437,22 @@ class App {
   }
 
   async handleFindNearest() {
+    const generation = ++this._recommendationGeneration;
     // In parking mode the button hunts bays — a "find nearest charger" while
     // no charger is drawn would be a button lying about what it does.
     if (ui.statsMode === 'parking') return this.handleFindNearestZone();
 
     ui.showLoading('findingNearest', 'loadingLocationDetail');
     try {
-      const [loc] = await Promise.all([
+      const snapshotBeforeFetch = stationAPI.lastFetch;
+      const [loc, fetchedStations] = await Promise.all([
         geoLocation.getUserLocation({ force: false, maxAgeMs: 30000 }).catch(() => null),
         stationAPI.fetchStations().catch(() => null),
       ]);
+      if (generation !== this._recommendationGeneration) return;
+      if (stationAPI.lastFetch && stationAPI.lastFetch !== snapshotBeforeFetch && Array.isArray(fetchedStations)) {
+        await this.loadStations(Promise.resolve(fetchedStations));
+      }
 
       const pos = loc || geoLocation.getPosition();
       if (!pos.isLocated) {
@@ -414,9 +461,14 @@ class App {
         return;
       }
       stationMap.setUserLocation(pos.lat, pos.lng);
+      this.startLiveTracking();
+      document.getElementById('loc-btn')?.classList.add('is-located');
 
-      if (loc) {
-        document.getElementById('loc-btn')?.classList.add('is-located');
+      const statusAge = stationAPI.lastFetch ? Date.now() - stationAPI.lastFetch.getTime() : Infinity;
+      if (statusAge > 60000 || (stationAPI.lastError && statusAge > 15000)) {
+        ui.hideLoading();
+        ui.showToast(i18n.t('stationStatusUnavailable'), 'warning', 4500);
+        return;
       }
 
       const stations = stationAPI.getStations() || [];
@@ -426,13 +478,34 @@ class App {
         return;
       }
 
-      const results = stationFinder.findNearestStations(stations, pos.lat, pos.lng, 5);
+      const candidates = stationFinder.findNearestStations(stations, pos.lat, pos.lng, 12);
+      const results = candidates.slice(0, 5);
       ui.hideLoading();
 
       if (results && results.length) {
+        stationFinder.setResults(results);
         ui.openSidebar(results);
         stationMap.highlightStation(results[0]);
         ui.showToast(`${i18n.t('bestChoice')}: ${results[0].name}`, 'success');
+
+        // Show the nearest available connectors immediately, then refine the
+        // order with one batched road-time matrix if the public service responds.
+        try {
+          const roadRanked = await stationRouter.rankByDriveTime(
+            { lat: pos.lat, lng: pos.lng, isLocated: true },
+            candidates,
+          );
+          if (generation !== this._recommendationGeneration || !ui.sidebarOpen) return;
+          const recommendations = roadRanked.slice(0, 5);
+          stationFinder.setResults(recommendations);
+          ui.renderResults(recommendations);
+          if (recommendations[0] && String(recommendations[0].id) !== String(results[0].id) &&
+              String(stationMap.popupId) === String(results[0].id)) {
+            stationMap.highlightStation(recommendations[0]);
+          }
+        } catch (_) {
+          // Keep the local straight-line order when the public matrix is offline.
+        }
       } else {
         ui.showToast(i18n.t('noFreeStations'), 'warning');
       }
@@ -569,62 +642,71 @@ class App {
     if (this._liveTrackingStarted && geoLocation.isWatching()) return;
     this._liveTrackingStarted = true;
     this._lastReroute = 0;
-    this._lastReroutePos = null;
     this._lastSidebarRefresh = 0;
+    this._arrivalFixes = 0;
+    this._offRouteFixes = 0;
 
     // Tuning (metres / ms)
-    const ARRIVE_M = 40;        // within this of destination → arrived
-    const OFFROUTE_M = 45;      // drifted this far off the drawn line → recalc fast
-    const MOVE_M = 25;          // meaningful progress before a periodic recalc
-    const MIN_REROUTE_MS = 6000;   // never hit OSRM more often than this
-    const MAX_REROUTE_MS = 20000;  // safety recalc even when barely moving
-    const ACCURACY_MAX_M = 60; // ignore off-route recalc on jittery GPS fixes
+    const ARRIVE_M = 40;          // destination arrival radius (bounded by fix accuracy)
+    const OFFROUTE_M = 45;        // distance from route line before confirmation
+    const MIN_REROUTE_MS = 12000; // minimum interval between OSRM requests
+    const MAX_REROUTE_MS = 45000; // safety recalc while location remains reliable
+    const ACCURACY_MAX_M = 60;    // ignore poor fixes for rerouting and arrival
+    const FIX_MAX_AGE_MS = 15000; // stale watch fixes must not move the route state
 
     geoLocation.startWatching((snap) => {
+      const now = Date.now();
+      const fixTime = Number.isFinite(snap.timestamp) ? snap.timestamp : now;
+      const fixFresh = now - fixTime <= FIX_MAX_AGE_MS;
+      if (!fixFresh) return;
       stationMap.setUserLocation(snap.lat, snap.lng, {
         accuracy: snap.accuracy,
         heading: snap.heading,
         animate: true,
       });
 
-      const now = Date.now();
-
       // Paid-parking geofence rides on the same fix stream.
-      if (typeof parkingSession !== 'undefined') parkingSession.onPosition(snap);
+      if (fixFresh && typeof parkingSession !== 'undefined') parkingSession.onPosition(snap);
 
       // --- Live route tracking: arrival, off-route detection, throttled recalc ---
-      if (stationRouter?.activeRoute) {
+      if (stationRouter?.activeRoute && fixFresh) {
         const dest = stationRouter.activeRoute.station;
         const toDest = GeoLocation.distanceBetween(snap.lat, snap.lng, dest.lat, dest.lng) * 1000;
+        const gpsOk = Number.isFinite(snap.accuracy) && snap.accuracy <= ACCURACY_MAX_M;
+        const arrivalRadius = Number.isFinite(snap.accuracy)
+          ? Math.max(20, Math.min(ARRIVE_M, snap.accuracy))
+          : ARRIVE_M;
 
-        if (Number.isFinite(snap.accuracy) && snap.accuracy <= ARRIVE_M && toDest <= ARRIVE_M) {
+        if (gpsOk && toDest <= arrivalRadius) this._arrivalFixes++;
+        else this._arrivalFixes = 0;
+        if (this._arrivalFixes >= 2) {
           stationRouter.arrive();
-        } else {
-          const gpsOk = !Number.isFinite(snap.accuracy) || snap.accuracy < ACCURACY_MAX_M;
+          this._arrivalFixes = 0;
+          this._offRouteFixes = 0;
+        } else if (gpsOk) {
           const off = stationRouter.distanceToRoute(snap.lat, snap.lng);
-          const moved = this._lastReroutePos
-            ? GeoLocation.distanceBetween(snap.lat, snap.lng, this._lastReroutePos.lat, this._lastReroutePos.lng) * 1000
-            : Infinity;
-          const since = now - this._lastReroute;
+          if (off > OFFROUTE_M) this._offRouteFixes++;
+          else this._offRouteFixes = 0;
 
+          const since = now - this._lastReroute;
           const needReroute =
-            (gpsOk && off > OFFROUTE_M && since > MIN_REROUTE_MS) || // drifted off the line → correct fast
-            (moved > MOVE_M && since > MIN_REROUTE_MS) ||            // progressed enough
-            (since > MAX_REROUTE_MS);                               // periodic safety net
+            (this._offRouteFixes >= 2 && since > MIN_REROUTE_MS) ||
+            (since > MAX_REROUTE_MS);
 
           if (needReroute) {
             this._lastReroute = now;
-            this._lastReroutePos = { lat: snap.lat, lng: snap.lng };
+            this._offRouteFixes = 0;
             stationRouter.refreshFromCurrent();
           } else {
-            // Between network recalcs, keep the panel ETA/distance live for free.
             stationRouter.updateProgress(snap.lat, snap.lng);
           }
+        } else {
+          this._arrivalFixes = 0;
         }
       }
 
       // If sidebar open with results, refresh distances every 5s
-      if (ui.sidebarOpen && now - this._lastSidebarRefresh > 5000) {
+      if (fixFresh && ui.sidebarOpen && now - this._lastSidebarRefresh > 5000) {
         this._lastSidebarRefresh = now;
         const stations = stationAPI.getStations() || [];
         if (stations.length) {
@@ -632,6 +714,12 @@ class App {
           if (results?.length) ui.renderResults(results);
         }
       }
+    }, (error, ageMs) => {
+      if (!stationRouter?.activeRoute || (error?.code !== 1 && ageMs <= FIX_MAX_AGE_MS)) return;
+      const now = Date.now();
+      if (now - this._lastGpsWarning < 60000) return;
+      this._lastGpsWarning = now;
+      ui.showToast(i18n.t(error?.code === 1 ? 'locationDenied' : 'locationUnavailable'), 'warning', 4500);
     });
   }
 

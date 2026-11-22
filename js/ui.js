@@ -193,7 +193,9 @@ class UI {
       }
       if (action === 'route' && id) {
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: id } }));
+        window.dispatchEvent(new CustomEvent('routeRequest', {
+          detail: { stationId: id, connectorId: btn.dataset.connectorId },
+        }));
       }
     });
 
@@ -655,8 +657,17 @@ class UI {
     else if (station.statusTag === 'soonFree') strip = { cls: 'soon', label: i18n.t('soonFree') };
 
     // Distance + ETA
-    const dist = station.distanceFormatted || { value: '—', unit: 'meters' };
-    const eta = walkingEta(station.distance);
+    const hasRoadDistance = Number.isFinite(station.driveDistance);
+    const dist = hasRoadDistance
+      ? GeoLocation.formatDistance(station.driveDistance / 1000)
+      : station.distanceFormatted || { value: '—', unit: 'meters' };
+    const driveMinutes = Number.isFinite(station.driveDuration)
+      ? Math.max(1, Math.round(station.driveDuration / 60))
+      : null;
+    const driveEta = driveMinutes == null ? '—' : driveMinutes < 60
+      ? `${driveMinutes}<span class="unit">${esc(i18n.t('minSuffix'))}</span>`
+      : `${Math.floor(driveMinutes / 60)}<span class="unit">${esc(i18n.t('hrSuffix'))}</span>${driveMinutes % 60 ? ` ${driveMinutes % 60}<span class="unit">${esc(i18n.t('minSuffix'))}</span>` : ''}`;
+    const targetConnectorId = station.recommendedConnector?.id;
 
     // Schedule
     const sch = parseSchedule(station.schedule);
@@ -683,10 +694,11 @@ class UI {
     // wherever the user meets it.
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
+        const isTarget = targetConnectorId != null && String(c.id) === String(targetConnectorId);
         return `
-          <div class="conn conn--free">
+          <div class="conn conn--free ${isTarget ? 'conn--target' : ''}">
             <span class="conn-id" role="img" aria-label="${esc(i18n.t('connector'))} ${esc(c.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number" aria-hidden="true">#${esc(c.id)}</span>
+            <span class="conn-number" aria-hidden="true">#${esc(c.id)}${isTarget ? `<small class="conn-target-label">${esc(i18n.t('recommendedConnector'))}</small>` : ''}</span>
             <span class="conn-state">
               <span class="conn-pip" aria-hidden="true"></span>
               ${esc(i18n.t('available'))}
@@ -764,12 +776,12 @@ class UI {
 
         <div class="card-data">
           <div class="data-cell">
-            <span class="data-label">${esc(i18n.t('distance'))}</span>
+            <span class="data-label">${esc(i18n.t(hasRoadDistance ? 'roadDistance' : 'distance'))}</span>
             <span class="data-val">${esc(dist.value)}<span class="unit">${esc(i18n.t(dist.unit))}</span></span>
           </div>
           <div class="data-cell">
-            <span class="data-label">${esc(i18n.t('walking') || 'пешки')}</span>
-            <span class="data-val">${eta ? `${esc(eta.val)}<span class="unit">${esc(i18n.t(eta.type))}</span>` : '—'}</span>
+            <span class="data-label">${esc(i18n.t('driving'))}</span>
+            <span class="data-val">${driveEta}</span>
           </div>
           <div class="data-cell">
             <span class="data-label">${esc(i18n.t('tariff'))}</span>
@@ -790,7 +802,7 @@ class UI {
           <button class="btn btn-ghost" data-action="show-map" data-station-id="${esc(station.id)}">
             ${esc(i18n.t('navigateTo'))}
           </button>
-          <button class="btn btn-primary" data-action="route" data-station-id="${esc(station.id)}">
+          <button class="btn btn-primary" data-action="route" data-station-id="${esc(station.id)}" data-connector-id="${esc(targetConnectorId ?? '')}" aria-label="${esc(i18n.t('routeToConnector'))} #${esc(targetConnectorId ?? '')}" ${targetConnectorId == null ? 'disabled' : ''}>
             ${esc(i18n.t('routeLabel'))}
             <span class="btn-arrow" aria-hidden="true">→</span>
           </button>
@@ -1208,11 +1220,12 @@ class UI {
     }, duration);
   }
 
-  showRoutePanel(station, { distance, duration }) {
+  showRoutePanel(station, { distance, duration, connectorId = null }) {
     const panel = document.getElementById('route-panel');
     if (!panel) return;
 
     const destEl = document.getElementById('route-dest');
+    const targetEl = document.getElementById('route-target');
     const distEl = document.getElementById('route-distance');
     const durEl  = document.getElementById('route-duration');
 
@@ -1220,6 +1233,7 @@ class UI {
     // live region is not re-announced each second with the same numbers.
     const set = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
     set(destEl, station.name);
+    set(targetEl, connectorId == null ? '' : `${i18n.t('routeTarget')}: #${connectorId}`);
 
     const f = GeoLocation.formatDistance(distance / 1000);
     set(distEl, `${f.value} ${i18n.t(f.unit)}`);

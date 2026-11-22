@@ -273,7 +273,9 @@ class StationMap {
       }
       const button = e.target.closest('[data-action]');
       if (!button) return;
-      if (button.dataset.action === 'route') window.dispatchEvent(new CustomEvent('routeRequest', { detail: { stationId: button.dataset.stationId } }));
+      if (button.dataset.action === 'route') window.dispatchEvent(new CustomEvent('routeRequest', {
+        detail: { stationId: button.dataset.stationId, connectorId: button.dataset.connectorId },
+      }));
       if (button.dataset.action === 'zone-rules') window.dispatchEvent(new CustomEvent('parkingRulesRequest'));
       if (button.dataset.action === 'zone-start') window.dispatchEvent(new CustomEvent('parkingStartRequest', { detail: { zoneId: button.dataset.id } }));
       if (button.dataset.action === 'select-station') this.openStationPopup(button.dataset.id);
@@ -739,6 +741,12 @@ class StationMap {
 
   buildPopup(station) {
     const escHtml = (v) => this._esc(v);
+    const activeRoute = typeof stationRouter !== 'undefined' ? stationRouter.activeRoute : null;
+    const routeTargetsStation = activeRoute && String(activeRoute.station?.id) === String(station.id);
+    const recommendedConnector = routeTargetsStation
+      ? station.connectors.find((connector) => String(connector.id) === String(activeRoute.connectorId))
+      : stationFinder.getRecommendedConnector(station);
+    const targetConnectorId = recommendedConnector?.id ?? null;
 
     // Schedule parsing
     const sch = (typeof parseSchedule === 'function') ? parseSchedule(station.schedule) : null;
@@ -779,12 +787,10 @@ class StationMap {
     if (typeof geoLocation !== 'undefined' && geoLocation.userLat != null && geoLocation.userLng != null) {
       const km = GeoLocation.distanceBetween(geoLocation.userLat, geoLocation.userLng, station.lat, station.lng);
       const d = GeoLocation.formatDistance(km);
-      const walkMin = Math.round(km * 12);
-      const walkSuffix = walkMin > 0 ? ` · ${walkMin}${escHtml(i18n.t('minSuffix'))}` : '';
       distChip = `
         <div class="chip chip--dist">
           <span class="chip-icon">${PIN_SVG}</span>
-          <span class="chip-value">${escHtml(d.value)}<span class="unit">${escHtml(i18n.t(d.unit))}</span>${walkSuffix}</span>
+          <span class="chip-value">${escHtml(d.value)}<span class="unit">${escHtml(i18n.t(d.unit))}</span></span>
         </div>`;
     }
 
@@ -807,10 +813,11 @@ class StationMap {
     // level, so its width always matches the number printed beside it.
     const connRows = station.connectors.map((c) => {
       if (c.isAvailable) {
+        const isTarget = targetConnectorId != null && String(c.id) === String(targetConnectorId);
         return `
-          <div class="conn conn--free">
+          <div class="conn conn--free ${isTarget ? 'conn--target' : ''}">
             <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
+            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}${isTarget ? `<small class="conn-target-label">${escHtml(i18n.t(routeTargetsStation ? 'routeTarget' : 'recommendedConnector'))}</small>` : ''}</span>
             <span class="conn-state">
               <svg class="conn-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
               ${escHtml(i18n.t('available'))}
@@ -818,13 +825,14 @@ class StationMap {
           </div>`;
       }
 
+      const isTarget = targetConnectorId != null && String(c.id) === String(targetConnectorId);
       const level = Math.max(0, Math.min(100, Math.round(c.chargeLevel || 0)));
       if (c.isCharging || c.isStarting || level > 0) {
         const tone = level >= 80 ? 'tone-high' : level >= 40 ? 'tone-mid' : 'tone-low';
         return `
-          <div class="conn conn--charging">
+          <div class="conn conn--charging ${isTarget ? 'conn--target' : ''}">
             <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
+            <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}${isTarget ? `<small class="conn-target-label">${escHtml(i18n.t('routeTarget'))}</small>` : ''}</span>
             <div class="conn-body">
               <div class="conn-line">
                 <span class="conn-state conn-state--charging"><svg class="conn-state-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 13h6l-1 9 11-13h-7z"/></svg>${escHtml(i18n.t(c.isStarting ? 'startCharging' : 'charging'))}</span>
@@ -840,9 +848,9 @@ class StationMap {
       }
 
       return `
-        <div class="conn conn--busy">
+        <div class="conn conn--busy ${isTarget ? 'conn--target' : ''}">
           <span class="conn-id" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8Zm6 9v4"/></svg></span>
-          <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}</span>
+          <span class="conn-number">${escHtml(i18n.t('connectorLabel'))} ${escHtml(c.id)}${isTarget ? `<small class="conn-target-label">${escHtml(i18n.t('routeTarget'))}</small>` : ''}</span>
           <span class="conn-state conn-state--busy"><svg class="conn-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>${escHtml(i18n.t('occupied'))}</span>
         </div>`;
     }).join('');
@@ -883,7 +891,7 @@ class StationMap {
         <div class="conn-list">${connRows}</div>
 
         <div class="popup-actions">
-          <button class="btn btn-primary" data-action="route" data-station-id="${station.id}">
+          <button class="btn btn-primary" data-action="route" data-station-id="${escHtml(station.id)}" data-connector-id="${escHtml(targetConnectorId ?? '')}" aria-label="${escHtml(i18n.t('routeToConnector'))} #${escHtml(targetConnectorId ?? '')}" ${targetConnectorId == null ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 12 5 10 9 14 15 8 19 12"/><path d="M3 18h18"/></svg>
             ${escHtml(i18n.t('routeLabel'))}
             <span class="btn-arrow" aria-hidden="true">→</span>
